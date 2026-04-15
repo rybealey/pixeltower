@@ -10,7 +10,8 @@
 /atomcms/
 /nitro/
 
-# Emulator binary + plugins (licensed/compiled artifacts)
+# Emulator — JAR is built into the image from upstream; only ignore local
+# overrides (optional host-supplied JAR + plugins) and rendered config.
 /emulator/*.jar
 /emulator/plugins/
 /emulator/config.ini

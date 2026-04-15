@@ -31,11 +31,27 @@ These aren't in the repo — you drop them in before first boot.
    ```bash
    git clone https://github.com/sadnessRBLX/AtomCMS atomcms
    ```
-2. **Arcturus Morningstar emulator** — compiled JAR + plugins
-   - Grab `Emulator.jar` and the `plugins/` folder from the tutorial repo's
-     `Emulator_Compiled/` directory, or build from
-     [git.krews.org/morningstar/Arcturus-Community](https://git.krews.org/morningstar/Arcturus-Community).
-   - Place them into `./emulator/` (so you have `./emulator/Emulator.jar` and `./emulator/plugins/`).
+2. **Arcturus Morningstar emulator** — built from source by the `emulator`
+   image during `docker compose build`. The Dockerfile clones
+   [git.krews.org/morningstar/Arcturus-Community](https://git.krews.org/morningstar/Arcturus-Community)
+   at `master` and runs `mvn package`, baking the resulting
+   `Habbo-*-jar-with-dependencies.jar` into the image as
+   `/opt/arcturus/Emulator.jar`. Override the source ref at build time:
+   ```bash
+   docker compose build emulator --build-arg ARCTURUS_REF=v3.5.5
+   ```
+   Optional: drop a custom `Emulator.jar` and/or a `plugins/` folder into
+   `./emulator/` on the host — the entrypoint prefers the host-supplied
+   JAR over the baked-in one.
+   **Base DB schema:** Arcturus's upstream repo ships `sqlupdates/` (incremental
+   migrations) but **not** a base schema dump. You must obtain a base SQL
+   dump from the community (Krews Discord / retro forums) and import it
+   before the emulator will boot cleanly:
+   ```bash
+   docker compose exec -T db mariadb -uroot -p"$DB_ROOT_PASSWORD" "$DB_DATABASE" < path/to/arcturus-base.sql
+   # Then apply any newer sqlupdates as needed (available at /opt/arcturus/sqlupdates inside the emulator image):
+   docker compose exec emulator sh -c 'ls /opt/arcturus/sqlupdates'
+   ```
 3. **Nitro client** — build once with Node:
    ```bash
    git clone https://git.krews.org/nitro/nitro-react nitro

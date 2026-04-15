@@ -1,28 +1,31 @@
-# Rendered into config.ini at container start (envsubst).
-# Copy this file to ./emulator/ on the host (git-ignored) or keep it here and it'll still render.
+# Rendered into /emulator/config.ini at container start via envsubst.
+# Field names match Arcturus Morningstar Community (see upstream config.ini.example).
 
+#Database Configuration
 db.hostname=${DB_HOST}
 db.port=${DB_PORT}
 db.database=${DB_DATABASE}
 db.username=${DB_USERNAME}
 db.password=${DB_PASSWORD}
 db.params=?useSSL=false&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8
-db.pool.minsize=5
-db.pool.maxsize=350
+db.pool.minsize=25
+db.pool.maxsize=100
 
-game.tcp.host=0.0.0.0
-game.tcp.port=${EMU_GAME_PORT}
+#Game Configuration
+game.host=0.0.0.0
+game.port=${EMU_GAME_PORT}
 
-rcon.tcp.host=0.0.0.0
-rcon.tcp.port=3001
+#RCON Configuration
+rcon.host=0.0.0.0
+rcon.port=3001
 rcon.allowed=127.0.0.1
 
+#Encryption (not required for Nitro; keep disabled)
+enc.enabled=false
+
+#WebSocket / Nitro (honored by Morningstar builds with Nitro support; ignored otherwise)
 ws.enabled=1
 ws.host=0.0.0.0
 ws.port=${EMU_WS_PORT}
 ws.ip.header=X-Forwarded-For
-
-# TLS handled at nginx; emulator speaks plain WS on retro_net.
 ws.ssl.enabled=0
-
-encryption.enabled=0
