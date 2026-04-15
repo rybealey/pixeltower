@@ -132,10 +132,14 @@ large persistent volumes and the JVM emulator fight their model.
 - MariaDB + Imager are not exposed to the host — only the compose network reaches them.
 - Emulator RCON bound to `127.0.0.1:3001` on the host; never public.
 - `.env.production` stays on the VPS (gitignored); only `.env.example` is committed.
-- Nightly DB backup (add to VPS crontab):
+- Nightly DB backups: handled by the `backup` compose service (cron container).
+  Artifacts land in `./data/backups/db-YYYYMMDDTHHMMSSZ.sql.gz`.
+  Configure via `BACKUP_SCHEDULE`, `BACKUP_RETENTION_DAYS`, `TZ` in `.env`.
+  Restore with:
   ```
-  0 4 * * * cd /opt/pixeltower && docker compose exec -T db mariadb-dump -uroot -p"$DB_ROOT_PASSWORD" --all-databases | gzip > /opt/pixeltower/data/backups/db-$(date +\%F).sql.gz
+  gunzip -c data/backups/db-XXXXX.sql.gz | docker compose exec -T db mariadb -uroot -p"$DB_ROOT_PASSWORD"
   ```
+  Tail the logs: `docker compose logs -f backup`.
 
 ## Verification
 

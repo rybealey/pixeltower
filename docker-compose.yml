@@ -94,6 +94,25 @@ services:
       - ./data/certbot/www:/var/www/certbot
     entrypoint: ["certbot"]
 
+  backup:
+    build:
+      context: ./docker/backup
+    restart: unless-stopped
+    environment:
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 4 * * *}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./data/backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - retro_net
+
 networks:
   retro_net:
     driver: bridge
