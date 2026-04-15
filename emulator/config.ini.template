@@ -1,0 +1,28 @@
+# Rendered into config.ini at container start (envsubst).
+# Copy this file to ./emulator/ on the host (git-ignored) or keep it here and it'll still render.
+
+db.hostname=${DB_HOST}
+db.port=${DB_PORT}
+db.database=${DB_DATABASE}
+db.username=${DB_USERNAME}
+db.password=${DB_PASSWORD}
+db.params=?useSSL=false&serverTimezone=UTC&useUnicode=true&characterEncoding=UTF-8
+db.pool.minsize=5
+db.pool.maxsize=350
+
+game.tcp.host=0.0.0.0
+game.tcp.port=${EMU_GAME_PORT}
+
+rcon.tcp.host=0.0.0.0
+rcon.tcp.port=3001
+rcon.allowed=127.0.0.1
+
+ws.enabled=1
+ws.host=0.0.0.0
+ws.port=${EMU_WS_PORT}
+ws.ip.header=X-Forwarded-For
+
+# TLS handled at nginx; emulator speaks plain WS on retro_net.
+ws.ssl.enabled=0
+
+encryption.enabled=0

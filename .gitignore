@@ -1,0 +1,25 @@
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Persistent data (bind-mounted volumes)
+/data/
+
+# Third-party sources cloned in at bootstrap
+/atomcms/
+/nitro/
+
+# Emulator binary + plugins (licensed/compiled artifacts)
+/emulator/*.jar
+/emulator/plugins/
+/emulator/config.ini
+
+# Gamedata (large, not source-controlled)
+/gamedata/
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/

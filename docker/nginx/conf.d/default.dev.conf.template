@@ -1,0 +1,58 @@
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name localhost;
+
+    root /var/www/atomcms/public;
+    index index.php index.html;
+
+    client_max_body_size 64M;
+
+    # Nitro client (built dist)
+    location /client/ {
+        alias /var/www/nitro/;
+        try_files $uri $uri/ /client/index.html;
+    }
+
+    # Gamedata (SWFs, furniture, clothes, c_images, etc.)
+    location /gamedata/ {
+        alias /var/www/gamedata/;
+        autoindex off;
+        add_header Access-Control-Allow-Origin *;
+    }
+
+    # Imager service
+    location /imager/ {
+        proxy_pass http://imager:3030/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # Emulator WebSocket
+    location /ws {
+        proxy_pass http://emulator:${EMU_WS_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 86400;
+    }
+
+    # Laravel front controller
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass php:9000;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_read_timeout 120;
+    }
+
+    location ~ /\.ht { deny all; }
+}

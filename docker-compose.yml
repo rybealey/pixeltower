@@ -1,0 +1,99 @@
+name: pixeltower
+
+services:
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_DATABASE}
+      MARIADB_USER: ${DB_USERNAME}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./data/mariadb:/var/lib/mysql
+    networks:
+      - retro_net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  php:
+    build:
+      context: ./docker/php
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./atomcms:/var/www/atomcms
+      - ./gamedata:/var/www/gamedata
+    networks:
+      - retro_net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/templates-src:ro
+      - ./docker/nginx/entrypoint.sh:/docker-entrypoint.d/40-pick-env.sh:ro
+      - ./atomcms:/var/www/atomcms:ro
+      - ./nitro/dist:/var/www/nitro:ro
+      - ./gamedata:/var/www/gamedata:ro
+      - ./data/certbot/conf:/etc/letsencrypt:ro
+      - ./data/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - php
+    networks:
+      - retro_net
+
+  emulator:
+    build:
+      context: ./docker/emulator
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./emulator:/emulator
+    ports:
+      - "127.0.0.1:${EMU_RCON_PORT:-3001}:3001"
+    networks:
+      - retro_net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  imager:
+    build:
+      context: ./docker/imager
+    restart: unless-stopped
+    working_dir: /src
+    stdin_open: true
+    tty: true
+    environment:
+      YARN_CACHE_FOLDER: /src/.yarn-cache
+    volumes:
+      - ./docker/imager/app:/src
+      - ./gamedata:/var/www/gamedata
+    networks:
+      - retro_net
+
+  certbot:
+    image: certbot/certbot:latest
+    profiles: ["certbot"]
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    entrypoint: ["certbot"]
+
+networks:
+  retro_net:
+    driver: bridge
