@@ -1,7 +1,7 @@
 # Pixelworld.digital — Dockerized Habbo Retro
 
 A fully containerized AtomCMS + Arcturus Morningstar + Nitro stack, runnable locally
-(`http://localhost`) and in production on `pixelworld.digital` / `www.pixelworld.digital`
+(`http://localhost`) and in production on `pixeltower.digital` / `www.pixeltower.digital`
 with Let's Encrypt TLS. GitHub push → VPS auto-deploy via Actions.
 
 ## Services
@@ -75,27 +75,43 @@ docker compose --profile tools run --rm nitro-builder
 # Output: ./nitro/dist/ — nginx serves it at /client/
 ```
 
-### 5. c_images + furni icons
+### 5. c_images + furni icons + UI sounds
 ```bash
 ./scripts/pull-c-images.sh
 # Pulls from habboassets.com bulk endpoints into:
 #   gamedata/c_images/album1584/   (~26k badges)
 #   gamedata/c_images/catalogue/   (catalog icons)
 #   gamedata/dcr/hof_furni/icons/  (~17k furniture icons)
-```
 
-Two c_images subfolders aren't on habboassets and need `habbo-downloader`
-run **locally** (not on the VPS — Habbo blocks server IPs):
-```bash
-npx -y habbo-downloader@latest -c badgeparts -o ./gamedata/c_images/Badgeparts -d www.habbo.com -s 4
-npx -y habbo-downloader@latest -c hotelview  -o ./gamedata/c_images/room_backgrounds -d www.habbo.com -s 4
-# Then rsync the two dirs to the VPS.
-```
-
-### 5b. UI sounds
-```bash
 ./scripts/pull-sounds.sh
 # ~737 sound_machine_sample_*.mp3 into gamedata/dcr/hof_furni/mp3/
+```
+
+### 5b. Morningstar default SWF pack (HOF furniture + Badgeparts + catalog SQLs)
+```bash
+./scripts/pull-default-pack.sh
+# Shallow-clones git.krews.org/morningstar/arcturus-morningstar-default-swf-pack
+# Extracts into:
+#   gamedata/dcr/hof_furni/*.swf       (1000+ furniture SWFs for converter re-run)
+#   gamedata/c_images/Badgeparts/      (group badge compositor PNGs)
+#   gamedata/c_images/reception/       (hotel view backgrounds)
+#   gamedata/c_images/{web_promo,Quests,articles,...}  (various UI images)
+#   emulator/catalog-sqls/             (catalog_items.sql, catalog_pages.sql, items_base.sql, etc.)
+# Clone is deleted after extraction (~1-5GB temp).
+```
+
+After the pack lands, re-run the converter to produce furniture `.nitro`
+bundles. Merge the hof_furni SWFs with your original flash-assets pack into
+one directory, then:
+```bash
+SWF_PACK_DIR=<merged_path> docker compose --profile tools run --rm converter
+```
+
+Import catalog SQLs after base-database.sql:
+```bash
+for f in emulator/catalog-sqls/*.sql; do
+  docker compose exec -T db mariadb -uroot -p"$DB_ROOT_PASSWORD" "$DB_DATABASE" < "$f"
+done
 ```
 
 ### 6. Arcturus base SQL schema + NitroWebsockets settings
@@ -111,7 +127,7 @@ docker compose exec -T db mariadb -uroot -p"$DB_ROOT_PASSWORD" "$DB_DATABASE" < 
 # Pre-seed NitroWebsockets plugin config so the emulator boots with WS ready:
 docker compose exec -T db mariadb -uroot -p"$DB_ROOT_PASSWORD" "$DB_DATABASE" < emulator/nitrowebsockets-settings.sql
 # Edit emulator/nitrowebsockets-settings.sql first to put YOUR domain in
-# websockets.whitelist (default is pixelworld.digital + www + localhost).
+# websockets.whitelist (default is pixeltower.digital + www + localhost).
 ```
 
 **NitroWebsockets plugin:** required for Nitro HTML5 client support on
@@ -138,12 +154,12 @@ docker compose up -d
 ## Production bootstrap (on VPS at /opt/pixeltower)
 
 ```bash
-# DNS: A records for pixelworld.digital + www → VPS IP
+# DNS: A records for pixeltower.digital + www → VPS IP
 git clone git@github.com:<you>/pixeltower.git /opt/pixeltower
 cd /opt/pixeltower
 # rsync assets (atomcms/, nitro/dist/, gamedata/, docker/converter/app/, docker/imager/app/) onto the VPS
 cp .env.example .env
-# Edit: APP_ENV=production, DOMAIN=pixelworld.digital, LETSENCRYPT_EMAIL=..., strong DB passwords, APP_DEBUG=false
+# Edit: APP_ENV=production, DOMAIN=pixeltower.digital, LETSENCRYPT_EMAIL=..., strong DB passwords, APP_DEBUG=false
 ./scripts/bootstrap-atom-env.sh
 
 # 1. Boot nginx alone on :80 so ACME challenges can reach us
@@ -151,7 +167,7 @@ docker compose up -d nginx
 # 2. Issue cert for both apex + www
 docker compose --profile certbot run --rm certbot certonly \
   --webroot -w /var/www/certbot \
-  -d pixelworld.digital -d www.pixelworld.digital \
+  -d pixeltower.digital -d www.pixeltower.digital \
   --email "$(grep LETSENCRYPT_EMAIL .env | cut -d= -f2)" \
   --agree-tos --non-interactive
 # 3. Recreate nginx with cert + bring up everything else
@@ -164,7 +180,7 @@ docker compose up -d
 
 Before Nitro loads correctly in production, rebuild the client with prod URLs:
 ```bash
-# Edit nitro/public/renderer-config.json and ui-config.json: replace http://localhost with https://pixelworld.digital
+# Edit nitro/public/renderer-config.json and ui-config.json: replace http://localhost with https://pixeltower.digital
 docker compose --profile tools run --rm nitro-builder
 ```
 
@@ -179,7 +195,7 @@ Required repo secrets (Settings → Secrets and variables → Actions):
 
 | Secret | Value |
 |---|---|
-| `DEPLOY_HOST` | VPS IP or `pixelworld.digital` |
+| `DEPLOY_HOST` | VPS IP or `pixeltower.digital` |
 | `DEPLOY_USER` | SSH user (e.g. `deploy`, in the `docker` group) |
 | `DEPLOY_SSH_KEY` | Private key content for a dedicated deploy key |
 | `DEPLOY_PORT` | (optional) SSH port, default 22 |
@@ -210,7 +226,7 @@ emulator don't fit their model cleanly.
 - Visit `http://localhost/client/` — Nitro loads, WS connects on `/ws`
 
 **Production:**
-- `curl -I https://pixelworld.digital/` → 200, valid LE cert
-- `curl -I http://pixelworld.digital/` → 301
-- `openssl s_client -connect pixelworld.digital:443 -servername www.pixelworld.digital </dev/null 2>/dev/null | openssl x509 -noout -ext subjectAltName` — SAN covers both
-- In-game login via `https://pixelworld.digital/client/`
+- `curl -I https://pixeltower.digital/` → 200, valid LE cert
+- `curl -I http://pixeltower.digital/` → 301
+- `openssl s_client -connect pixeltower.digital:443 -servername www.pixeltower.digital </dev/null 2>/dev/null | openssl x509 -noout -ext subjectAltName` — SAN covers both
+- In-game login via `https://pixeltower.digital/client/`

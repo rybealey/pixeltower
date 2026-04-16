@@ -18,6 +18,7 @@
 /emulator/plugins/
 /emulator/config.ini
 /emulator/base-database.sql
+/emulator/catalog-sqls/
 
 # Gamedata (large, not source-controlled)
 /gamedata/

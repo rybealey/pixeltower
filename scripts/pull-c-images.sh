@@ -43,21 +43,8 @@ dl_and_unzip "https://www.habboassets.com/images/furni-icons/all"   "$ICONS"
 cat <<'EOT'
 
 ──────────────────────────────────────────────────────────────────
-Remaining c_images subfolders (not on habboassets bulk):
-
-  ./gamedata/c_images/Badgeparts/generated/
-  ./gamedata/c_images/room_backgrounds/
-
-Run these on a LOCAL machine (not the VPS — Habbo blocks server IPs):
-
-  npx -y habbo-downloader@latest -c badgeparts \
-    -o ./gamedata/c_images/Badgeparts -d www.habbo.com -s 4
-
-  npx -y habbo-downloader@latest -c hotelview  \
-    -o ./gamedata/c_images/room_backgrounds -d www.habbo.com -s 4
-
-Then rsync to the VPS:
-  rsync -av ./gamedata/c_images/Badgeparts/ deploy@pixelworld.digital:/opt/pixeltower/gamedata/c_images/Badgeparts/
-  rsync -av ./gamedata/c_images/room_backgrounds/ deploy@pixelworld.digital:/opt/pixeltower/gamedata/c_images/room_backgrounds/
+For Badgeparts, reception backgrounds, HOF furniture SWFs, and catalog
+SQLs, run:  ./scripts/pull-default-pack.sh
+(pulls from morningstar/arcturus-morningstar-default-swf-pack)
 ──────────────────────────────────────────────────────────────────
 EOT

@@ -17,7 +17,16 @@ if [ -f atomcms/.env ]; then
 fi
 
 # Load root .env if present, so we can inherit DB creds + DOMAIN.
-[ -f .env ] && set -a && . ./.env && set +a
+# Filter out UID/GID (readonly shell vars) and comments. Export line-by-line
+# to handle values containing spaces (e.g. BACKUP_SCHEDULE=0 4 * * *).
+if [ -f .env ]; then
+  while IFS='=' read -r key value; do
+    case "$key" in
+      \#*|""|UID|GID) continue ;;
+    esac
+    export "$key=$value" 2>/dev/null || true
+  done < .env
+fi
 
 : "${DOMAIN:=localhost}"
 : "${APP_ENV:=local}"

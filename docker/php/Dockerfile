@@ -9,7 +9,7 @@ RUN apk add --no-cache \
   && curl -sSLf https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions \
        -o /usr/local/bin/install-php-extensions \
   && chmod +x /usr/local/bin/install-php-extensions \
-  && install-php-extensions pdo_mysql gd bcmath zip intl exif pcntl opcache redis
+  && install-php-extensions pdo_mysql gd bcmath zip intl exif pcntl opcache redis sockets
 
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer
 COPY php.ini /usr/local/etc/php/conf.d/zz-app.ini
