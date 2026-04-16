@@ -13,9 +13,20 @@ else
   echo "[emulator] Using host-provided JAR: $JAR"
 fi
 
-# Plugins: honor host /emulator/plugins; otherwise create an empty one so
-# Arcturus doesn't complain.
+# Plugins: honor host /emulator/plugins; copy in any baked-in default plugins
+# (e.g. NitroWebsockets) that aren't already present. This makes the stack
+# work out-of-the-box without the host having to stage plugin JARs.
 mkdir -p /emulator/plugins
+if [ -d /opt/arcturus/default-plugins ]; then
+  for jar in /opt/arcturus/default-plugins/*.jar; do
+    [ -f "$jar" ] || continue
+    name=$(basename "$jar")
+    if [ ! -f "/emulator/plugins/$name" ]; then
+      echo "[emulator] installing default plugin: $name"
+      cp "$jar" "/emulator/plugins/$name"
+    fi
+  done
+fi
 
 # Render config.ini from template if present, otherwise leave an existing one alone.
 if [ -f /emulator/config.ini.template ]; then

@@ -59,5 +59,20 @@ sed_i "s|^NITRO_CLIENT_URL=.*|NITRO_CLIENT_URL=$SCHEME://$DOMAIN/client|"
 sed_i "s|^NITRO_STATIC_PATH=.*|NITRO_STATIC_PATH=/var/www/gamedata|"
 sed_i "s|^NITRO_IMAGER_URL=.*|NITRO_IMAGER_URL=$SCHEME://$DOMAIN/imager|"
 
+# Atom's .env.example defaults all c_images paths to /swf/c_images/... but
+# our gamedata bind mount puts them at /c_images/... — override each.
+GD_PATH=/var/www/gamedata
+GD_URL=$SCHEME://$DOMAIN/gamedata
+sed_i "s|^NITRO_BADGE_PATH=.*|NITRO_BADGE_PATH=$GD_PATH/c_images/album1584|"
+sed_i "s|^NITRO_BADGE_URL=.*|NITRO_BADGE_URL=$GD_URL/c_images/album1584|"
+sed_i "s|^NITRO_GROUP_BADGE_PATH=.*|NITRO_GROUP_BADGE_PATH=$GD_PATH/c_images/Badgeparts/generated|"
+sed_i "s|^NITRO_GROUP_BADGE_URL=.*|NITRO_GROUP_BADGE_URL=$GD_URL/c_images/Badgeparts/generated|"
+sed_i "s|^NITRO_CATALOG_IMAGE_PATH=.*|NITRO_CATALOG_IMAGE_PATH=$GD_PATH/c_images/catalogue|"
+sed_i "s|^NITRO_CATALOG_IMAGE_URL=.*|NITRO_CATALOG_IMAGE_URL=$GD_URL/c_images/catalogue|"
+sed_i "s|^NITRO_BACKGROUND_PATH=.*|NITRO_BACKGROUND_PATH=$GD_PATH/c_images/room_backgrounds|"
+sed_i "s|^NITRO_BACKGROUND_URL=.*|NITRO_BACKGROUND_URL=$GD_URL/c_images/room_backgrounds|"
+sed_i "s|^NITRO_FURNITURE_ICON_PATH=.*|NITRO_FURNITURE_ICON_PATH=$GD_PATH/dcr/hof_furni/icons|"
+sed_i "s|^NITRO_FURNITURE_ICON_URL=.*|NITRO_FURNITURE_ICON_URL=$GD_URL/dcr/hof_furni/icons|"
+
 echo "Wrote atomcms/.env for APP_ENV=$APP_ENV DOMAIN=$DOMAIN"
 echo "Next: docker compose run --rm php php artisan key:generate"

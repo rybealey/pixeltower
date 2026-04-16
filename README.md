@@ -75,20 +75,51 @@ docker compose --profile tools run --rm nitro-builder
 # Output: ./nitro/dist/ — nginx serves it at /client/
 ```
 
-### 5. c_images pack
-The SWF pack does **not** include `c_images/` (avatar figureparts for
-imager-generated thumbnails + catalogue PNGs). Source a full c_images pack
-from retro communities and drop it into `./gamedata/c_images/` (with its
-`catalogue/` subfolder).
+### 5. c_images + furni icons
+```bash
+./scripts/pull-c-images.sh
+# Pulls from habboassets.com bulk endpoints into:
+#   gamedata/c_images/album1584/   (~26k badges)
+#   gamedata/c_images/catalogue/   (catalog icons)
+#   gamedata/dcr/hof_furni/icons/  (~17k furniture icons)
+```
 
-### 6. Arcturus base SQL dump
-Upstream's `sqlupdates/` folder has incremental migrations only — no base
-schema. Obtain a `arcturus_3.x.x.sql` base dump from the community, then:
+Two c_images subfolders aren't on habboassets and need `habbo-downloader`
+run **locally** (not on the VPS — Habbo blocks server IPs):
+```bash
+npx -y habbo-downloader@latest -c badgeparts -o ./gamedata/c_images/Badgeparts -d www.habbo.com -s 4
+npx -y habbo-downloader@latest -c hotelview  -o ./gamedata/c_images/room_backgrounds -d www.habbo.com -s 4
+# Then rsync the two dirs to the VPS.
+```
+
+### 5b. UI sounds
+```bash
+./scripts/pull-sounds.sh
+# ~737 sound_machine_sample_*.mp3 into gamedata/dcr/hof_furni/mp3/
+```
+
+### 6. Arcturus base SQL schema + NitroWebsockets settings
+```bash
+./scripts/pull-emulator-sql.sh
+# Clones morningstar/ms4-base-database, concatenates all 117 tables
+# into ./emulator/base-database.sql (~3.7MB, gitignored).
+```
+Import at first DB boot:
 ```bash
 docker compose up -d db
-docker compose exec -T db mariadb -uroot -p"$DB_ROOT_PASSWORD" "$DB_DATABASE" < path/to/arcturus-base.sql
-# Then apply updates from /opt/arcturus/sqlupdates inside the emulator image in order, as needed.
+docker compose exec -T db mariadb -uroot -p"$DB_ROOT_PASSWORD" "$DB_DATABASE" < emulator/base-database.sql
+# Pre-seed NitroWebsockets plugin config so the emulator boots with WS ready:
+docker compose exec -T db mariadb -uroot -p"$DB_ROOT_PASSWORD" "$DB_DATABASE" < emulator/nitrowebsockets-settings.sql
+# Edit emulator/nitrowebsockets-settings.sql first to put YOUR domain in
+# websockets.whitelist (default is pixelworld.digital + www + localhost).
 ```
+
+**NitroWebsockets plugin:** required for Nitro HTML5 client support on
+Arcturus MS 3.x. Auto-installed by the emulator image from
+[git.krews.org/morningstar/nitrowebsockets-for-ms](https://git.krews.org/morningstar/nitrowebsockets-for-ms)
+(prebuilt JAR baked in at `/opt/arcturus/default-plugins/` and copied into
+`./emulator/plugins/` at container start if not already present). Configures
+itself via the `emulator_settings` DB table — the SQL snippet above sets it.
 
 ## Local bootstrap
 

@@ -23,9 +23,9 @@ rcon.allowed=127.0.0.1
 #Encryption (not required for Nitro; keep disabled)
 enc.enabled=false
 
-#WebSocket / Nitro (honored by Morningstar builds with Nitro support; ignored otherwise)
-ws.enabled=1
-ws.host=0.0.0.0
-ws.port=${EMU_WS_PORT}
-ws.ip.header=X-Forwarded-For
-ws.ssl.enabled=0
+# Nitro WebSocket support comes from the NitroWebsockets plugin (baked into
+# the emulator image at /opt/arcturus/default-plugins/NitroWebsockets-*.jar
+# and auto-installed into plugins/ on first start). It configures itself
+# via the emulator_settings DB table, not config.ini — see README for the
+# first-boot UPDATE statements that set websockets.whitelist, ws.nitro.port,
+# and ws.nitro.ip.header.
