@@ -86,6 +86,30 @@ services:
     networks:
       - retro_net
 
+  # ─── one-shot tool services (not started by plain `up`) ─────────────────
+  # nitro-converter: SWF → .nitro bundles. Point SWF_PACK_DIR at your flash-assets dump.
+  # Usage: SWF_PACK_DIR=~/Downloads/flash-assets-PRODUCTION-... docker compose --profile tools run --rm converter
+  converter:
+    build:
+      context: ./docker/converter
+    profiles: ["tools"]
+    volumes:
+      - ./docker/converter/app:/converter
+      - ./docker/converter/configuration.json:/config/configuration.json:ro
+      - ${SWF_PACK_DIR:-./missing-swfs}:/swfs:ro
+      - ./gamedata:/gamedata
+
+  # nitro-builder: yarn install + build:prod in ./nitro/, outputs ./nitro/dist.
+  # Usage: docker compose --profile tools run --rm nitro-builder
+  nitro-builder:
+    image: node:20-bookworm
+    profiles: ["tools"]
+    working_dir: /app
+    volumes:
+      - ./nitro:/app
+    command: >
+      bash -lc "corepack enable && yarn install && yarn build:prod"
+
   certbot:
     image: certbot/certbot:latest
     profiles: ["certbot"]

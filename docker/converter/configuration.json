@@ -1,0 +1,28 @@
+{
+  "output.folder": "/gamedata",
+
+  "flash.client.url": "http://127.0.0.1:8080/",
+  "flash.dynamic.download.url": "http://127.0.0.1:8080/",
+
+  "figuredata.load.url": "http://127.0.0.1:8080/gamedata/figuredata.xml",
+  "figuremap.load.url": "http://127.0.0.1:8080/figuremap.xml",
+  "effectmap.load.url": "http://127.0.0.1:8080/effectmap.xml",
+
+  "furnidata.load.url": "http://127.0.0.1:8080/gamedata/furnidata_xml.xml",
+  "productdata.load.url": "http://127.0.0.1:8080/gamedata/productdata.txt",
+
+  "external.variables.url": "http://127.0.0.1:8080/gamedata/external_variables.txt",
+  "external.texts.url": "http://127.0.0.1:8080/gamedata/external_flash_texts.txt",
+
+  "dynamic.download.pet.url":    "http://127.0.0.1:8080/%className%.swf",
+  "dynamic.download.figure.url": "http://127.0.0.1:8080/%className%.swf",
+  "dynamic.download.effect.url": "http://127.0.0.1:8080/%className%.swf",
+  "dynamic.download.furniture.url": "http://127.0.0.1:8080/%className%.swf",
+
+  "convert.figure": "1",
+  "convert.effect": "1",
+  "convert.furniture": "1",
+  "convert.furniture.floor.only": "0",
+  "convert.furniture.wall.only": "0",
+  "convert.pet": "1"
+}

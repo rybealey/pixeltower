@@ -9,6 +9,8 @@
 # Third-party sources cloned in at bootstrap
 /atomcms/
 /nitro/
+/docker/converter/app/
+/docker/imager/app/
 
 # Emulator — JAR is built into the image from upstream; only ignore local
 # overrides (optional host-supplied JAR + plugins) and rendered config.
