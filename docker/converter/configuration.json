@@ -1,37 +1,30 @@
 {
-  "converter": {
-    "bundle":    true,
-    "figure":    true,
-    "effect":    true,
-    "furniture": true,
-    "pet":       true
-  },
-  "output": {
-    "folder": {
-      "bundled":   "/gamedata/bundled",
-      "figure":    "/gamedata/figure",
-      "effect":    "/gamedata/effect",
-      "furniture": "/gamedata/furniture",
-      "pet":       "/gamedata/pet"
-    }
-  },
-  "dynamic": {
-    "download": {
-      "url": "http://127.0.0.1:8080/%className%.swf"
-    }
-  },
-  "hof_furni":      { "url": "http://127.0.0.1:8080/hof_furni/%className%.swf" },
-  "figure":         { "url": "http://127.0.0.1:8080/figure/%className%.swf" },
-  "effect":         { "url": "http://127.0.0.1:8080/effects/%className%.swf" },
-  "pet":            { "url": "http://127.0.0.1:8080/pets/%className%.swf" },
-  "external_variables": {
-    "url": "http://127.0.0.1:8080/gamedata/external_variables.txt"
-  },
-  "furnidata":      { "url": "http://127.0.0.1:8080/gamedata/furnidata.xml" },
-  "productdata":    { "url": "http://127.0.0.1:8080/gamedata/productdata.txt" },
-  "figuredata":     { "url": "http://127.0.0.1:8080/gamedata/figuredata.xml" },
-  "figuremap":      { "url": "http://127.0.0.1:8080/gamedata/figuremap.xml" },
-  "avatar_actions": { "url": "http://127.0.0.1:8080/gamedata/HabboAvatarActions.json" },
-  "effectmap":      { "url": "http://127.0.0.1:8080/gamedata/effectmap.xml" },
-  "habbo_defaults": { "url": "http://127.0.0.1:8080/gamedata/HabboVariables.txt" }
+  "output.folder": "/gamedata",
+
+  "flash.client.url": "http://127.0.0.1:8080/dcr/hof_furni/",
+  "flash.dynamic.download.url": "http://127.0.0.1:8080/dcr/hof_furni/",
+
+  "furnidata.load.url":   "http://127.0.0.1:8080/gamedata/furnidata.xml",
+  "productdata.load.url": "http://127.0.0.1:8080/gamedata/productdata.txt",
+  "figuredata.load.url":  "http://127.0.0.1:8080/gamedata/figuredata.xml",
+  "figuremap.load.url":   "http://127.0.0.1:8080/gamedata/figuremap.xml",
+  "effectmap.load.url":   "http://127.0.0.1:8080/gamedata/effectmap.xml",
+
+  "dynamic.download.pet.url":       "http://127.0.0.1:8080/dcr/hof_furni/%className%.swf",
+  "dynamic.download.figure.url":    "http://127.0.0.1:8080/dcr/hof_furni/%className%.swf",
+  "dynamic.download.effect.url":    "http://127.0.0.1:8080/dcr/hof_furni/%className%.swf",
+  "dynamic.download.furniture.url": "http://127.0.0.1:8080/dcr/hof_furni/%revision%/%className%.swf",
+
+  "external.variables.url": "http://127.0.0.1:8080/gamedata/external_variables.txt",
+  "external.texts.url":     "http://127.0.0.1:8080/gamedata/external_texts.txt",
+
+  "convert.figure":                "0",
+  "convert.effect":                "0",
+  "convert.furniture":             "1",
+  "convert.furniture.floor.only":  "0",
+  "convert.furniture.wall.only":   "0",
+  "convert.pet":                   "0",
+  "convert.productdata":           "0",
+  "convert.externaltexts":         "0",
+  "convert.figuredata":            "0"
 }
