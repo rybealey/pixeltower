@@ -1,0 +1,37 @@
+{
+  "converter": {
+    "bundle":    true,
+    "figure":    true,
+    "effect":    true,
+    "furniture": true,
+    "pet":       true
+  },
+  "output": {
+    "folder": {
+      "bundled":   "/gamedata/bundled",
+      "figure":    "/gamedata/figure",
+      "effect":    "/gamedata/effect",
+      "furniture": "/gamedata/furniture",
+      "pet":       "/gamedata/pet"
+    }
+  },
+  "dynamic": {
+    "download": {
+      "url": "http://127.0.0.1:8080/%className%.swf"
+    }
+  },
+  "hof_furni":      { "url": "http://127.0.0.1:8080/hof_furni/%className%.swf" },
+  "figure":         { "url": "http://127.0.0.1:8080/figure/%className%.swf" },
+  "effect":         { "url": "http://127.0.0.1:8080/effects/%className%.swf" },
+  "pet":            { "url": "http://127.0.0.1:8080/pets/%className%.swf" },
+  "external_variables": {
+    "url": "http://127.0.0.1:8080/gamedata/external_variables.txt"
+  },
+  "furnidata":      { "url": "http://127.0.0.1:8080/gamedata/furnidata.xml" },
+  "productdata":    { "url": "http://127.0.0.1:8080/gamedata/productdata.txt" },
+  "figuredata":     { "url": "http://127.0.0.1:8080/gamedata/figuredata.xml" },
+  "figuremap":      { "url": "http://127.0.0.1:8080/gamedata/figuremap.xml" },
+  "avatar_actions": { "url": "http://127.0.0.1:8080/gamedata/HabboAvatarActions.json" },
+  "effectmap":      { "url": "http://127.0.0.1:8080/gamedata/effectmap.xml" },
+  "habbo_defaults": { "url": "http://127.0.0.1:8080/gamedata/HabboVariables.txt" }
+}

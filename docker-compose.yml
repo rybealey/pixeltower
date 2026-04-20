@@ -1,0 +1,163 @@
+name: pixeltower
+
+services:
+  db:
+    image: mariadb:11.8
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${DB_DATABASE}
+      MARIADB_USER: ${DB_USERNAME}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - ./data/mariadb:/var/lib/mysql
+    networks:
+      - retro_net
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  php:
+    build:
+      context: ./docker/php
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./atomcms:/var/www/atomcms
+      - ./gamedata:/var/www/gamedata
+    networks:
+      - retro_net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/conf.d:/etc/nginx/templates-src:ro
+      - ./docker/nginx/entrypoint.sh:/docker-entrypoint.d/40-pick-env.sh:ro
+      - ./docker/nginx/cloudflare.conf:/etc/nginx/cloudflare.conf:ro
+      - ./atomcms:/var/www/atomcms:ro
+      - ./nitro/dist:/var/www/nitro:ro
+      - ./gamedata:/var/www/gamedata:ro
+      - ./data/ssl:/etc/ssl/pixeltower:ro
+    depends_on:
+      - php
+    networks:
+      - retro_net
+
+  emulator:
+    build:
+      context: ./docker/emulator
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      EMU_GAME_PORT: ${EMU_GAME_PORT:-3000}
+      EMU_RCON_PORT: ${EMU_RCON_PORT:-3001}
+      EMU_WS_PORT: ${EMU_WS_PORT:-2095}
+      EMU_XMX: ${EMU_XMX:-2048m}
+      EMU_TIMEZONE: ${EMU_TIMEZONE:-UTC}
+    volumes:
+      - ./emulator/plugins:/emulator/plugins
+    ports:
+      - "127.0.0.1:${EMU_RCON_PORT:-3001}:3001"
+    networks:
+      - retro_net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  imager:
+    build:
+      context: ./docker/imager
+    restart: unless-stopped
+    working_dir: /src
+    environment:
+      API_HOST: ${IMAGER_API_HOST:-imager}
+      API_PORT: ${IMAGER_API_PORT:-3030}
+      AVATAR_SAVE_PATH: /src/saved_figure
+      AVATAR_ACTIONS_URL: /var/www/gamedata/config/HabboAvatarActions.json
+      AVATAR_FIGUREDATA_URL: /var/www/gamedata/config/FigureData.json
+      AVATAR_FIGUREMAP_URL: /var/www/gamedata/config/FigureMap.json
+      AVATAR_EFFECTMAP_URL: /var/www/gamedata/config/EffectMap.json
+      AVATAR_ASSET_URL: /var/www/gamedata/clothes/%libname%.nitro
+    volumes:
+      - ./docker/imager/app:/src
+      - ./gamedata:/var/www/gamedata:ro
+    depends_on:
+      - nginx
+    networks:
+      - retro_net
+
+  backup:
+    build:
+      context: ./docker/backup
+    restart: unless-stopped
+    environment:
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      BACKUP_SCHEDULE: ${BACKUP_SCHEDULE:-0 4 * * *}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - ./data/backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - retro_net
+
+  # ── One-shot tool services (profile `tools`; not started by plain `up`) ───
+  # nitro-builder: yarn install + yarn build:prod in ./nitro → ./nitro/dist
+  nitro-builder:
+    image: node:24-bookworm
+    profiles: ["tools"]
+    working_dir: /app
+    volumes:
+      - ./nitro:/app
+    command: >
+      bash -lc "corepack enable && yarn install && yarn build:prod"
+
+  # atom-builder: yarn install + yarn build:atom in ./atomcms (CMS frontend)
+  atom-builder:
+    image: node:24-bookworm
+    profiles: ["tools"]
+    working_dir: /app
+    volumes:
+      - ./atomcms:/app
+    command: >
+      bash -lc "corepack enable && yarn install && yarn build:atom"
+
+  # converter: SWF → .nitro bundles
+  # Usage: SWF_PACK_DIR=/path/to/swfs docker compose --profile tools run --rm converter
+  converter:
+    build:
+      context: ./docker/converter
+    profiles: ["tools"]
+    volumes:
+      - ./docker/converter/app:/converter
+      - ./docker/converter/configuration.json:/config/configuration.json:ro
+      - ${SWF_PACK_DIR:-./gamedata/dcr/hof_furni}:/swfs:ro
+      - ./gamedata:/gamedata
+
+networks:
+  retro_net:
+    driver: bridge

@@ -1,0 +1,56 @@
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${DOMAIN} localhost;
+
+    root /var/www/atomcms/public;
+    index index.php index.html;
+
+    client_max_body_size 100M;
+
+    # Nitro client (built by scripts/build-client.sh → /var/www/nitro)
+    location /client/ {
+        alias /var/www/nitro/;
+        try_files $uri $uri/ /client/index.html;
+    }
+
+    # Static game assets
+    location /gamedata/ {
+        alias /var/www/gamedata/;
+        add_header Access-Control-Allow-Origin *;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    # Avatar imager (nitro-imager on :3030)
+    location /imaging/ {
+        proxy_pass http://imager:3030/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    # Emulator WebSocket (ms-websockets plugin on :${EMU_WS_PORT})
+    location /ws {
+        proxy_pass http://emulator:${EMU_WS_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+
+    # AtomCMS (Laravel)
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass php:9000;
+        fastcgi_index index.php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+}

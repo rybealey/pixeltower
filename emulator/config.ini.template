@@ -1,0 +1,34 @@
+## Arcturus Morningstar configuration
+## Generated at container start from env vars; do not edit directly.
+
+## Database
+db.hostname=${DB_HOST}
+db.port=${DB_PORT}
+db.database=${DB_DATABASE}
+db.username=${DB_USERNAME}
+db.password=${DB_PASSWORD}
+db.params=?useSSL=false&allowPublicKeyRetrieval=true&autoReconnect=true&useUnicode=true&characterEncoding=UTF-8&serverTimezone=${EMU_TIMEZONE}
+db.pool.minsize=10
+db.pool.maxsize=50
+
+## Game server
+game.host=0.0.0.0
+game.port=${EMU_GAME_PORT}
+game.ssl.port=0
+
+## RCON
+rcon.host=0.0.0.0
+rcon.port=${EMU_RCON_PORT}
+rcon.allowed=127.0.0.1
+
+## WebSocket (ms-websockets plugin reads this)
+websockets.host=0.0.0.0
+websockets.port=${EMU_WS_PORT}
+websockets.ssl=false
+
+## Misc
+encryption.enabled=false
+hotel.max.rooms.per.user=50
+plugins.folder=plugins
+logging.folder=logging
+runtime.threads=4

@@ -1,0 +1,31 @@
+# Env files
+/.env
+/.env.local
+/.env.production
+
+# Third-party sources cloned by scripts/bootstrap-sources.sh
+/atomcms/
+/nitro/
+/docker/converter/app/
+/docker/imager/app/
+
+# Runtime assets + build outputs
+/gamedata/
+/emulator/*.jar
+/emulator/plugins/
+/emulator/base-database.sql
+/emulator/catalog-sqls/
+
+# Persisted data (MariaDB, backups, certbot, CF origin cert)
+/data/
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Claude local settings
+.claude/settings.local.json
