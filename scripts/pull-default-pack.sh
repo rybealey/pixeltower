@@ -24,6 +24,12 @@ rsync -a --exclude=icons --exclude=mp3 --exclude=.DS_Store \
 swf_count=$(find gamedata/dcr/hof_furni -maxdepth 1 -name '*.swf' | wc -l | tr -d ' ')
 echo "[pack] $swf_count furniture SWFs → gamedata/dcr/hof_furni/"
 
+echo "[pack] extracting gordon/ (figure + effect + pet SWFs, ~60MB)"
+mkdir -p gamedata/gordon
+rsync -a --exclude=.DS_Store "$TMP/pack/gordon/" gamedata/gordon/
+gordon_count=$(find gamedata/gordon -name '*.swf' | wc -l | tr -d ' ')
+echo "[pack] $gordon_count gordon SWFs → gamedata/gordon/"
+
 echo "[pack] extracting c_images subdirectories"
 mkdir -p gamedata/c_images
 for dir in Badgeparts reception web_promo web_promo_small Quests articles \

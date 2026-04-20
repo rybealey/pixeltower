@@ -94,11 +94,12 @@ services:
       API_HOST: ${IMAGER_API_HOST:-imager}
       API_PORT: ${IMAGER_API_PORT:-3030}
       AVATAR_SAVE_PATH: /src/saved_figure
-      AVATAR_ACTIONS_URL: /var/www/gamedata/config/HabboAvatarActions.json
-      AVATAR_FIGUREDATA_URL: /var/www/gamedata/config/FigureData.json
-      AVATAR_FIGUREMAP_URL: /var/www/gamedata/config/FigureMap.json
-      AVATAR_EFFECTMAP_URL: /var/www/gamedata/config/EffectMap.json
-      AVATAR_ASSET_URL: /var/www/gamedata/clothes/%libname%.nitro
+      AVATAR_ACTIONS_URL: /var/www/gamedata/gamedata/HabboAvatarActions.json
+      AVATAR_FIGUREDATA_URL: /var/www/gamedata/gamedata/FigureData.json
+      AVATAR_FIGUREMAP_URL: /var/www/gamedata/gamedata/FigureMap.json
+      AVATAR_EFFECTMAP_URL: /var/www/gamedata/gamedata/EffectMap.json
+      AVATAR_ASSET_URL: /var/www/gamedata/bundled/figure/%libname%.nitro
+      AVATAR_ASSET_EFFECT_URL: /var/www/gamedata/bundled/effect/%libname%.nitro
     volumes:
       - ./docker/imager/app:/src
       - ./gamedata:/var/www/gamedata:ro

@@ -1,7 +1,7 @@
 {
   "output.folder": "/gamedata",
 
-  "flash.client.url": "http://127.0.0.1:8080/dcr/hof_furni/",
+  "flash.client.url": "http://127.0.0.1:8080/gordon/PRODUCTION/",
   "flash.dynamic.download.url": "http://127.0.0.1:8080/dcr/hof_furni/",
 
   "furnidata.load.url":   "http://127.0.0.1:8080/gamedata/furnidata.xml",
@@ -10,20 +10,20 @@
   "figuremap.load.url":   "http://127.0.0.1:8080/gamedata/figuremap.xml",
   "effectmap.load.url":   "http://127.0.0.1:8080/gamedata/effectmap.xml",
 
-  "dynamic.download.pet.url":       "http://127.0.0.1:8080/dcr/hof_furni/%className%.swf",
-  "dynamic.download.figure.url":    "http://127.0.0.1:8080/dcr/hof_furni/%className%.swf",
-  "dynamic.download.effect.url":    "http://127.0.0.1:8080/dcr/hof_furni/%className%.swf",
+  "dynamic.download.figure.url":    "${flash.client.url}%className%.swf",
+  "dynamic.download.effect.url":    "${flash.client.url}%className%.swf",
+  "dynamic.download.pet.url":       "${flash.client.url}%className%.swf",
   "dynamic.download.furniture.url": "http://127.0.0.1:8080/dcr/hof_furni/%className%.swf",
 
   "external.variables.url": "http://127.0.0.1:8080/gamedata/external_variables.txt",
   "external.texts.url":     "http://127.0.0.1:8080/gamedata/external_texts.txt",
 
-  "convert.figure":                "0",
-  "convert.effect":                "0",
+  "convert.figure":                "1",
+  "convert.effect":                "1",
   "convert.furniture":             "1",
   "convert.furniture.floor.only":  "0",
   "convert.furniture.wall.only":   "0",
-  "convert.pet":                   "0",
+  "convert.pet":                   "1",
   "convert.productdata":           "0",
   "convert.externaltexts":         "0",
   "convert.figuredata":            "0"
