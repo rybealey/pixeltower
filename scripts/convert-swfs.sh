@@ -21,6 +21,20 @@ if [ ! -d docker/converter/app ]; then
 fi
 
 echo "[convert] SWF_PACK_DIR=$SWF_PACK_DIR"
+
+# nitro-converter hardcodes output at ./assets/bundled/<type> (its pwd).
+# Swap that directory for a symlink to our gamedata/ bind-mount so files
+# land where nginx serves them. Host-side operation avoids bind-mount
+# permission issues inside the container.
+if [ -d docker/converter/app/assets ] && [ ! -L docker/converter/app/assets ]; then
+  echo "[convert] migrating pre-existing docker/converter/app/assets → gamedata/"
+  cp -rn docker/converter/app/assets/. gamedata/ 2>/dev/null || true
+  rm -rf docker/converter/app/assets
+fi
+if [ ! -L docker/converter/app/assets ]; then
+  ( cd docker/converter/app && ln -sfn ../../../gamedata assets )
+fi
+
 SWF_PACK_DIR="$SWF_PACK_DIR" \
   docker compose --env-file "$ENV_FILE" --profile tools run --rm converter
 

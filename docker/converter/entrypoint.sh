@@ -18,6 +18,10 @@ if [ -f /config/configuration.json ]; then
   cp /config/configuration.json /converter/configuration.json
 fi
 
+# ./assets should already be a host-side symlink to /gamedata (set up by
+# scripts/convert-swfs.sh before launching this container), so the hardcoded
+# converter output path ./assets/bundled/<type> lands in /gamedata/bundled/.
+
 # Serve gamedata/ over HTTP so URLs in configuration.json resolve.
 # /gamedata = our gamedata bind-mount. /swfs also exists (SWF_PACK_DIR)
 # but the config paths use /gamedata/dcr/hof_furni so both work.

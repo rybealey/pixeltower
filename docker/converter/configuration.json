@@ -13,7 +13,7 @@
   "dynamic.download.pet.url":       "http://127.0.0.1:8080/dcr/hof_furni/%className%.swf",
   "dynamic.download.figure.url":    "http://127.0.0.1:8080/dcr/hof_furni/%className%.swf",
   "dynamic.download.effect.url":    "http://127.0.0.1:8080/dcr/hof_furni/%className%.swf",
-  "dynamic.download.furniture.url": "http://127.0.0.1:8080/dcr/hof_furni/%revision%/%className%.swf",
+  "dynamic.download.furniture.url": "http://127.0.0.1:8080/dcr/hof_furni/%className%.swf",
 
   "external.variables.url": "http://127.0.0.1:8080/gamedata/external_variables.txt",
   "external.texts.url":     "http://127.0.0.1:8080/gamedata/external_texts.txt",
