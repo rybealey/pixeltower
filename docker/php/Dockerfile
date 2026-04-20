@@ -4,17 +4,15 @@ ARG UID=1000
 ARG GID=1000
 
 RUN apk add --no-cache \
-      bash git curl unzip tzdata \
+      bash git curl unzip tzdata linux-headers \
       icu-dev libxml2-dev libzip-dev \
       oniguruma-dev \
       libpng-dev libjpeg-turbo-dev freetype-dev \
       imagemagick imagemagick-dev \
-      imap-dev openssl-dev krb5-dev \
       $PHPIZE_DEPS \
   && docker-php-ext-configure gd --with-freetype --with-jpeg \
-  && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
   && docker-php-ext-install -j"$(nproc)" \
-      bcmath intl mbstring opcache pdo_mysql mysqli soap xml zip gd imap \
+      bcmath intl mbstring opcache pdo_mysql mysqli soap xml zip gd sockets \
   && pecl install imagick \
   && docker-php-ext-enable imagick \
   && apk del --no-network $PHPIZE_DEPS

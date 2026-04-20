@@ -10,7 +10,12 @@ if [ ! -f "$ENV_FILE" ]; then
   echo "[error] $ENV_FILE missing." >&2
   exit 1
 fi
-set -a; . "$ENV_FILE"; set +a
+_ENVTMP=$(mktemp)
+trap 'rm -f "$_ENVTMP"' EXIT
+grep -Ev '^(UID|GID)=|^\s*#|^\s*$' "$ENV_FILE" > "$_ENVTMP"
+set -a
+. "$_ENVTMP"
+set +a
 
 if [ ! -d atomcms ]; then
   echo "[error] atomcms/ missing — run scripts/bootstrap-sources.sh first." >&2

@@ -23,12 +23,13 @@ WORKDIR /src/ms-websockets
 # Arcturus plugins depend on the emulator as a compile-time artifact.
 # Install the fat jar into the local Maven repo so the plugin's pom resolves.
 COPY --from=emu-build /emulator.jar /tmp/emulator.jar
+# Register the Arcturus fat jar under the version the plugin's pom requires.
 RUN mvn install:install-file \
       -Dfile=/tmp/emulator.jar \
       -DgroupId=com.eu.habbo \
       -DartifactId=Habbo \
-      -Dversion=3.5.4-SNAPSHOT \
-      -Dpackaging=jar || true
+      -Dversion=3.0.0 \
+      -Dpackaging=jar
 RUN mvn -B -DskipTests package
 RUN set -eux; \
     cd target; \
@@ -36,8 +37,10 @@ RUN set -eux; \
     cp "$PJAR" /ms-websockets.jar
 
 # ── Stage 3: runtime ────────────────────────────────────────────────────────
-FROM eclipse-temurin:17-jre-alpine AS runtime
-RUN apk add --no-cache bash gettext tzdata
+FROM eclipse-temurin:17-jre-jammy AS runtime
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends bash gettext-base tzdata \
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /emulator
 COPY --from=emu-build    /emulator.jar       /emulator/emulator.jar

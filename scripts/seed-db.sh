@@ -10,7 +10,15 @@ if [ ! -f "$ENV_FILE" ]; then
   echo "[error] $ENV_FILE missing. Copy .env.example and edit it first." >&2
   exit 1
 fi
-set -a; . "$ENV_FILE"; set +a
+# Load .env skipping UID/GID (bash-readonly) and comment/blank lines.
+# Using a tempfile instead of `<(...)` — process substitution + `set -a`
+# behaves unreliably in macOS's default bash 3.2.
+_ENVTMP=$(mktemp)
+trap 'rm -f "$_ENVTMP"' EXIT
+grep -Ev '^(UID|GID)=|^\s*#|^\s*$' "$ENV_FILE" > "$_ENVTMP"
+set -a
+. "$_ENVTMP"
+set +a
 
 : "${DB_DATABASE:?missing in $ENV_FILE}"
 : "${DB_ROOT_PASSWORD:?missing in $ENV_FILE}"
@@ -48,7 +56,7 @@ else
 fi
 
 echo "[seed] applying NitroWebsockets whitelist (DOMAIN=$DOMAIN)"
-DOMAIN="$DOMAIN" envsubst '${DOMAIN}' < emulator/nitrowebsockets-settings.sql | mariadb_exec
+sed "s|\${DOMAIN}|$DOMAIN|g" emulator/nitrowebsockets-settings.sql | mariadb_exec
 
 echo "[seed] disabling console.mode"
 echo "UPDATE emulator_settings SET \`value\`='0' WHERE \`key\`='console.mode';" | mariadb_exec

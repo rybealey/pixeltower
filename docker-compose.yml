@@ -28,7 +28,8 @@ services:
         UID: ${UID:-1000}
         GID: ${GID:-1000}
     restart: unless-stopped
-    env_file: .env
+    # Laravel reads /var/www/atomcms/.env (written by scripts/bootstrap-atom-env.sh).
+    # Docker-level env (UID/GID) is baked via build args; no env_file at runtime.
     volumes:
       - ./atomcms:/var/www/atomcms
       - ./gamedata:/var/www/gamedata

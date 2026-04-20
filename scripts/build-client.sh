@@ -7,7 +7,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 ENV_FILE="${ENV_FILE:-.env}"
-set -a; . "$ENV_FILE"; set +a
+_ENVTMP=$(mktemp)
+trap 'rm -f "$_ENVTMP"' EXIT
+grep -Ev '^(UID|GID)=|^\s*#|^\s*$' "$ENV_FILE" > "$_ENVTMP"
+set -a
+. "$_ENVTMP"
+set +a
 
 : "${DOMAIN:?missing in $ENV_FILE}"
 : "${APP_ENV:?missing}"

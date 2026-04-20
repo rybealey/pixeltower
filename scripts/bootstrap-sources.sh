@@ -19,7 +19,7 @@ clone_if_missing() {
   fi
 }
 
-clone_if_missing https://github.com/ObjectRetros/atomcms           atomcms
+clone_if_missing https://github.com/airilx96/atomcms               atomcms
 clone_if_missing https://github.com/billsonnn/nitro-react          nitro
 clone_if_missing https://github.com/billsonnn/nitro-converter      docker/converter/app
 clone_if_missing https://github.com/billsonnn/nitro-imager         docker/imager/app
