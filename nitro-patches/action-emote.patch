@@ -1,15 +1,19 @@
 diff --git a/src/components/room/widgets/chat/ChatWidgetMessageView.tsx b/src/components/room/widgets/chat/ChatWidgetMessageView.tsx
-index 19eb6a5..2244e21 100644
+index 19eb6a5..64952d5 100644
 --- a/src/components/room/widgets/chat/ChatWidgetMessageView.tsx
 +++ b/src/components/room/widgets/chat/ChatWidgetMessageView.tsx
-@@ -85,8 +85,12 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
+@@ -85,8 +85,16 @@ export const ChatWidgetMessageView: FC<ChatWidgetMessageViewProps> = props =>
                          <div className="user-image" style={ { backgroundImage: `url(${ chat.imageUrl })` } } /> }
                  </div>
                  <div className="chat-content">
 -                    <b className="username mr-1" dangerouslySetInnerHTML={ { __html: `${ chat.username }: ` } } />
 -                    <span className="message" dangerouslySetInnerHTML={ { __html: `${ chat.formattedText }` } } />
 +                    { /^\*.*\*$/.test(chat.formattedText) ? (
-+                        <span className="message action-emote" dangerouslySetInnerHTML={ { __html: chat.formattedText.replace(/^\*/, `*${ chat.username } `) } } />
++                        chat.styleId === 23 ? (
++                            <span className="message action-emote" dangerouslySetInnerHTML={ { __html: chat.formattedText } } />
++                        ) : (
++                            <span className="message action-emote" dangerouslySetInnerHTML={ { __html: chat.formattedText.replace(/^\*/, `*${ chat.username } `) } } />
++                        )
 +                    ) : (<>
 +                        <b className="username mr-1" dangerouslySetInnerHTML={ { __html: `${ chat.username }: ` } } />
 +                        <span className="message" dangerouslySetInnerHTML={ { __html: `${ chat.formattedText }` } } />

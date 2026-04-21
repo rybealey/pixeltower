@@ -33,4 +33,20 @@ public final class RpChat {
             habbo.whisper(text, RoomChatMessageBubbles.ALERT);
         }
     }
+
+    /**
+     * Same as {@link #emote} but on the STAFF bubble (style id 23). Used for
+     * actions performed by staff (e.g. :award) where the emote text already
+     * includes the admin's name. The companion Nitro patch
+     * ({@code nitro-patches/action-emote.patch}) detects STAFF-styled,
+     * asterisk-wrapped messages and renders them without the username
+     * splice — so the text is displayed verbatim.
+     */
+    public static void staffEmote(Habbo habbo, String text) {
+        if (habbo.getRoomUnit() != null && habbo.getRoomUnit().isInRoom()) {
+            habbo.shout(text, RoomChatMessageBubbles.STAFF);
+        } else {
+            habbo.whisper(text, RoomChatMessageBubbles.STAFF);
+        }
+    }
 }

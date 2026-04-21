@@ -7,6 +7,7 @@ import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.users.Habbo;
 import org.pixeltower.rp.core.NoSuchUserException;
 import org.pixeltower.rp.core.NoTargetException;
+import org.pixeltower.rp.core.RpChat;
 import org.pixeltower.rp.core.TargetResolver;
 import org.pixeltower.rp.core.TargetResolver.ResolvedTarget;
 import org.pixeltower.rp.economy.BankAccountNotOpenException;
@@ -115,6 +116,9 @@ public class AwardCommand extends Command {
             return true;
         }
 
+        RpChat.staffEmote(staff, buildAnnouncement(
+                staff.getHabboInfo().getUsername(), resolved.username, currencyArg, amount));
+
         String sign = amount > 0 ? "+" : "";
         staff.whisper("Awarded " + sign + amount + " " + currencyArg + " to " + resolved.username + ".",
                 RoomChatMessageBubbles.ALERT);
@@ -123,6 +127,28 @@ public class AwardCommand extends Command {
                     RoomChatMessageBubbles.ALERT);
         }
         return true;
+    }
+
+    /**
+     * Public announcement text. Four templates covering (coins|bank) x
+     * (credit|debit). Always asterisk-wrapped so the Nitro action-emote
+     * renderer kicks in; the STAFF bubble branch leaves the username
+     * in-text intact (no splice).
+     */
+    private static String buildAnnouncement(String admin, String target, String currency, long amount) {
+        boolean isBank = "bank".equals(currency);
+        long abs = Math.abs(amount);
+        if (amount > 0) {
+            if (isBank) {
+                return "*" + admin + " issued $" + abs + " to " + target + "'s bank account*";
+            }
+            return "*" + admin + " awarded " + target + " $" + abs + "*";
+        }
+        // negative
+        if (isBank) {
+            return "*" + admin + " revoked $" + abs + " from " + target + "'s bank account*";
+        }
+        return "*" + admin + " deducted $" + abs + " from " + target + "*";
     }
 
     private static void awardCoins(ResolvedTarget target, long amount, String reason, long refId)
