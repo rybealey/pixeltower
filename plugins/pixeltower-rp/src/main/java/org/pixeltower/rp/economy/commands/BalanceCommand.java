@@ -4,22 +4,21 @@ import com.eu.habbo.habbohotel.commands.Command;
 import com.eu.habbo.habbohotel.gameclients.GameClient;
 import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.users.Habbo;
+import org.pixeltower.rp.core.RpChat;
 
 /**
- * {@code :balance} / {@code :bal} — public RP emote that announces the
- * caller's balance to everyone in the room:
+ * {@code :balance} / {@code :bal} — public RP emote announcing the caller's
+ * balance to everyone in the room:
  *   <code>*checks their balance, finding that they have $X*</code>
  *
- * {@code :balance hide} / {@code :bal hide} — same beat but keeps the amount
- * private: public chat is just {@code *checks their balance*} and the caller
- * gets an ephemeral whisper with the actual number.
+ * {@code :balance hide} / {@code :bal hide} — same beat, amount kept private.
+ * Public chat is just <code>*checks their balance*</code>; caller gets an
+ * ephemeral whisper with the actual number.
  *
- * Outside a room (e.g. called from the hotel view), the public emote is not
- * possible; we fall back to a whisper so the player still sees the output.
+ * Public emote styling (bold blue shout) lives in
+ * {@link org.pixeltower.rp.core.RpChat#emote}.
  *
- * Permission is {@code null} so every rank can run this without touching the
- * Arcturus {@code permissions} table (see {@code CommandHandler.handleCommand}
- * permission bypass).
+ * Permission is {@code null} so the CommandHandler permission bypass applies.
  */
 public class BalanceCommand extends Command {
 
@@ -32,22 +31,14 @@ public class BalanceCommand extends Command {
         Habbo habbo = gameClient.getHabbo();
         int credits = habbo.getHabboInfo().getCredits();
         boolean hide = params.length >= 2 && "hide".equalsIgnoreCase(params[1]);
-        boolean inRoom = habbo.getRoomUnit() != null && habbo.getRoomUnit().isInRoom();
 
         if (hide) {
-            if (inRoom) {
-                habbo.talk("*checks their balance*", RoomChatMessageBubbles.NORMAL);
-            }
+            RpChat.emote(habbo, "*checks their balance*");
             habbo.whisper("Balance: $" + credits, RoomChatMessageBubbles.ALERT);
             return true;
         }
 
-        String emote = "*checks their balance, finding that they have $" + credits + "*";
-        if (inRoom) {
-            habbo.talk(emote, RoomChatMessageBubbles.NORMAL);
-        } else {
-            habbo.whisper(emote, RoomChatMessageBubbles.ALERT);
-        }
+        RpChat.emote(habbo, "*checks their balance, finding that they have $" + credits + "*");
         return true;
     }
 }

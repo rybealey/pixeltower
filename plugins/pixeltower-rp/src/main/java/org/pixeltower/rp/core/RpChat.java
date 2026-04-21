@@ -1,0 +1,36 @@
+package org.pixeltower.rp.core;
+
+import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
+import com.eu.habbo.habbohotel.users.Habbo;
+
+/**
+ * Shared helpers for how RP-plugin commands emit chat. Centralises the
+ * "what does a Pixeltower action emote look like?" decision — so every
+ * new :command that describes an in-character action (balance check,
+ * reaching for a gun, checking a watch, etc.) looks identical across
+ * the server.
+ *
+ * RP emote convention on Pixeltower:
+ *   - rendered as a shout (Habbo's shift+enter equivalent, bold text)
+ *   - yellow bubble (RoomChatMessageBubbles.YELLOW)
+ *   - wrapped in asterisks by the caller
+ * Falls back to a private whisper when the caller isn't in a room.
+ */
+public final class RpChat {
+
+    private RpChat() {}
+
+    /**
+     * Emit {@code text} as a public RP action emote from {@code habbo}. The
+     * caller supplies the raw string including its asterisk wrapping so
+     * this helper stays generic (not every emote uses {@code *...*} — some
+     * like dice roll results want the formatting without asterisks).
+     */
+    public static void emote(Habbo habbo, String text) {
+        if (habbo.getRoomUnit() != null && habbo.getRoomUnit().isInRoom()) {
+            habbo.shout(text, RoomChatMessageBubbles.YELLOW);
+        } else {
+            habbo.whisper(text, RoomChatMessageBubbles.ALERT);
+        }
+    }
+}
