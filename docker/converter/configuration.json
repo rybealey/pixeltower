@@ -25,6 +25,6 @@
   "convert.furniture.wall.only":   "0",
   "convert.pet":                   "1",
   "convert.productdata":           "0",
-  "convert.externaltexts":         "0",
+  "convert.externaltexts":         "1",
   "convert.figuredata":            "0"
 }

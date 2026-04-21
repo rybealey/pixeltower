@@ -38,13 +38,32 @@ fi
 SWF_PACK_DIR="$SWF_PACK_DIR" \
   docker compose --env-file "$ENV_FILE" --profile tools run --rm converter
 
-# nitro-converter writes `null` to ExternalTexts.json / UITexts.json when
-# texts conversion is disabled (convert.externaltexts=0). Nitro then stalls
-# at ~20% because it can't merge a null into its text map. Normalize to {}.
+# nitro-converter can write `null` to ExternalTexts.json / UITexts.json if
+# the source fetch returned nothing. For ExternalTexts, regenerate from the
+# populated external_texts.txt if it exists (31k+ keys from the Morningstar
+# default pack). Otherwise fall back to {} so Nitro doesn't NPE on null.
 for f in gamedata/gamedata/ExternalTexts.json gamedata/gamedata/UITexts.json; do
   if [ -f "$f" ] && [ "$(tr -d '[:space:]' < "$f")" = "null" ]; then
-    echo "[post] $f was null → replacing with {}"
-    echo '{}' > "$f"
+    if [ "$f" = "gamedata/gamedata/ExternalTexts.json" ] && \
+       [ -s gamedata/gamedata/external_texts.txt ]; then
+      echo "[post] $f was null → regenerating from external_texts.txt"
+      python3 -c "
+import json
+d = {}
+with open('gamedata/gamedata/external_texts.txt', 'r', encoding='utf-8', errors='replace') as fp:
+    for line in fp:
+        line = line.rstrip('\n\r')
+        if not line or line.startswith('#') or '=' not in line: continue
+        k, _, v = line.partition('=')
+        d[k] = v
+with open('$f', 'w', encoding='utf-8') as fp:
+    json.dump(d, fp, ensure_ascii=False)
+print(f'  rebuilt with {len(d)} keys')
+"
+    else
+      echo "[post] $f was null → replacing with {}"
+      echo '{}' > "$f"
+    fi
   fi
 done
 

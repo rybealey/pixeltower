@@ -53,6 +53,30 @@ for f in external_variables.txt furnidata.xml productdata.txt \
   fi
 done
 
+# external_flash_texts.txt → external_texts.txt (canonical Nitro name)
+# plus an inline txt→JSON pass so Nitro's text loader has content
+# immediately even before convert-swfs.sh runs. The client reads
+# ExternalTexts.json merged with UITexts.json; without this, UI keys like
+# navigator.createroom.title render as the literal key.
+if [ -f "$TMP/pack/gamedata/external_flash_texts.txt" ]; then
+  cp -f "$TMP/pack/gamedata/external_flash_texts.txt" gamedata/gamedata/external_texts.txt
+  echo "  [+] gamedata/gamedata/external_texts.txt ($(wc -l < gamedata/gamedata/external_texts.txt | tr -d ' ') lines)"
+  python3 -c "
+import json
+d = {}
+with open('gamedata/gamedata/external_texts.txt', 'r', encoding='utf-8', errors='replace') as f:
+    for line in f:
+        line = line.rstrip('\n\r')
+        if not line or line.startswith('#'): continue
+        if '=' not in line: continue
+        k, _, v = line.partition('=')
+        d[k] = v
+with open('gamedata/gamedata/ExternalTexts.json', 'w', encoding='utf-8') as f:
+    json.dump(d, f, ensure_ascii=False)
+print(f'  [+] gamedata/gamedata/ExternalTexts.json ({len(d)} keys)')
+"
+fi
+
 echo "[pack] extracting Catalog SQLs"
 mkdir -p emulator/catalog-sqls
 rsync -a "$TMP/pack/Catalog-SQLS/" emulator/catalog-sqls/ 2>/dev/null || \
