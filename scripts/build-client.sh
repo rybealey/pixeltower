@@ -97,6 +97,25 @@ if [ -f nitro/index.html ] && grep -q "'/renderer-config.json'" nitro/index.html
   rm -f nitro/index.html.bak
 fi
 
+# Apply Nitro client patches (TSX/JSX diffs too structural for sed). Each
+# patch in nitro-patches/*.patch is applied against the nitro/ checkout.
+# Idempotent: `git apply -R --check` succeeds iff the patch is already
+# applied, in which case we skip the forward apply.
+if [ -d nitro-patches ]; then
+  for patch in nitro-patches/*.patch; do
+    [ -f "$patch" ] || continue
+    name=$(basename "$patch")
+    if (cd nitro && git apply -R --check "../$patch" 2>/dev/null); then
+      echo "[client] patch already applied: $name"
+    elif (cd nitro && git apply --whitespace=nowarn "../$patch" 2>&1); then
+      echo "[client] applied patch: $name"
+    else
+      echo "[client] ERROR: patch failed to apply: $name" >&2
+      exit 1
+    fi
+  done
+fi
+
 echo "[client] running yarn build:prod in container (takes ~10-15 min)"
 docker compose --env-file "$ENV_FILE" --profile tools run --rm nitro-builder
 
