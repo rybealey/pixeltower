@@ -43,8 +43,25 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
-echo "[seed] importing $BASE"
-mariadb_exec < "$BASE"
+# Re-importing base-database.sql on top of an already-migrated DB clobbers
+# columns that AtomCMS's `artisan migrate` added to base tables (users,
+# camera_web, etc.). Laravel still records those migrations as "run" so
+# it won't re-apply them — leaving the DB in a broken phantom state.
+# Guard: only import the base dump if the habbo.migrations table is absent
+# or empty, or if the operator explicitly forces it via FORCE_RESEED_BASE=1.
+mig_rows=$($DC exec -T db sh -c \
+  'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -N -B \
+   -e "SELECT COUNT(*) FROM migrations" 2>/dev/null' \
+  | tr -d '[:space:]' || true)
+if [ -n "$mig_rows" ] && [ "$mig_rows" -gt 0 ] 2>/dev/null && [ "${FORCE_RESEED_BASE:-0}" != "1" ]; then
+  echo "[seed] migrations table has $mig_rows rows — skipping base-database.sql re-import"
+  echo "[seed]   (set FORCE_RESEED_BASE=1 to force. Re-importing will clobber atomcms"
+  echo "[seed]    migration DDL; you'll then need to DELETE those rows from migrations"
+  echo "[seed]    and re-run 'php artisan migrate --force'.)"
+else
+  echo "[seed] importing $BASE"
+  mariadb_exec < "$BASE"
+fi
 
 # The ms4-base-database dump is a snapshot that predates some tables the
 # Arcturus dev branch expects. Apply the IF-NOT-EXISTS patch afterwards so
