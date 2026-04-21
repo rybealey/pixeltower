@@ -9,6 +9,7 @@ import org.pixeltower.rp.core.NoSuchUserException;
 import org.pixeltower.rp.core.NoTargetException;
 import org.pixeltower.rp.core.RpChat;
 import org.pixeltower.rp.core.TargetResolver;
+import org.pixeltower.rp.core.outgoing.PlaySoundComposer;
 import org.pixeltower.rp.core.TargetResolver.ResolvedTarget;
 import org.pixeltower.rp.economy.BankAccountNotOpenException;
 import org.pixeltower.rp.economy.BankManager;
@@ -97,6 +98,13 @@ public class AwardCommand extends Command {
                     break;
                 case "bank":
                     BankManager.adminAdjust(resolved.habboId, amount, reason, refId);
+                    if (resolved.isOnline()) {
+                        resolved.online.getClient().sendResponse(
+                                new PlaySoundComposer(PlaySoundComposer.SAMPLE_CREDITS));
+                        org.slf4j.LoggerFactory.getLogger(AwardCommand.class).info(
+                                "award_bank sound-packet sent target={} sample={}",
+                                resolved.habboId, PlaySoundComposer.SAMPLE_CREDITS);
+                    }
                     break;
                 default:
                     staff.whisper("Unknown currency: " + currencyArg + ". Use coins or bank.",
@@ -119,32 +127,28 @@ public class AwardCommand extends Command {
         RpChat.staffEmote(staff, buildAnnouncement(
                 staff.getHabboInfo().getUsername(), resolved.username, currencyArg, amount));
 
-        String sign = amount > 0 ? "+" : "";
-        staff.whisper("Awarded " + sign + amount + " " + currencyArg + " to " + resolved.username + ".",
-                RoomChatMessageBubbles.ALERT);
-        if (resolved.isOnline() && resolved.habboId != staff.getHabboInfo().getId()) {
-            RpChat.infoBubble(resolved.online,
-                    buildRecipientNotice(currencyArg, amount, staff.getHabboInfo().getUsername()));
+        if (resolved.isOnline()) {
+            resolved.online.whisper(
+                    buildRecipientNotice(currencyArg, amount), RoomChatMessageBubbles.FRANK);
         }
         return true;
     }
 
     /**
-     * Private notification shown only to the target as a centered info
-     * bubble. Directional verb (received vs deducted, issued vs revoked)
-     * carries the sign; amount is always shown as an absolute value.
+     * Ephemeral Frank-bubble whisper shown only to the target. Verb carries
+     * the sign (added/credited vs deducted); amount is always absolute.
      */
-    private static String buildRecipientNotice(String currency, long amount, String admin) {
+    private static String buildRecipientNotice(String currency, long amount) {
         boolean isBank = "bank".equals(currency);
         long abs = Math.abs(amount);
         if (amount > 0) {
             return isBank
-                    ? admin + " issued $" + abs + " to your bank account."
-                    : admin + " awarded you $" + abs + ".";
+                    ? "$" + abs + " has been credited to your bank account."
+                    : "$" + abs + " has been added to your wallet.";
         }
         return isBank
-                ? admin + " revoked $" + abs + " from your bank account."
-                : admin + " deducted $" + abs + " from you.";
+                ? "$" + abs + " has been deducted from your bank account."
+                : "$" + abs + " has been deducted from your wallet.";
     }
 
     /**

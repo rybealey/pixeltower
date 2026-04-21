@@ -17,8 +17,8 @@ import java.util.Optional;
  * (never on {@code users.credits} — that column is exclusively coins-on-hand).
  *
  * Deposits pay a {@code rp.bank.fee_rate} (default 1%) of gross to the
- * Bank corp's treasury. Withdrawals and bank-to-bank transfers are free
- * per locked Tier 1 design.
+ * Bank corp's treasury, with a {@code rp.bank.fee_min} floor (default $2).
+ * Withdrawals and bank-to-bank transfers are free per locked Tier 1 design.
  *
  * Every balance change is audited:
  *   - Player-side via {@code rp_money_ledger}
@@ -162,8 +162,12 @@ public final class BankManager {
         if (!hasAccount(habboId)) throw new BankAccountNotOpenException(habboId);
 
         double feeRate = Emulator.getConfig().getDouble("rp.bank.fee_rate", 0.01d);
-        long fee = (long) Math.floor(gross * feeRate);
+        long feeMin = Emulator.getConfig().getInt("rp.bank.fee_min", 2);
+        long fee = Math.max(feeMin, (long) Math.floor(gross * feeRate));
         long net = gross - fee;
+        if (net <= 0) {
+            throw new IllegalArgumentException("deposit too small; minimum fee is $" + feeMin);
+        }
 
         // Debit coins for the full gross — this writes the player-side
         // ledger row and syncs HabboInfo + top-bar.

@@ -11,8 +11,9 @@ import org.pixeltower.rp.economy.BankManager;
 import org.pixeltower.rp.economy.InsufficientFundsException;
 
 /**
- * {@code :deposit <amount>} — move coins to bank. 1% fee off the gross
- * is routed to the Bank corp treasury (see {@code rp.bank.fee_rate} /
+ * {@code :deposit <amount>} — move coins to bank. A fee (1% of gross,
+ * minimum $2) is routed to the Bank corp treasury (see
+ * {@code rp.bank.fee_rate} / {@code rp.bank.fee_min} /
  * {@code rp.bank.fee_corp_key}).
  *
  * {@code :deposit <amount> hide} — omit the number from the public emote;
@@ -65,20 +66,21 @@ public class DepositCommand extends Command {
                     RoomChatMessageBubbles.ALERT);
             return true;
         } catch (IllegalArgumentException e) {
-            habbo.whisper("Invalid deposit: " + e.getMessage(), RoomChatMessageBubbles.ALERT);
+            if (e.getMessage() != null && e.getMessage().startsWith("deposit too small")) {
+                habbo.whisper("A minimum deposit at $3 is required.", RoomChatMessageBubbles.WIRED);
+            } else {
+                habbo.whisper("Invalid deposit: " + e.getMessage(), RoomChatMessageBubbles.ALERT);
+            }
             return true;
         }
 
         long fee = amount - net;
-        if (hide) {
-            RpChat.emote(habbo, "*deposits money into their bank account*");
-            habbo.whisper("Deposited $" + net + " (fee $" + fee + ").", RoomChatMessageBubbles.ALERT);
-        } else {
-            RpChat.emote(habbo, "*deposits $" + amount + " into their bank account*");
-            if (fee > 0) {
-                habbo.whisper("Fee: $" + fee + ". Credited: $" + net + ".", RoomChatMessageBubbles.ALERT);
-            }
-        }
+        RpChat.emote(habbo, hide
+                ? "*deposits money into their bank account*"
+                : "*deposits $" + amount + " into their bank account*");
+        habbo.whisper("You've been charged a processing fee of $" + fee
+                        + "; $" + net + " has been deposited to your account.",
+                RoomChatMessageBubbles.WIRED);
         return true;
     }
 }

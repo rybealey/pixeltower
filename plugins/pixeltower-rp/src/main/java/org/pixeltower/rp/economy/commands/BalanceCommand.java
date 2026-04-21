@@ -7,7 +7,9 @@ import com.eu.habbo.habbohotel.users.Habbo;
 import org.pixeltower.rp.core.RpChat;
 import org.pixeltower.rp.economy.BankManager;
 
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * {@code :balance} / {@code :bal} — public RP emote announcing the
@@ -15,17 +17,20 @@ import java.util.Optional;
  * money in your account, not the coins physically on you — those live on
  * Habbo's top-bar counter already.
  *
- * Synonym of {@link BankCommand} but with subtler emote wording (the
- * target + observers learn the RP flavour without the explicit "bank"
- * word, useful when you want to sound casual).
- *
  * {@code :balance hide} / {@code :bal hide} — public emote drops the
  * amount; private whisper carries the number.
+ *
+ * Rate-limited per caller ({@value COOLDOWN_MS}ms) to curb spam — balance
+ * checks are cheap but the public emote they produce isn't.
  *
  * Requires a bank account; no auto-open. Players who haven't run
  * {@code :openaccount} get pointed there.
  */
 public class BalanceCommand extends Command {
+
+    private static final long COOLDOWN_MS = 10_000L;
+
+    private static final Map<Integer, Long> LAST_CHECK = new ConcurrentHashMap<>();
 
     public BalanceCommand() {
         super(null, new String[] {"balance", "bal"});
@@ -34,7 +39,21 @@ public class BalanceCommand extends Command {
     @Override
     public boolean handle(GameClient gameClient, String[] params) {
         Habbo habbo = gameClient.getHabbo();
-        Optional<Long> balance = BankManager.getBalance(habbo.getHabboInfo().getId());
+        int habboId = habbo.getHabboInfo().getId();
+        long now = System.currentTimeMillis();
+        Long last = LAST_CHECK.get(habboId);
+        if (last != null) {
+            long sinceLast = now - last;
+            if (sinceLast < COOLDOWN_MS) {
+                long remaining = (COOLDOWN_MS - sinceLast + 999) / 1000;
+                habbo.whisper("You can check your balance again in " + remaining + "s.",
+                        RoomChatMessageBubbles.ALERT);
+                return true;
+            }
+        }
+        LAST_CHECK.put(habboId, now);
+
+        Optional<Long> balance = BankManager.getBalance(habboId);
         if (balance.isEmpty()) {
             habbo.whisper("You don't have a bank account. Use :openaccount first.",
                     RoomChatMessageBubbles.ALERT);
@@ -45,7 +64,8 @@ public class BalanceCommand extends Command {
 
         if (hide) {
             RpChat.emote(habbo, "*checks their balance*");
-            RpChat.infoBubble(habbo, "You've got $" + bal + " in your bank account.");
+            habbo.whisper("You've got $" + bal + " in your bank account.",
+                    RoomChatMessageBubbles.WIRED);
             return true;
         }
         RpChat.emote(habbo, "*checks their balance, finding that they have $" + bal + "*");

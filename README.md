@@ -1,183 +1,179 @@
 # Pixeltower
 
-Dockerized Habbo retro stack for `pixeltower.digital` (and `http://localhost` locally).
+[![Status](https://img.shields.io/badge/Status-Pre--Alpha-orange)]()
+[![Current Tier](https://img.shields.io/badge/Roadmap-Tier%201%20of%203%20shipped-brightgreen)](docs/ROADMAP.md)
+[![Stack](https://img.shields.io/badge/Built%20on-Arcturus%20%2B%20Nitro-informational)](DOCUMENTATION.md)
+[![Client](https://img.shields.io/badge/Client-Nitro%20v2-blueviolet)](https://github.com/billsonnn/nitro-react)
+[![Emulator](https://img.shields.io/badge/Emulator-Arcturus%20Morningstar-yellow)](https://git.krews.org/morningstar/Arcturus-Community)
+[![Host](https://img.shields.io/badge/Host-pixeltower.digital-blue)]()
 
-Containerizes the [duckietm/Complete-Retro-on-Ubuntu](https://github.com/duckietm/Complete-Retro-on-Ubuntu) guide around:
+**Pixeltower** is a roleplay-first Habbo-inspired pixel world in active development. Jump into
+the hotel, roll stats and skills, take a corporate job, earn coins — and, as the tiers land,
+fight over turf, collect bounties, and pull off heists. This README is the living changelog:
+what you can do today, what's in flight, and what's queued next.
 
-- **CMS**: [ObjectRetros/atomcms](https://github.com/ObjectRetros/atomcms) (PHP 8.4 / Laravel)
-- **Emulator**: [Arcturus Morningstar](https://git.krews.org/morningstar/Arcturus-Community) `dev` + [ms-websockets](https://git.krews.org/nitro/ms-websockets) plugin (JRE 17)
-- **Client**: [billsonnn/nitro-react](https://github.com/billsonnn/nitro-react) v2 (Node 24)
-- **Imager**: [billsonnn/nitro-imager](https://github.com/billsonnn/nitro-imager) (Node 24 + cairo/pango)
-- **Converter**: [billsonnn/nitro-converter](https://github.com/billsonnn/nitro-converter) (one-shot, SWF → .nitro)
-- **Default assets**: [git.krews.org/nitro/default-assets](https://git.krews.org/nitro/default-assets)
-- **Database**: MariaDB 11.8, shared by CMS + emulator
-- **Web**: nginx 1.27 mainline, dev/prod templates swapped by `APP_ENV`
-- **TLS (prod)**: Cloudflare Origin Certificate (15-year), CF proxy in front
-
-## Layout
-
-```
-.
-├── docker-compose.yml
-├── .env.example              # copy to .env (local) or .env.production
-├── docker/
-│   ├── php/                  # PHP 8.4-fpm-alpine for AtomCMS
-│   ├── emulator/             # Arcturus built from source + ms-websockets plugin
-│   ├── imager/               # nitro-imager
-│   ├── converter/            # nitro-converter (tools profile)
-│   ├── backup/               # nightly mariadb-dump cron
-│   └── nginx/                # dev/prod conf.d templates + env-switch entrypoint
-├── scripts/                  # bootstrap + pull + seed
-├── emulator/                 # config.ini.template, nitrowebsockets-settings.sql (tracked); base-db + plugins/ (gitignored)
-├── atomcms/                  # cloned by bootstrap-sources.sh (gitignored)
-├── nitro/                    # cloned by bootstrap-sources.sh (gitignored)
-├── gamedata/                 # pulled by scripts (gitignored, large)
-└── data/                     # persistent host volumes: mariadb, backups, ssl (gitignored)
-```
+> **Current stage:** Tier 1 foundation complete. Tier 2 (combat + paramedic) in design.
+> **Live at:** `pixeltower.digital` — launch imminent, watch this page for go-live.
 
 ---
 
-## Local bootstrap (first boot)
+## The vision
 
-```bash
-cp .env.example .env
-# edit DB_PASSWORD and DB_ROOT_PASSWORD to strong random strings
+A persistent roleplay sandbox where every player is more than a pixel avatar:
 
-./scripts/bootstrap-sources.sh       # clones AtomCMS, nitro-react, converter, imager, default-assets
-./scripts/pull-gamedata.sh           # c_images + sounds from habboassets.com
-./scripts/pull-default-pack.sh       # Morningstar default SWF pack + catalog SQLs
-./scripts/pull-emulator-sql.sh       # generates emulator/base-database.sql
+- You have **stats** — HP, energy, XP, and skills that level up over time.
+- You carry **coins**, hold a **bank account**, and earn a **salary** at your job.
+- You can be **hired**, **promoted**, **fired**, clocked in, clocked out.
+- Eventually: you can **fight**, **arrest**, **be arrested**, post **bounties**, run
+  **drugs**, join a **gang**, own **turf**, plan a **heist**, or cash in at the **casino**.
 
-docker compose up -d db
-./scripts/seed-db.sh                 # base + catalog + ws whitelist + console.mode off
-
-./scripts/build-client.sh            # nitro-react build:prod → nitro/dist
-./scripts/convert-swfs.sh            # default-pack SWFs → gamedata/*.nitro
-
-./scripts/bootstrap-atom-env.sh
-docker compose run --rm php composer install
-docker compose run --rm php php artisan key:generate
-docker compose run --rm php php artisan storage:link
-docker compose run --rm php php artisan migrate --force
-docker compose run --rm php php artisan db:seed --force
-docker compose --profile tools run --rm atom-builder
-
-docker compose up -d --build
-```
-
-Open `http://localhost/`, register an account, click Play. The Nitro client loads at `/client/` and connects to the emulator over `ws://localhost/ws`.
-
-### Smoke test
-
-```bash
-curl -I http://localhost/                                    # 200, Laravel
-curl -I http://localhost/imaging/?figure=hd-180-1&size=l     # 200, image/png
-docker compose logs emulator | grep -iE 'started|listen'     # Arcturus + WS listening
-docker compose ps                                             # all services up
-```
+Pixeltower's long-term goal is a living in-world economy where every corporation, crime,
+and coin is connected. Tier 1 laid the plumbing. Tier 2+ is where it gets loud.
 
 ---
 
-## Production deploy (`pixeltower.digital`, Cloudflare Origin Cert)
+## What you can do today
 
-This section is the runbook. Everything is ready to execute once a VPS exists and Cloudflare is set up.
+Everything in this section is **live** in the current server build.
 
-### 1. Cloudflare SSL/DNS
+### Your character
 
-1. Add `pixeltower.digital` to Cloudflare. Nameservers point to CF.
-2. SSL/TLS → Overview → **Full (strict)**.
-3. SSL/TLS → Origin Server → Create Certificate:
-   - Hostnames: `pixeltower.digital`, `*.pixeltower.digital`
-   - Validity: **15 years**, RSA 2048
-4. Save certificate body → `data/ssl/origin.pem`, private key → `data/ssl/origin.key` (both gitignored, `chmod 600`).
-5. DNS → create `A` records for `pixeltower.digital` + `www` → VPS IPv4, **proxied** (orange cloud).
+- **Register & log in** via the website; your last room, tile, and rotation are restored
+  on every login.
+- **Stats** — every player has HP, Energy, Level, XP, and three skills (Hit, Endurance,
+  Stamina). Inspect yours with `:stats`.
+- **Wallet + Bank** — separate coin wallet and bank balance. Daily interest ticks on idle
+  bank balances.
 
-### 2. VPS provisioning (Hetzner CPX31 / Ubuntu 24.04)
+### In-game UI
 
-```bash
-# as root, fresh server
-apt update && apt upgrade -y
-adduser --disabled-password --gecos '' deploy
-usermod -aG sudo deploy
-mkdir -p /home/deploy/.ssh && chmod 700 /home/deploy/.ssh
-# paste your public key into /home/deploy/.ssh/authorized_keys
-chown -R deploy:deploy /home/deploy/.ssh && chmod 600 /home/deploy/.ssh/authorized_keys
+- **Player HUD** (top-left) — avatar frame, HP/energy bars, wanted-stars meter.
+- **Status HUD** (top-right) — VIP club days remaining, coin balance, diamond balance,
+  quick buttons for chat history and settings.
+- **Target HUD** — click any player's profile to surface their live stats next to yours,
+  so you know who you're dealing with before you roll up on them.
+- **Action emotes** — when anyone wraps chat in asterisks (`*dusts off jacket*`), the
+  client renders it as a proper RP emote with the speaker's name spliced in.
+- **Room-load polish** — the default "moderated chat" nag is suppressed; the hotel view
+  lobby is bypassed so you drop straight into your home room.
 
-# Docker
-apt install -y ca-certificates curl
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-chmod a+r /etc/apt/keyrings/docker.asc
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
-apt update && apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-usermod -aG docker deploy
+### Commands
 
-# firewall (optionally restrict 80/443 to Cloudflare ranges)
-ufw allow 22/tcp && ufw allow 80/tcp && ufw allow 443/tcp && ufw --force enable
+| Command | Available to | What it does |
+|---|---|---|
+| `:balance` / `:bal` | Everyone | Whispers your current bank balance |
+| `:balance hide` | Everyone | Same, but shown only to you (info bubble) |
+| `:give <user\|x> <amount>` | Everyone | Transfer coins from wallet to wallet |
+| `:openaccount` | Everyone | Open a bank account |
+| `:deposit <amount>` | Everyone | Move coins wallet → bank |
+| `:withdraw <amount>` | Everyone | Move coins bank → wallet |
+| `:transfer <user\|x> <amount>` | Everyone | Bank-to-bank coin transfer |
+| `:stats` | Everyone | Shows your HP, energy, level, XP, skills |
+| `:target <user>` | Everyone | Set your active `x` target for any command |
+| `:hire <user\|x> <corp> <rank>` | Corp owner | Add a player to your corporation |
+| `:fire <user\|x>` | Corp owner | Remove an employee |
+| `:promote <user\|x> <rank>` | Corp owner | Change an employee's rank |
+| `:startwork` / `:stopwork` | Employees | Clock in / clock out (auto-clockout on idle) |
+| `:award <user\|x> <currency> <amount>` | Staff (rank 5+) | Audited coin/bank adjustment |
+| `:restore <user\|x>` | Staff (rank 5+) | Full HP + energy refill |
 
-mkdir -p /opt/pixeltower && chown deploy:deploy /opt/pixeltower
-```
+> **Protip:** any command that takes a `<user>` accepts `x` as shorthand for your last
+> clicked target. `:give x 500` is faster than typing a username every time.
 
-### 3. First deploy
+### Corporations — how the jobs work
 
-```bash
-# as deploy@vps
-git clone git@github.com:<you>/pixeltower.git /opt/pixeltower
-cd /opt/pixeltower
+- Corporations have named **ranks**, each with its own **salary** and **permissions**.
+- A **paycheck task** ticks every minute as a heartbeat; when you've accumulated enough
+  on-duty minutes, your rank's salary is auto-credited.
+- If you go **idle** (AFK), you're automatically clocked out so you don't keep drawing
+  a salary while away from the keyboard.
 
-# deliver secrets from your laptop:
-#   scp .env.production deploy@vps:/opt/pixeltower/.env.production
-#   scp -r data/ssl deploy@vps:/opt/pixeltower/data/ssl
-chmod 600 data/ssl/origin.*
+### Staff tooling
 
-# reproduce the local bootstrap, but with --env-file .env.production:
-./scripts/bootstrap-sources.sh
-./scripts/pull-gamedata.sh
-./scripts/pull-default-pack.sh
-./scripts/pull-emulator-sql.sh
-
-docker compose --env-file .env.production up -d db
-./scripts/seed-db.sh                         # reads .env by default; set ENV_FILE=.env.production
-
-./scripts/build-client.sh
-./scripts/convert-swfs.sh
-
-./scripts/bootstrap-atom-env.sh
-docker compose --env-file .env.production run --rm php composer install
-docker compose --env-file .env.production run --rm php php artisan key:generate
-docker compose --env-file .env.production run --rm php php artisan storage:link
-docker compose --env-file .env.production run --rm php php artisan migrate --force
-docker compose --env-file .env.production run --rm php php artisan db:seed --force
-docker compose --env-file .env.production --profile tools run --rm atom-builder
-
-docker compose --env-file .env.production up -d --build
-```
-
-### 4. GitHub Actions continuous deploy
-
-Configure repo secrets:
-- `DEPLOY_HOST` — VPS IP or hostname
-- `DEPLOY_USER` — `deploy`
-- `DEPLOY_SSH_KEY` — PEM private key
-- `DEPLOY_PORT` — optional, defaults to 22
-
-Every push to `main` triggers [.github/workflows/deploy.yml](.github/workflows/deploy.yml): pulls, rebuilds, runs migrations.
-
-### 5. Cloudflare notes
-
-- WebSocket upgrade works over CF on ports 80/443 by default. This stack uses `/ws` on 443 → supported on Free plan.
-- The Origin Cert is valid for 15 years — no renewal cron needed (next rotation: 2041).
-- Behind CF, real client IPs arrive via `CF-Connecting-IP`. `docker/nginx/cloudflare-refresh.sh` fetches current CF IP ranges into `docker/nginx/cloudflare.conf`; re-run it annually.
+- `:award` broadcasts a public STAFF-bubble RP emote so every adjustment is visible to
+  the room. Recipient also gets a discreet info-bubble confirmation. All adjustments
+  write to an audit ledger.
+- `:restore` pushes the target's HP + energy back to max, broadcasts a STAFF emote, and
+  shows the target a private info-bubble.
 
 ---
 
-## Reference: directly-mapped duckietm guide sections
+## What's coming next
 
-| duckietm doc | Covered in |
-|---|---|
-| `VPS_setup.md` | README §2 — provisioning |
-| `Atom_setup.md` | `docker/php/`, `scripts/bootstrap-atom-env.sh`, `scripts/pull-emulator-sql.sh` |
-| `Imager_And_Gamedata_Setup.md` | `docker/imager/`, `scripts/pull-gamedata.sh`, `scripts/pull-default-pack.sh` |
-| `Cloudflare_And_SSL.md` | README §1, `docker/nginx/conf.d/default.prod.conf.template` |
-| `Emulator_Setup.md` | `docker/emulator/`, `emulator/config.ini.template`, `scripts/seed-db.sh` |
-| `Nitro_and_Settings.md` | `scripts/build-client.sh`, `docker-compose.yml` `nitro-builder` service |
+Pulled from [docs/ROADMAP.md](docs/ROADMAP.md). Order is roughly the build order.
+
+### Tier 2 — Combat + Paramedic
+
+- [ ] Tile-to-tile melee fight range detection
+- [ ] 500ms server-authoritative hit window
+- [ ] Fade (block/dodge) timing with directional inputs
+- [ ] Damage resolver driven by skill + level + RNG variance
+- [ ] Energy cost per hit; running low locks you out
+- [ ] Downed state at HP 0 — movement + chat locked to whispers
+- [ ] Paramedic `:revive <target>` restores 50% HP inside the window
+- [ ] Hospital respawn + money penalty if no paramedic arrives in time
+- [ ] Nitro UI: fight-range indicator overlay, hit/fade timing rings, downed overlay
+
+### Tier 3 — Police vertical
+
+- [ ] Uniform check — on-duty only when wearing badge + clothing set
+- [ ] Arrest preconditions: suspect downed OR has bounty OR suspicion threshold
+- [ ] `:arrest` → jail room teleport, sentence timer, auto-release + return
+- [ ] In-client arrest confirmation widget + jail countdown overlay
+- [ ] Audit pages on the website: police roster + arrest log
+
+### Tier 4 — The economy wakes up
+
+- [ ] **Bounties** — post coins on a player's head; killer claims
+- [ ] **Gym** — time spent levelling → skill points to spend
+- [ ] **Petty crime** — shoplift, pickpocket, each raises police suspicion
+
+### Tier 5 — Groups and vice
+
+- [ ] **Gangs** — group-backed turf ownership + member hierarchy
+- [ ] **Drugs** — grow, guard, sell; temporary stat effects + heat
+- [ ] **Farming corps** — stock-generating corps feed the market
+
+### Tier 6 — Endgame content
+
+- [ ] **Clothing economy** — DeFacto (clothing corp) with employee-gated shop
+- [ ] **Heists** — multi-player coordinated jobs, gang-required, police-interceptable
+- [ ] **Casino corp** — house-run dice, higher-lower, and card tables
+
+Full architectural breakdown, DB schema previews, and per-tier smoke tests live in
+[docs/ROADMAP.md](docs/ROADMAP.md).
+
+---
+
+## How to play
+
+Pre-launch. The site at `https://pixeltower.digital/` is not yet accepting public
+registrations — launch is imminent.
+
+Want to get notified when the doors open? The easiest way right now is to watch this
+repository (GitHub "Watch → Releases only") — a v0.1.0 release tag will drop the day
+registrations open.
+
+---
+
+## Built on open source
+
+Pixeltower stands on a stack of excellent open-source projects:
+
+- [Arcturus Morningstar](https://git.krews.org/morningstar/Arcturus-Community) — the emulator
+- [Nitro React](https://github.com/billsonnn/nitro-react) — the game client
+- [AtomCMS](https://github.com/ObjectRetros/atomcms) — the website
+- [ms-websockets](https://git.krews.org/nitro/ms-websockets) — WebSocket bridge
+- [nitro-imager](https://github.com/billsonnn/nitro-imager) — avatar image service
+- [nitro-converter](https://github.com/billsonnn/nitro-converter) — SWF → `.nitro` bundler
+
+The custom roleplay layer (`plugins/pixeltower-rp/`) and Nitro client patches
+(`nitro-patches/`) are built specifically for Pixeltower.
+
+---
+
+## For developers
+
+Setup, bootstrap, Docker, production deploy, and Cloudflare notes are in
+[DOCUMENTATION.md](DOCUMENTATION.md). The Tier 1–3 architectural plan (including
+roadmap, DB schema, and WebSocket protocol) is in [docs/ROADMAP.md](docs/ROADMAP.md).

@@ -26,7 +26,7 @@ public class OpenAccountCommand extends Command {
         if (opened) {
             RpChat.emote(habbo, "*opens a new bank account*");
             habbo.whisper("Your bank account is now open. Use :deposit, :withdraw, :transfer.",
-                    RoomChatMessageBubbles.ALERT);
+                    RoomChatMessageBubbles.WIRED);
         } else {
             habbo.whisper("You already have a bank account.", RoomChatMessageBubbles.ALERT);
         }

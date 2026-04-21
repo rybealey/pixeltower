@@ -6,6 +6,7 @@ import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.users.Habbo;
 import org.pixeltower.rp.core.NoSuchUserException;
 import org.pixeltower.rp.core.NoTargetException;
+import org.pixeltower.rp.core.RpChat;
 import org.pixeltower.rp.core.TargetResolver;
 import org.pixeltower.rp.core.TargetResolver.ResolvedTarget;
 import org.pixeltower.rp.economy.InsufficientFundsException;
@@ -13,9 +14,10 @@ import org.pixeltower.rp.economy.MoneyLedger;
 
 /**
  * {@code :give <username|x> <amount>} — transfer coins (cash-on-hand) from
- * the caller to another online player. Online-only by design; offline
- * transfer is not a Tier 1 feature and would require different UX
- * (escrow vs. immediate).
+ * the caller to another player. Online-only and proximity-gated: the
+ * recipient must be in the same room as the caller, within 2 tiles
+ * (Chebyshev / king-move). Offline transfer is not a Tier 1 feature
+ * and would require different UX (escrow vs. immediate).
  *
  * Passing {@code x} as the username substitutes the caller's current
  * target (the last user whose profile card they opened, or whoever
@@ -70,6 +72,25 @@ public class GiveCommand extends Command {
         }
 
         Habbo target = resolved.online;
+
+        if (sender.getRoomUnit() == null || !sender.getRoomUnit().isInRoom()) {
+            sender.whisper("You must be in a room to :give.", RoomChatMessageBubbles.ALERT);
+            return true;
+        }
+        if (target.getRoomUnit() == null
+                || !target.getRoomUnit().isInRoom()
+                || sender.getRoomUnit().getRoom() != target.getRoomUnit().getRoom()) {
+            sender.whisper(resolved.username + " isn't here.", RoomChatMessageBubbles.ALERT);
+            return true;
+        }
+        int dx = Math.abs(sender.getRoomUnit().getX() - target.getRoomUnit().getX());
+        int dy = Math.abs(sender.getRoomUnit().getY() - target.getRoomUnit().getY());
+        if (Math.max(dx, dy) > 2) {
+            sender.whisper(resolved.username + " is too far away, try getting closer to them.",
+                    RoomChatMessageBubbles.ALERT);
+            return true;
+        }
+
         try {
             MoneyLedger.transfer(sender, target, amount, "give", null);
         } catch (InsufficientFundsException e) {
@@ -81,13 +102,10 @@ public class GiveCommand extends Command {
             return true;
         }
 
-        sender.whisper(
-                "Sent $" + amount + " to " + resolved.username + ".",
-                RoomChatMessageBubbles.ALERT
-        );
+        RpChat.emote(sender, "*gives " + resolved.username + " $" + amount + "*");
         target.whisper(
-                sender.getHabboInfo().getUsername() + " sent you $" + amount + ".",
-                RoomChatMessageBubbles.ALERT
+                sender.getHabboInfo().getUsername() + " gave you $" + amount + ".",
+                RoomChatMessageBubbles.WIRED
         );
         return true;
     }

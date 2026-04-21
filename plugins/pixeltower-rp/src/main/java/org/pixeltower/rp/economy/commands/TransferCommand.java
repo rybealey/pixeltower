@@ -8,6 +8,7 @@ import org.pixeltower.rp.core.NoSuchUserException;
 import org.pixeltower.rp.core.NoTargetException;
 import org.pixeltower.rp.core.RpChat;
 import org.pixeltower.rp.core.TargetResolver;
+import org.pixeltower.rp.core.outgoing.PlaySoundComposer;
 import org.pixeltower.rp.core.TargetResolver.ResolvedTarget;
 import org.pixeltower.rp.economy.BankAccountNotOpenException;
 import org.pixeltower.rp.economy.BankManager;
@@ -93,14 +94,18 @@ public class TransferCommand extends Command {
 
         if (hide) {
             RpChat.emote(sender, "*transfers money to " + resolved.username + "*");
-            sender.whisper("Transferred $" + amount + " to " + resolved.username + ".",
-                    RoomChatMessageBubbles.ALERT);
+            sender.whisper("$" + amount + " has been transferred to "
+                            + resolved.username + "'s bank account.",
+                    RoomChatMessageBubbles.WIRED);
         } else {
             RpChat.emote(sender, "*transfers $" + amount + " to " + resolved.username + "*");
         }
+        sender.getClient().sendResponse(new PlaySoundComposer(PlaySoundComposer.SAMPLE_CREDITS));
         if (resolved.isOnline()) {
             resolved.online.whisper(sender.getHabboInfo().getUsername() + " transferred $"
-                    + amount + " to your bank account.", RoomChatMessageBubbles.ALERT);
+                    + amount + " to your bank account.", RoomChatMessageBubbles.WIRED);
+            resolved.online.getClient().sendResponse(
+                    new PlaySoundComposer(PlaySoundComposer.SAMPLE_CREDITS));
         }
         return true;
     }

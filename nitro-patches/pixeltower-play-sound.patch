@@ -1,0 +1,938 @@
+diff --git a/src/App.tsx b/src/App.tsx
+index 072b05d..fd5b79f 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,6 +1,7 @@
+ import { ConfigurationEvent, GetAssetManager, HabboWebTools, LegacyExternalInterface, Nitro, NitroCommunicationDemoEvent, NitroConfiguration, NitroEvent, NitroLocalizationEvent, NitroVersion, RoomEngineEvent } from '@nitrots/nitro-renderer';
+ import { FC, useCallback, useEffect, useState } from 'react';
+ import { GetCommunication, GetConfiguration, GetNitroInstance, GetUIVersion } from './api';
++import { registerPixeltowerMessages } from './api/pixeltower/PixeltowerSoundMessages';
+ import { Base, TransitionAnimation, TransitionAnimationTypes } from './common';
+ import { LoadingView } from './components/loading/LoadingView';
+ import { MainView } from './components/main/MainView';
+@@ -87,6 +88,7 @@ export const App: FC<{}> = props =>
+                 if(status)
+                 {
+                     GetCommunication().init();
++                    registerPixeltowerMessages();
+ 
+                     setPercent(prevValue => (prevValue + 20))
+                 }
+diff --git a/src/api/pixeltower/PixeltowerSoundMessages.ts b/src/api/pixeltower/PixeltowerSoundMessages.ts
+new file mode 100644
+index 0000000..53fffee
+--- /dev/null
++++ b/src/api/pixeltower/PixeltowerSoundMessages.ts
+@@ -0,0 +1,215 @@
++import { IMessageConfiguration, IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent } from '@nitrots/nitro-renderer';
++import { GetConnection } from '../nitro/GetConnection';
++
++const PIXELTOWER_PLAY_SOUND = 6500;
++const PIXELTOWER_UPDATE_PLAYER_STATS = 6501;
++const PIXELTOWER_UPDATE_TARGET_STATS = 6502;
++
++// ──────────── PlaySound (header 6500) ────────────
++
++export class NitroPlaySoundParser implements IMessageParser
++{
++    private _sample: string;
++
++    public flush(): boolean
++    {
++        this._sample = null;
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++        this._sample = wrapper.readString();
++        return true;
++    }
++
++    public get sample(): string
++    {
++        return this._sample;
++    }
++}
++
++export class NitroPlaySoundEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, NitroPlaySoundParser);
++    }
++
++    public getParser(): NitroPlaySoundParser
++    {
++        return this.parser as NitroPlaySoundParser;
++    }
++}
++
++// ──────────── UpdatePlayerStats (header 6501) ────────────
++
++export class UpdatePlayerStatsParser implements IMessageParser
++{
++    private _hp: number;
++    private _maxHp: number;
++    private _energy: number;
++    private _maxEnergy: number;
++    private _level: number;
++    private _xp: number;
++    private _skillPointsUnspent: number;
++    private _skillHit: number;
++    private _skillEndurance: number;
++    private _skillStamina: number;
++
++    public flush(): boolean
++    {
++        this._hp = 0;
++        this._maxHp = 0;
++        this._energy = 0;
++        this._maxEnergy = 0;
++        this._level = 0;
++        this._xp = 0;
++        this._skillPointsUnspent = 0;
++        this._skillHit = 0;
++        this._skillEndurance = 0;
++        this._skillStamina = 0;
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++        this._hp = wrapper.readInt();
++        this._maxHp = wrapper.readInt();
++        this._energy = wrapper.readInt();
++        this._maxEnergy = wrapper.readInt();
++        this._level = wrapper.readInt();
++        this._xp = wrapper.readInt();
++        this._skillPointsUnspent = wrapper.readInt();
++        this._skillHit = wrapper.readInt();
++        this._skillEndurance = wrapper.readInt();
++        this._skillStamina = wrapper.readInt();
++        return true;
++    }
++
++    public get hp(): number { return this._hp; }
++    public get maxHp(): number { return this._maxHp; }
++    public get energy(): number { return this._energy; }
++    public get maxEnergy(): number { return this._maxEnergy; }
++    public get level(): number { return this._level; }
++    public get xp(): number { return this._xp; }
++    public get skillPointsUnspent(): number { return this._skillPointsUnspent; }
++    public get skillHit(): number { return this._skillHit; }
++    public get skillEndurance(): number { return this._skillEndurance; }
++    public get skillStamina(): number { return this._skillStamina; }
++}
++
++export class UpdatePlayerStatsEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, UpdatePlayerStatsParser);
++    }
++
++    public getParser(): UpdatePlayerStatsParser
++    {
++        return this.parser as UpdatePlayerStatsParser;
++    }
++}
++
++// ──────────── UpdateTargetStats (header 6502) ────────────
++
++export class UpdateTargetStatsParser implements IMessageParser
++{
++    private _habboId: number;
++    private _figure: string;
++    private _userName: string;
++    private _hp: number;
++    private _maxHp: number;
++    private _energy: number;
++    private _maxEnergy: number;
++    private _level: number;
++    private _xp: number;
++    private _skillPointsUnspent: number;
++    private _skillHit: number;
++    private _skillEndurance: number;
++    private _skillStamina: number;
++
++    public flush(): boolean
++    {
++        this._habboId = 0;
++        this._figure = '';
++        this._userName = '';
++        this._hp = 0;
++        this._maxHp = 0;
++        this._energy = 0;
++        this._maxEnergy = 0;
++        this._level = 0;
++        this._xp = 0;
++        this._skillPointsUnspent = 0;
++        this._skillHit = 0;
++        this._skillEndurance = 0;
++        this._skillStamina = 0;
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++        this._habboId = wrapper.readInt();
++        this._figure = wrapper.readString();
++        this._userName = wrapper.readString();
++        this._hp = wrapper.readInt();
++        this._maxHp = wrapper.readInt();
++        this._energy = wrapper.readInt();
++        this._maxEnergy = wrapper.readInt();
++        this._level = wrapper.readInt();
++        this._xp = wrapper.readInt();
++        this._skillPointsUnspent = wrapper.readInt();
++        this._skillHit = wrapper.readInt();
++        this._skillEndurance = wrapper.readInt();
++        this._skillStamina = wrapper.readInt();
++        return true;
++    }
++
++    public get habboId(): number { return this._habboId; }
++    public get figure(): string { return this._figure; }
++    public get userName(): string { return this._userName; }
++    public get hp(): number { return this._hp; }
++    public get maxHp(): number { return this._maxHp; }
++    public get energy(): number { return this._energy; }
++    public get maxEnergy(): number { return this._maxEnergy; }
++    public get level(): number { return this._level; }
++    public get xp(): number { return this._xp; }
++    public get skillPointsUnspent(): number { return this._skillPointsUnspent; }
++    public get skillHit(): number { return this._skillHit; }
++    public get skillEndurance(): number { return this._skillEndurance; }
++    public get skillStamina(): number { return this._skillStamina; }
++}
++
++export class UpdateTargetStatsEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, UpdateTargetStatsParser);
++    }
++
++    public getParser(): UpdateTargetStatsParser
++    {
++        return this.parser as UpdateTargetStatsParser;
++    }
++}
++
++// ──────────── registration ────────────
++
++class PixeltowerMessages implements IMessageConfiguration
++{
++    public events: Map<number, Function> = new Map<number, Function>([
++        [ PIXELTOWER_PLAY_SOUND, NitroPlaySoundEvent ],
++        [ PIXELTOWER_UPDATE_PLAYER_STATS, UpdatePlayerStatsEvent ],
++        [ PIXELTOWER_UPDATE_TARGET_STATS, UpdateTargetStatsEvent ]
++    ]);
++    public composers: Map<number, Function> = new Map();
++}
++
++export function registerPixeltowerMessages(): void
++{
++    GetConnection()?.registerMessages(new PixeltowerMessages());
++}
+diff --git a/src/components/pixeltower/StatsHUD.scss b/src/components/pixeltower/StatsHUD.scss
+new file mode 100644
+index 0000000..f9758f5
+--- /dev/null
++++ b/src/components/pixeltower/StatsHUD.scss
+@@ -0,0 +1,206 @@
++// Player HUD + Target HUD styles.
++// Corner radii, strokes, gradients all derived from .designs/client_ui.pen
++// frames HzOI4 (Player) and 1hvgH (Target), scaled from the design's 480px
++// width down to 280px in-game (≈58%).
++
++.pixeltower-stats-hud {
++    position: absolute;
++    top: 12px;
++    left: 12px;
++    z-index: 3;
++
++    width: 280px;
++    padding: 6px;
++    border-radius: 7px;                            // design 12 × 0.58
++    background: rgba(26, 26, 26, 0.55);
++    backdrop-filter: blur(6px);
++    -webkit-backdrop-filter: blur(6px);
++    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
++
++    color: #fff;
++    font-family: Ubuntu, Inter, sans-serif;
++    pointer-events: none;
++    user-select: none;
++
++    &__row {
++        display: flex;
++        flex-direction: row;
++        align-items: stretch;
++        gap: 6px;
++    }
++
++    // ──────────── avatar frame (gold border, dark-blue inset stroke) ────────────
++
++    &__avatar {
++        flex-shrink: 0;
++        width: 72px;
++        height: 72px;
++        padding: 2px;
++        border-radius: 6px;                        // design 10 × 0.58
++        background: #FFC700;
++        box-shadow: inset 0 0 0 1px #0A1F4A;       // design stroke 1px
++    }
++
++    &__avatar-inner {
++        position: relative;
++        width: 100%;
++        height: 100%;
++        border-radius: 5px;                        // design 8 × 0.58
++        background: #5C6B7A;
++        overflow: hidden;
++        display: flex;
++        flex-direction: column;
++        justify-content: flex-end;
++
++        .avatar-image {
++            position: absolute;
++            top: -30px;
++            left: 50%;
++            transform: translateX(-50%);
++            width: 64px;
++            height: 110px;
++            background-position: center top;
++            background-repeat: no-repeat;
++            image-rendering: pixelated;
++        }
++    }
++
++    &__name {
++        position: relative;
++        padding: 3px 4px;                          // design [6, 8] × 0.58
++        background: rgba(0, 0, 0, 0.6);            // design #00000099
++        text-align: center;
++        font-size: 10px;                           // design 16 × 0.58 ≈ 9
++        font-weight: 900;
++        line-height: 1.1;
++        overflow: hidden;
++        text-overflow: ellipsis;
++        white-space: nowrap;
++    }
++
++    // ──────────── bars column ────────────
++
++    &__bars {
++        display: flex;
++        flex-direction: column;
++        gap: 4px;
++        flex: 1;
++        min-width: 0;
++        justify-content: center;
++    }
++
++    &__bar {
++        position: relative;
++        height: 22px;
++        border: 1px solid rgba(0, 0, 0, 0.25);     // design stroke 1px #00000040
++        border-radius: 5px;                        // design 8 × 0.58
++        overflow: hidden;
++        box-sizing: border-box;
++    }
++
++    &__bar-track {
++        position: absolute;
++        inset: 0;
++    }
++
++    &__bar--hp &__bar-track {
++        background: linear-gradient(180deg, #3a0f0c 0%, #1e0706 100%);
++    }
++
++    &__bar--energy &__bar-track {
++        background: linear-gradient(180deg, #0f2442 0%, #06121f 100%);
++    }
++
++    &__bar-fill {
++        position: absolute;
++        top: 0;
++        left: 0;
++        bottom: 0;
++        transition: width 300ms ease-out;
++        will-change: width;
++
++        &--hp {
++            background: linear-gradient(180deg, #B83227 0%, #7B1A14 100%);
++        }
++        &--energy {
++            background: linear-gradient(180deg, #2E5FA5 0%, #173462 100%);
++        }
++    }
++
++    &__bar-content {
++        position: absolute;
++        inset: 0;
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        gap: 6px;
++        padding: 0 8px;
++        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
++    }
++
++    &__bar-icon {
++        width: 12px;
++        height: 12px;
++        color: #fff;
++        flex-shrink: 0;
++    }
++
++    &__bar-label {
++        font-size: 11px;
++        font-weight: 900;
++        font-variant-numeric: tabular-nums;
++        flex: 1;
++        text-align: center;
++    }
++
++    // ──────────── wanted stars (5 slots, always rendered on Player HUD) ────────────
++
++    &__wanted {
++        display: flex;
++        flex-direction: row;
++        gap: 3px;
++        padding: 0 2px;
++    }
++
++    &__wanted-star {
++        width: 14px;
++        height: 14px;
++        color: #3A3A3A;
++        filter: drop-shadow(0 0 1px #1A1A1A);
++        flex-shrink: 0;
++    }
++
++    &__wanted-star--active {
++        color: #F2B033;
++        filter: drop-shadow(0 0 2px rgba(242, 176, 51, 0.6));
++    }
++
++    // ──────────── Target HUD variant (mirrored layout + lock badge) ────────────
++
++    &--target {
++        left: 300px;                               // 12 (player left) + 280 (player width) + 8 gap
++
++        .pixeltower-stats-hud__row {
++            flex-direction: row-reverse;
++        }
++
++        .pixeltower-stats-hud__bar-content {
++            flex-direction: row-reverse;
++        }
++    }
++
++    &__lock-row {
++        display: flex;
++        flex-direction: row;
++        align-items: center;
++        padding: 2px 4px 0 4px;
++    }
++
++    &__lock-icon {
++        width: 12px;
++        height: 12px;
++        color: #FFC700;
++        filter: drop-shadow(0 0 2px rgba(255, 199, 0, 0.5));
++        flex-shrink: 0;
++    }
++}
+diff --git a/src/components/pixeltower/StatsHUD.tsx b/src/components/pixeltower/StatsHUD.tsx
+new file mode 100644
+index 0000000..3cc1538
+--- /dev/null
++++ b/src/components/pixeltower/StatsHUD.tsx
+@@ -0,0 +1,69 @@
++import { FC } from 'react';
++import { LuHeart, LuStar, LuZap } from 'react-icons/lu';
++import { GetSessionDataManager } from '../../api';
++import { LayoutAvatarImageView } from '../../common';
++import { useSessionInfo, useStats } from '../../hooks';
++
++const WANTED_SLOT_COUNT = 5;
++
++/**
++ * Persistent top-left Player HUD. Matches the canonical design at
++ * .designs/client_ui.pen frame HzOI4, at a scaled-down size for the
++ * in-game context. Data comes live from UpdatePlayerStatsEvent via the
++ * useStats hook — HP/energy bars deplete in real time. Wanted-slot
++ * indicators are always visible (grey when unwanted).
++ */
++export const StatsHUD: FC<{}> = () =>
++{
++    const { stats = null } = useStats();
++    const { userFigure = null } = useSessionInfo();
++
++    if(!stats) return null;
++
++    const userName = GetSessionDataManager()?.userName ?? '';
++    const hpPct = stats.maxHp > 0 ? Math.max(0, Math.min(100, (stats.hp / stats.maxHp) * 100)) : 0;
++    const energyPct = stats.maxEnergy > 0 ? Math.max(0, Math.min(100, (stats.energy / stats.maxEnergy) * 100)) : 0;
++
++    // Wanted / crime-stars: always render the five slots. The server
++    // doesn't yet emit a wanted level (Tier 4 bounty work) — slots stay
++    // inactive for now.
++    const wantedLevel = 0;
++
++    return (
++        <div className="pixeltower-stats-hud">
++            <div className="pixeltower-stats-hud__row">
++                <div className="pixeltower-stats-hud__avatar">
++                    <div className="pixeltower-stats-hud__avatar-inner">
++                        <LayoutAvatarImageView figure={ userFigure } direction={ 2 } />
++                        <div className="pixeltower-stats-hud__name">{ userName }</div>
++                    </div>
++                </div>
++                <div className="pixeltower-stats-hud__bars">
++                    <div className="pixeltower-stats-hud__bar pixeltower-stats-hud__bar--hp">
++                        <div className="pixeltower-stats-hud__bar-track" />
++                        <div className="pixeltower-stats-hud__bar-fill pixeltower-stats-hud__bar-fill--hp" style={ { width: `${ hpPct }%` } } />
++                        <div className="pixeltower-stats-hud__bar-content">
++                            <LuHeart className="pixeltower-stats-hud__bar-icon" />
++                            <span className="pixeltower-stats-hud__bar-label">{ stats.hp }/{ stats.maxHp }</span>
++                        </div>
++                    </div>
++                    <div className="pixeltower-stats-hud__bar pixeltower-stats-hud__bar--energy">
++                        <div className="pixeltower-stats-hud__bar-track" />
++                        <div className="pixeltower-stats-hud__bar-fill pixeltower-stats-hud__bar-fill--energy" style={ { width: `${ energyPct }%` } } />
++                        <div className="pixeltower-stats-hud__bar-content">
++                            <LuZap className="pixeltower-stats-hud__bar-icon" />
++                            <span className="pixeltower-stats-hud__bar-label">{ stats.energy }/{ stats.maxEnergy }</span>
++                        </div>
++                    </div>
++                    <div className="pixeltower-stats-hud__wanted">
++                        { Array.from({ length: WANTED_SLOT_COUNT }).map((_, i) => (
++                            <LuStar
++                                key={ i }
++                                className={ 'pixeltower-stats-hud__wanted-star' + (i < wantedLevel ? ' pixeltower-stats-hud__wanted-star--active' : '') } />
++                        )) }
++                    </div>
++                </div>
++            </div>
++        </div>
++    );
++}
+diff --git a/src/components/pixeltower/StatusHUD.scss b/src/components/pixeltower/StatusHUD.scss
+new file mode 100644
+index 0000000..d8e93f6
+--- /dev/null
++++ b/src/components/pixeltower/StatusHUD.scss
+@@ -0,0 +1,127 @@
++// Top-right Status HUD — matches .designs/client_ui.pen frame KVhc5.
++// Outer shell (padding / cornerRadius) kept identical to Player+Target HUD
++// so the three HUDs read as a set. Top-row buttons scaled up ~10% vs the
++// first scaled pass so the icons / VIP text remain comfortably legible;
++// currency rows mirror the Player HUD bar sizing (11px label, 12px icon,
++// radius 5, 3/6 padding) for rhythm consistency.
++
++.pixeltower-status-hud {
++    width: fit-content;
++    padding: 6px;                                  // matches Player HUD card padding
++    border-radius: 7px;                            // matches Player HUD card radius
++    background: rgba(26, 26, 26, 0.55);
++    backdrop-filter: blur(6px);
++    -webkit-backdrop-filter: blur(6px);
++    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
++
++    display: flex;
++    flex-direction: column;
++    gap: 3px;                                      // tighter than Player HUD's 4 because translucent pills read looser than solid bars
++
++    color: #fff;
++    font-family: Ubuntu, Inter, sans-serif;
++    user-select: none;
++    pointer-events: auto;                          // re-enable clicks — parent nitro-right-side has pointer-events:none
++
++    &__top-row {
++        display: flex;
++        flex-direction: row;
++        align-items: center;
++        gap: 3px;
++    }
++
++    // ──────────── VIP chip ────────────
++
++    &__vip-chip {
++        width: 48px;                               // bumped from 36 for readable buttons
++        height: 48px;
++        padding: 6px 8px;
++        border: none;
++        border-radius: 7px;
++        background: rgba(255, 255, 255, 0.065);
++        display: flex;
++        flex-direction: column;
++        align-items: center;
++        justify-content: center;
++        gap: 4px;
++        box-sizing: border-box;
++        cursor: pointer;
++        color: #fff;
++        font-family: inherit;
++        transition: background 150ms ease;
++
++        &:hover { background: rgba(255, 255, 255, 0.12); }
++    }
++
++    &__vip-badge {
++        padding: 2px 5px;
++        border-radius: 3px;
++        background: #FFC700;
++        color: #0A1F4A;
++        font-size: 9px;
++        font-weight: 900;
++        letter-spacing: 0.3px;
++        line-height: 1;
++    }
++
++    &__vip-days {
++        font-size: 11px;
++        font-weight: 900;
++        line-height: 1;
++    }
++
++    // ──────────── icon buttons (chat, settings) ────────────
++
++    &__button {
++        width: 48px;
++        height: 48px;
++        padding: 0;
++        border: none;
++        border-radius: 7px;
++        background: rgba(255, 255, 255, 0.065);
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        color: #fff;
++        cursor: pointer;
++        transition: background 150ms ease;
++
++        svg {
++            width: 18px;
++            height: 18px;
++        }
++
++        &:hover { background: rgba(255, 255, 255, 0.12); }
++    }
++
++    // ──────────── currency rows (coins, diamonds) ────────────
++    // Sized to match Player HUD bars: 22-ish height, radius 5, 3/6 padding,
++    // 12px icon, 11px label. Keeps a consistent visual rhythm top-to-bottom.
++
++    &__row {
++        display: flex;
++        flex-direction: row;
++        align-items: center;
++        gap: 6px;
++        padding: 0 8px;                            // matches Player HUD bar-content padding
++        border-radius: 5px;
++        background: rgba(255, 255, 255, 0.1);      // slightly more opaque so rows read as solid like Player HUD bars
++        box-sizing: border-box;
++        height: 22px;                              // fixed height matches Player HUD bar height exactly
++    }
++
++    &__row-icon {
++        width: 12px;
++        height: 12px;
++        flex-shrink: 0;
++
++        &--coin { color: #FFC700; }
++        &--diamond { color: #3E8FD8; }
++    }
++
++    &__row-value {
++        font-size: 11px;
++        font-weight: 900;
++        font-variant-numeric: tabular-nums;
++    }
++}
+diff --git a/src/components/pixeltower/StatusHUD.tsx b/src/components/pixeltower/StatusHUD.tsx
+new file mode 100644
+index 0000000..799f628
+--- /dev/null
++++ b/src/components/pixeltower/StatusHUD.tsx
+@@ -0,0 +1,61 @@
++import { FC } from 'react';
++import { LuDollarSign, LuGem, LuMessageSquare, LuSettings } from 'react-icons/lu';
++import { CreateLinkEvent } from '../../api';
++import { usePurse } from '../../hooks';
++
++const DIAMOND_CURRENCY_TYPE = 5;
++
++/**
++ * Top-right Status HUD — replaces the legacy PurseView. Matches the
++ * client_ui.pen frame KVhc5: a VIP chip showing remaining HC days, a
++ * chat-history button, a settings button, plus coin and diamond rows.
++ * All data sourced from the existing usePurse hook, so HC days / coins
++ * / diamonds stay live on every credits / currency / subscription event.
++ */
++export const StatusHUD: FC<{}> = () =>
++{
++    const { purse = null } = usePurse();
++
++    if(!purse) return null;
++
++    const totalClubDays = (purse.clubPeriods * 31) + purse.clubDays;
++    const coins = Math.floor(purse.credits);
++    const diamonds = purse.activityPoints?.get(DIAMOND_CURRENCY_TYPE) ?? 0;
++
++    return (
++        <div className="pixeltower-status-hud">
++            <div className="pixeltower-status-hud__top-row">
++                <button
++                    type="button"
++                    className="pixeltower-status-hud__vip-chip"
++                    onClick={ () => CreateLinkEvent('habboUI/open/hccenter') }
++                    title="Habbo Club">
++                    <span className="pixeltower-status-hud__vip-badge">VIP</span>
++                    <span className="pixeltower-status-hud__vip-days">{ totalClubDays } d.</span>
++                </button>
++                <button
++                    type="button"
++                    className="pixeltower-status-hud__button"
++                    onClick={ () => CreateLinkEvent('chat-history/toggle') }
++                    title="Chat history">
++                    <LuMessageSquare />
++                </button>
++                <button
++                    type="button"
++                    className="pixeltower-status-hud__button"
++                    onClick={ () => CreateLinkEvent('user-settings/toggle') }
++                    title="Settings">
++                    <LuSettings />
++                </button>
++            </div>
++            <div className="pixeltower-status-hud__row">
++                <LuDollarSign className="pixeltower-status-hud__row-icon pixeltower-status-hud__row-icon--coin" />
++                <span className="pixeltower-status-hud__row-value">{ coins }</span>
++            </div>
++            <div className="pixeltower-status-hud__row">
++                <LuGem className="pixeltower-status-hud__row-icon pixeltower-status-hud__row-icon--diamond" />
++                <span className="pixeltower-status-hud__row-value">{ diamonds }</span>
++            </div>
++        </div>
++    );
++}
+diff --git a/src/components/pixeltower/TargetHUD.tsx b/src/components/pixeltower/TargetHUD.tsx
+new file mode 100644
+index 0000000..0e00770
+--- /dev/null
++++ b/src/components/pixeltower/TargetHUD.tsx
+@@ -0,0 +1,58 @@
++import { FC } from 'react';
++import { LuHeart, LuLock, LuZap } from 'react-icons/lu';
++import { LayoutAvatarImageView } from '../../common';
++import { useTarget } from '../../hooks';
++
++/**
++ * Mirror-layout HUD showing the currently-targeted player's stats.
++ * Visible only after the first UpdateTargetStatsEvent packet lands
++ * (on profile-card view of another user). Re-renders on every
++ * subsequent packet so switching targets updates in place.
++ *
++ * Matches .designs/client_ui.pen frame 1hvgH, scaled to the same
++ * 280px width as StatsHUD.
++ */
++export const TargetHUD: FC<{}> = () =>
++{
++    const { target = null } = useTarget();
++
++    if(!target) return null;
++
++    const { stats } = target;
++    const hpPct = stats.maxHp > 0 ? Math.max(0, Math.min(100, (stats.hp / stats.maxHp) * 100)) : 0;
++    const energyPct = stats.maxEnergy > 0 ? Math.max(0, Math.min(100, (stats.energy / stats.maxEnergy) * 100)) : 0;
++
++    return (
++        <div className="pixeltower-stats-hud pixeltower-stats-hud--target">
++            <div className="pixeltower-stats-hud__row">
++                <div className="pixeltower-stats-hud__avatar">
++                    <div className="pixeltower-stats-hud__avatar-inner">
++                        <LayoutAvatarImageView figure={ target.figure } direction={ 4 } />
++                        <div className="pixeltower-stats-hud__name">{ target.userName }</div>
++                    </div>
++                </div>
++                <div className="pixeltower-stats-hud__bars">
++                    <div className="pixeltower-stats-hud__bar pixeltower-stats-hud__bar--hp">
++                        <div className="pixeltower-stats-hud__bar-track" />
++                        <div className="pixeltower-stats-hud__bar-fill pixeltower-stats-hud__bar-fill--hp" style={ { width: `${ hpPct }%` } } />
++                        <div className="pixeltower-stats-hud__bar-content">
++                            <LuHeart className="pixeltower-stats-hud__bar-icon" />
++                            <span className="pixeltower-stats-hud__bar-label">{ stats.hp }/{ stats.maxHp }</span>
++                        </div>
++                    </div>
++                    <div className="pixeltower-stats-hud__bar pixeltower-stats-hud__bar--energy">
++                        <div className="pixeltower-stats-hud__bar-track" />
++                        <div className="pixeltower-stats-hud__bar-fill pixeltower-stats-hud__bar-fill--energy" style={ { width: `${ energyPct }%` } } />
++                        <div className="pixeltower-stats-hud__bar-content">
++                            <LuZap className="pixeltower-stats-hud__bar-icon" />
++                            <span className="pixeltower-stats-hud__bar-label">{ stats.energy }/{ stats.maxEnergy }</span>
++                        </div>
++                    </div>
++                    <div className="pixeltower-stats-hud__lock-row">
++                        <LuLock className="pixeltower-stats-hud__lock-icon" />
++                    </div>
++                </div>
++            </div>
++        </div>
++    );
++}
+diff --git a/src/hooks/index.ts b/src/hooks/index.ts
+index a551574..0de8786 100644
+--- a/src/hooks/index.ts
++++ b/src/hooks/index.ts
+@@ -13,6 +13,7 @@ export * from './inventory';
+ export * from './mod-tools';
+ export * from './navigator';
+ export * from './notification';
++export * from './pixeltower';
+ export * from './purse';
+ export * from './rooms';
+ export * from './session';
+diff --git a/src/hooks/pixeltower/index.ts b/src/hooks/pixeltower/index.ts
+new file mode 100644
+index 0000000..62bdcf4
+--- /dev/null
++++ b/src/hooks/pixeltower/index.ts
+@@ -0,0 +1,2 @@
++export * from './useStats';
++export * from './useTarget';
+diff --git a/src/hooks/pixeltower/useStats.ts b/src/hooks/pixeltower/useStats.ts
+new file mode 100644
+index 0000000..633918d
+--- /dev/null
++++ b/src/hooks/pixeltower/useStats.ts
+@@ -0,0 +1,44 @@
++import { useState } from 'react';
++import { useBetween } from 'use-between';
++import { UpdatePlayerStatsEvent } from '../../api/pixeltower/PixeltowerSoundMessages';
++import { useMessageEvent } from '../events';
++
++export interface PixeltowerStats
++{
++    hp: number;
++    maxHp: number;
++    energy: number;
++    maxEnergy: number;
++    level: number;
++    xp: number;
++    skillPointsUnspent: number;
++    skillHit: number;
++    skillEndurance: number;
++    skillStamina: number;
++}
++
++const useStatsState = () =>
++{
++    const [ stats, setStats ] = useState<PixeltowerStats>(null);
++
++    useMessageEvent<UpdatePlayerStatsEvent>(UpdatePlayerStatsEvent, event =>
++    {
++        const parser = event.getParser();
++        setStats({
++            hp: parser.hp,
++            maxHp: parser.maxHp,
++            energy: parser.energy,
++            maxEnergy: parser.maxEnergy,
++            level: parser.level,
++            xp: parser.xp,
++            skillPointsUnspent: parser.skillPointsUnspent,
++            skillHit: parser.skillHit,
++            skillEndurance: parser.skillEndurance,
++            skillStamina: parser.skillStamina
++        });
++    });
++
++    return { stats };
++}
++
++export const useStats = () => useBetween(useStatsState);
+diff --git a/src/hooks/pixeltower/useTarget.ts b/src/hooks/pixeltower/useTarget.ts
+new file mode 100644
+index 0000000..62148a2
+--- /dev/null
++++ b/src/hooks/pixeltower/useTarget.ts
+@@ -0,0 +1,44 @@
++import { useState } from 'react';
++import { useBetween } from 'use-between';
++import { UpdateTargetStatsEvent } from '../../api/pixeltower/PixeltowerSoundMessages';
++import { useMessageEvent } from '../events';
++import { PixeltowerStats } from './useStats';
++
++export interface PixeltowerTarget
++{
++    habboId: number;
++    figure: string;
++    userName: string;
++    stats: PixeltowerStats;
++}
++
++const useTargetState = () =>
++{
++    const [ target, setTarget ] = useState<PixeltowerTarget>(null);
++
++    useMessageEvent<UpdateTargetStatsEvent>(UpdateTargetStatsEvent, event =>
++    {
++        const parser = event.getParser();
++        setTarget({
++            habboId: parser.habboId,
++            figure: parser.figure,
++            userName: parser.userName,
++            stats: {
++                hp: parser.hp,
++                maxHp: parser.maxHp,
++                energy: parser.energy,
++                maxEnergy: parser.maxEnergy,
++                level: parser.level,
++                xp: parser.xp,
++                skillPointsUnspent: parser.skillPointsUnspent,
++                skillHit: parser.skillHit,
++                skillEndurance: parser.skillEndurance,
++                skillStamina: parser.skillStamina
++            }
++        });
++    });
++
++    return { target };
++}
++
++export const useTarget = () => useBetween(useTargetState);
+diff --git a/src/hooks/purse/usePurse.ts b/src/hooks/purse/usePurse.ts
+index 6bb5a54..d91dc5a 100644
+--- a/src/hooks/purse/usePurse.ts
++++ b/src/hooks/purse/usePurse.ts
+@@ -2,6 +2,7 @@ import { ActivityPointNotificationMessageEvent, UserCreditsEvent, UserCurrencyCo
+ import { useEffect, useMemo, useState } from 'react';
+ import { useBetween } from 'use-between';
+ import { CloneObject, ClubStatus, GetConfiguration, IPurse, PlaySound, Purse, SendMessageComposer, SoundNames } from '../../api';
++import { NitroPlaySoundEvent } from '../../api/pixeltower/PixeltowerSoundMessages';
+ import { useMessageEvent } from '../events';
+ 
+ const usePurseState = () =>
+@@ -80,6 +81,13 @@ const usePurseState = () =>
+         });
+     });
+ 
++    useMessageEvent<NitroPlaySoundEvent>(NitroPlaySoundEvent, event =>
++    {
++        const sample = event.getParser().sample;
++        console.log('[PixeltowerRP] NitroPlaySoundEvent received, sample=', sample);
++        if(sample) PlaySound(sample);
++    });
++
+     useMessageEvent<UserSubscriptionEvent>(UserSubscriptionEvent, event =>
+     {
+         const parser = event.getParser();

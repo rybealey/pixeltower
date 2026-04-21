@@ -1,0 +1,183 @@
+diff --git a/src/components/index.scss b/src/components/index.scss
+index 8e1cd2b..b7789c8 100644
+--- a/src/components/index.scss
++++ b/src/components/index.scss
+@@ -17,6 +17,8 @@
+ @import './navigator/NavigatorView';
+ @import './nitropedia/NitropediaView';
+ @import './notification-center/NotificationCenterView';
++@import './pixeltower/StatsHUD';
++@import './pixeltower/StatusHUD';
+ @import './purse/PurseView';
+ @import './right-side/RightSideView';
+ @import './room/RoomView';
+diff --git a/src/components/main/MainView.tsx b/src/components/main/MainView.tsx
+index da7003d..193575e 100644
+--- a/src/components/main/MainView.tsx
++++ b/src/components/main/MainView.tsx
+@@ -1,9 +1,8 @@
+ import { HabboWebTools, ILinkEventTracker, RoomSessionEvent } from '@nitrots/nitro-renderer';
+ import { FC, useEffect, useState } from 'react';
+ import { AddEventLinkTracker, GetCommunication, RemoveLinkEventTracker } from '../../api';
+-import { Base, TransitionAnimation, TransitionAnimationTypes } from '../../common';
++import { Base } from '../../common';
+ import { useRoomSessionManagerEvent } from '../../hooks';
+-import { AchievementsView } from '../achievements/AchievementsView';
+ import { AvatarEditorView } from '../avatar-editor/AvatarEditorView';
+ import { CameraWidgetView } from '../camera/CameraWidgetView';
+ import { CampaignView } from '../campaign/CampaignView';
+@@ -16,10 +15,11 @@ import { GroupsView } from '../groups/GroupsView';
+ import { GuideToolView } from '../guide-tool/GuideToolView';
+ import { HcCenterView } from '../hc-center/HcCenterView';
+ import { HelpView } from '../help/HelpView';
+-import { HotelView } from '../hotel-view/HotelView';
+ import { InventoryView } from '../inventory/InventoryView';
+ import { ModToolsView } from '../mod-tools/ModToolsView';
+ import { NavigatorView } from '../navigator/NavigatorView';
++import { StatsHUD } from '../pixeltower/StatsHUD';
++import { TargetHUD } from '../pixeltower/TargetHUD';
+ import { NitropediaView } from '../nitropedia/NitropediaView';
+ import { RightSideView } from '../right-side/RightSideView';
+ import { RoomView } from '../room/RoomView';
+@@ -81,16 +81,17 @@ export const MainView: FC<{}> = props =>
+ 
+     return (
+         <Base fit>
+-            <TransitionAnimation type={ TransitionAnimationTypes.FADE_IN } inProp={ landingViewVisible } timeout={ 300 }>
+-                <HotelView />
+-            </TransitionAnimation>
++            { /* HotelView intentionally removed — pixeltower pins users to a room on login
++                 (see PixeltowerRP.onUserLogin), so the hotel-view lobby is never exposed. */ }
+             <ToolbarView isInRoom={ !landingViewVisible } />
++            <StatsHUD />
++            <TargetHUD />
+             <ModToolsView />
+             <RoomView />
+             <ChatHistoryView />
+             <WiredView />
+             <AvatarEditorView />
+-            <AchievementsView />
++            { /* AchievementsView unmounted — pixeltower disables achievements UI. */ }
+             <NavigatorView />
+             <InventoryView />
+             <CatalogView />
+diff --git a/src/components/notification-center/views/bubble-layouts/GetBubbleLayout.tsx b/src/components/notification-center/views/bubble-layouts/GetBubbleLayout.tsx
+index b22a2f6..9d9ee64 100644
+--- a/src/components/notification-center/views/bubble-layouts/GetBubbleLayout.tsx
++++ b/src/components/notification-center/views/bubble-layouts/GetBubbleLayout.tsx
+@@ -1,5 +1,4 @@
+ import { NotificationBubbleItem, NotificationBubbleType } from '../../../../api';
+-import { NotificationClubGiftBubbleView } from './NotificationClubGiftBubbleView';
+ import { NotificationDefaultBubbleView } from './NotificationDefaultBubbleView';
+ 
+ export const GetBubbleLayout = (item: NotificationBubbleItem, onClose: () => void) =>
+@@ -11,7 +10,9 @@ export const GetBubbleLayout = (item: NotificationBubbleItem, onClose: () => voi
+     switch(item.notificationType)
+     {
+         case NotificationBubbleType.CLUBGIFT:
+-            return <NotificationClubGiftBubbleView { ...props } />
++            // HC monthly gift prompt suppressed — pixeltower disables the
++            // nagging "choose your gift" pill that appears for HC members.
++            return null;
+         default:
+             return <NotificationDefaultBubbleView { ...props } />
+     }
+diff --git a/src/components/right-side/RightSideView.tsx b/src/components/right-side/RightSideView.tsx
+index 92e8129..c5e8ac6 100644
+--- a/src/components/right-side/RightSideView.tsx
++++ b/src/components/right-side/RightSideView.tsx
+@@ -3,7 +3,7 @@ import { Column } from '../../common';
+ import { OfferView } from '../catalog/views/targeted-offer/OfferView';
+ import { GroupRoomInformationView } from '../groups/views/GroupRoomInformationView';
+ import { NotificationCenterView } from '../notification-center/NotificationCenterView';
+-import { PurseView } from '../purse/PurseView';
++import { StatusHUD } from '../pixeltower/StatusHUD';
+ import { MysteryBoxExtensionView } from '../room/widgets/mysterybox/MysteryBoxExtensionView';
+ import { RoomPromotesWidgetView } from '../room/widgets/room-promotes/RoomPromotesWidgetView';
+ 
+@@ -12,7 +12,7 @@ export const RightSideView: FC<{}> = props =>
+     return (
+         <div className="nitro-right-side">
+             <Column position="relative" gap={ 1 }>
+-                <PurseView />
++                <StatusHUD />
+                 <GroupRoomInformationView />
+                 <MysteryBoxExtensionView />
+                 <OfferView/>
+diff --git a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx b/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx
+index c72e269..f5e66cf 100644
+--- a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx
++++ b/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx
+@@ -130,9 +130,6 @@ export const AvatarInfoWidgetOwnAvatarView: FC<AvatarInfoWidgetOwnAvatarViewProp
+                         <ContextMenuListItemView onClick={ event => processAction('decorate') }>
+                             { LocalizeText('widget.avatar.decorate') }
+                         </ContextMenuListItemView> }
+-                    <ContextMenuListItemView onClick={ event => processAction('change_looks') }>
+-                        { LocalizeText('widget.memenu.myclothes') }
+-                    </ContextMenuListItemView>
+                     { (HasHabboClub() && !isRidingHorse) &&
+                         <ContextMenuListItemView onClick={ event => processAction('dance_menu') }>
+                             <FaChevronRight className="right fa-icon" />
+@@ -150,10 +147,6 @@ export const AvatarInfoWidgetOwnAvatarView: FC<AvatarInfoWidgetOwnAvatarViewProp
+                         <FaChevronRight className="right fa-icon" />
+                         { LocalizeText('infostand.link.expressions') }
+                     </ContextMenuListItemView>
+-                    <ContextMenuListItemView onClick={ event => processAction('signs') }>
+-                        <FaChevronRight className="right fa-icon" />
+-                        { LocalizeText('infostand.show.signs') }
+-                    </ContextMenuListItemView>
+                     { (avatarInfo.carryItem > 0) &&
+                         <ContextMenuListItemView onClick={ event => processAction('drop_carry_item') }>
+                             { LocalizeText('avatar.widget.drop_hand_item') }
+diff --git a/src/components/toolbar/ToolbarMeView.tsx b/src/components/toolbar/ToolbarMeView.tsx
+index 8a66a91..0e5bd5c 100644
+--- a/src/components/toolbar/ToolbarMeView.tsx
++++ b/src/components/toolbar/ToolbarMeView.tsx
+@@ -1,7 +1,7 @@
+ import { MouseEventType, RoomObjectCategory } from '@nitrots/nitro-renderer';
+ import { Dispatch, FC, PropsWithChildren, SetStateAction, useEffect, useRef } from 'react';
+ import { CreateLinkEvent, DispatchUiEvent, GetConfiguration, GetRoomEngine, GetRoomSession, GetSessionDataManager, GetUserProfile } from '../../api';
+-import { Base, Flex, LayoutItemCountView } from '../../common';
++import { Base, Flex } from '../../common';
+ import { GuideToolEvent } from '../../events';
+ 
+ interface ToolbarMeViewProps
+@@ -38,10 +38,9 @@ export const ToolbarMeView: FC<PropsWithChildren<ToolbarMeViewProps>> = props =>
+         <Flex innerRef={ elementRef } alignItems="center" className="nitro-toolbar-me p-2" gap={ 2 }>
+             { (GetConfiguration('guides.enabled') && useGuideTool) &&
+                 <Base pointer className="navigation-item icon icon-me-helper-tool" onClick={ event => DispatchUiEvent(new GuideToolEvent(GuideToolEvent.TOGGLE_GUIDE_TOOL)) } /> }
+-            <Base pointer className="navigation-item icon icon-me-achievements" onClick={ event => CreateLinkEvent('achievements/toggle') }>
+-                { (unseenAchievementCount > 0) &&
+-                    <LayoutItemCountView count={ unseenAchievementCount } /> }
+-            </Base>
++            { /* Achievements button intentionally removed — pixeltower has achievements
++                 disabled from the UI. Server-side tracking continues silently so the feature
++                 can be re-enabled by reverting this patch. */ }
+             <Base pointer className="navigation-item icon icon-me-profile" onClick={ event => GetUserProfile(GetSessionDataManager().userId) } />
+             <Base pointer className="navigation-item icon icon-me-rooms" onClick={ event => CreateLinkEvent('navigator/search/myworld_view') } />
+             <Base pointer className="navigation-item icon icon-me-clothing" onClick={ event => CreateLinkEvent('avatar-editor/toggle') } />
+diff --git a/src/components/toolbar/ToolbarView.tsx b/src/components/toolbar/ToolbarView.tsx
+index 0efab76..4464248 100644
+--- a/src/components/toolbar/ToolbarView.tsx
++++ b/src/components/toolbar/ToolbarView.tsx
+@@ -1,6 +1,6 @@
+ import { Dispose, DropBounce, EaseOut, JumpBy, Motions, NitroToolbarAnimateIconEvent, PerkAllowancesMessageEvent, PerkEnum, Queue, Wait } from '@nitrots/nitro-renderer';
+ import { FC, useState } from 'react';
+-import { CreateLinkEvent, GetConfiguration, GetSessionDataManager, MessengerIconState, OpenMessengerChat, VisitDesktop } from '../../api';
++import { CreateLinkEvent, GetConfiguration, GetSessionDataManager, MessengerIconState, OpenMessengerChat } from '../../api';
+ import { Base, Flex, LayoutAvatarImageView, LayoutItemCountView, TransitionAnimation, TransitionAnimationTypes } from '../../common';
+ import { useAchievements, useFriends, useInventoryUnseenTracker, useMessageEvent, useMessenger, useRoomEngineEvent, useSessionInfo } from '../../hooks';
+ import { ToolbarMeView } from './ToolbarMeView';
+@@ -76,10 +76,8 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
+                             { (getTotalUnseen > 0) &&
+                                 <LayoutItemCountView count={ getTotalUnseen } /> }
+                         </Flex>
+-                        { isInRoom &&
+-                            <Base pointer className="navigation-item icon icon-habbo" onClick={ event => VisitDesktop() } /> }
+-                        { !isInRoom &&
+-                            <Base pointer className="navigation-item icon icon-house" onClick={ event => CreateLinkEvent('navigator/goto/home') } /> }
++                        { /* "Go to hotel view" button intentionally removed — pixeltower keeps
++                             users pinned to a room (home_room / default spawn). No hotel-view exit. */ }
+                         <Base pointer className="navigation-item icon icon-rooms" onClick={ event => CreateLinkEvent('navigator/toggle') } />
+                         { GetConfiguration('game.center.enabled') && <Base pointer className="navigation-item icon icon-game" onClick={ event => CreateLinkEvent('games/toggle') } /> }
+                         <Base pointer className="navigation-item icon icon-catalog" onClick={ event => CreateLinkEvent('catalog/toggle') } />
