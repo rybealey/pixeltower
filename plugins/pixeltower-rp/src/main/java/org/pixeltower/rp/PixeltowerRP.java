@@ -8,9 +8,17 @@ import com.eu.habbo.plugin.EventListener;
 import com.eu.habbo.plugin.HabboPlugin;
 import com.eu.habbo.plugin.events.emulator.EmulatorLoadedEvent;
 import org.pixeltower.rp.economy.commands.BalanceCommand;
+import org.pixeltower.rp.economy.commands.BankCommand;
+import org.pixeltower.rp.economy.commands.DepositCommand;
 import org.pixeltower.rp.economy.commands.GiveCommand;
+import org.pixeltower.rp.economy.commands.OpenAccountCommand;
+import org.pixeltower.rp.economy.commands.TransferCommand;
+import org.pixeltower.rp.economy.commands.WithdrawCommand;
+import org.pixeltower.rp.economy.tasks.BankInterestTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.TimeUnit;
 
 /**
  * Pixeltower RP plugin entrypoint. Lifecycle is driven by Arcturus:
@@ -68,7 +76,15 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         Emulator.getConfig().register("rp.medical.hospital_room_id",  "0");
         Emulator.getConfig().register("rp.police.jail_room_id",       "0");
 
+        Emulator.getConfig().register("rp.bank.fee_rate",             "0.01");
+        Emulator.getConfig().register("rp.bank.fee_corp_key",         "bank");
+        Emulator.getConfig().register("rp.bank.interest_rate",        "0.001");
+        Emulator.getConfig().register("rp.bank.interest_tick_s",      "86400");
+        Emulator.getConfig().register("rp.bank.interest_min_balance", "100");
+        Emulator.getConfig().register("rp.bank.atm_room_ids",         "");
+
         registerCommands();
+        scheduleBankInterest();
 
         LOGGER.info("Pixeltower RP v{} — loaded (rp.* config keys registered, commands registered)", VERSION);
     }
@@ -76,5 +92,20 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
     private void registerCommands() {
         CommandHandler.addCommand(new BalanceCommand());
         CommandHandler.addCommand(new GiveCommand());
+        CommandHandler.addCommand(new OpenAccountCommand());
+        CommandHandler.addCommand(new BankCommand());
+        CommandHandler.addCommand(new DepositCommand());
+        CommandHandler.addCommand(new WithdrawCommand());
+        CommandHandler.addCommand(new TransferCommand());
+    }
+
+    private void scheduleBankInterest() {
+        long tickS = Emulator.getConfig().getInt("rp.bank.interest_tick_s", 86400);
+        // First run is tickS seconds from plugin-load so we don't double-pay on
+        // rapid emulator restarts. Ops can trigger a manual tick via :rpreload
+        // (future) or by flipping interest_tick_s briefly.
+        Emulator.getThreading().getService().scheduleAtFixedRate(
+                new BankInterestTask(), tickS, tickS, TimeUnit.SECONDS);
+        LOGGER.info("BankInterestTask scheduled every {}s", tickS);
     }
 }
