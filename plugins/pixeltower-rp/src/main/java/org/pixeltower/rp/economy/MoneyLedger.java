@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 
@@ -146,6 +147,113 @@ public final class MoneyLedger {
         habbo.giveCredits(-intAmount);
         LOGGER.info("debit habbo={} amount={} reason={} refId={}", habboId, intAmount, reason, refId);
         return balanceAfter;
+    }
+
+    /**
+     * Credit an offline player. Direct SQL UPDATE on {@code users.credits}
+     * + audit row. If the player is currently online the in-memory
+     * HabboInfo will not be updated; callers who know the player is
+     * online should use {@link #credit(Habbo, long, String, Long)} instead.
+     *
+     * @return new balance after the credit
+     */
+    public static long creditOffline(int habboId, long amount, String reason, Long refId) {
+        if (amount <= 0) throw new IllegalArgumentException("amount must be > 0");
+        if (amount > Integer.MAX_VALUE) throw new IllegalArgumentException("amount exceeds credits column range");
+
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                long balanceAfter = updateCreditsAndRead(conn, habboId, (int) amount);
+                insertLedgerRow(conn, habboId, amount, balanceAfter, reason, refId);
+                conn.commit();
+                LOGGER.info("credit_offline habbo={} amount={} reason={} refId={}",
+                        habboId, amount, reason, refId);
+                return balanceAfter;
+            } catch (SQLException inner) {
+                conn.rollback();
+                throw inner;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            LOGGER.error("creditOffline habbo={} amount={} failed", habboId, amount, e);
+            throw new RuntimeException("creditOffline failed", e);
+        }
+    }
+
+    /**
+     * Debit an offline player. Throws if balance &lt; amount.
+     * @return new balance after the debit
+     */
+    public static long debitOffline(int habboId, long amount, String reason, Long refId)
+            throws InsufficientFundsException {
+        if (amount <= 0) throw new IllegalArgumentException("amount must be > 0");
+        if (amount > Integer.MAX_VALUE) throw new IllegalArgumentException("amount exceeds credits column range");
+
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                long balanceAfter = updateCreditsWithGuardAndRead(conn, habboId, -(int) amount);
+                insertLedgerRow(conn, habboId, -amount, balanceAfter, reason, refId);
+                conn.commit();
+                LOGGER.info("debit_offline habbo={} amount={} reason={} refId={}",
+                        habboId, amount, reason, refId);
+                return balanceAfter;
+            } catch (InsufficientFundsException ife) {
+                conn.rollback();
+                throw ife;
+            } catch (SQLException inner) {
+                conn.rollback();
+                throw inner;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            LOGGER.error("debitOffline habbo={} amount={} failed", habboId, amount, e);
+            throw new RuntimeException("debitOffline failed", e);
+        }
+    }
+
+    private static long updateCreditsAndRead(Connection conn, int habboId, int delta) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE users SET credits = credits + ? WHERE id = ?")) {
+            ps.setInt(1, delta);
+            ps.setInt(2, habboId);
+            if (ps.executeUpdate() == 0) throw new SQLException("no users row for id=" + habboId);
+        }
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT credits FROM users WHERE id = ?")) {
+            ps.setInt(1, habboId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) throw new SQLException("no users row for id=" + habboId);
+                return rs.getInt(1);
+            }
+        }
+    }
+
+    private static long updateCreditsWithGuardAndRead(Connection conn, int habboId, int signedDelta)
+            throws SQLException, InsufficientFundsException {
+        // For debit, the guard is `credits + signedDelta >= 0` which is the same as
+        // `credits >= -signedDelta`.
+        int guardAmount = -signedDelta;
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE users SET credits = credits + ? WHERE id = ? AND credits >= ?")) {
+            ps.setInt(1, signedDelta);
+            ps.setInt(2, habboId);
+            ps.setInt(3, guardAmount);
+            if (ps.executeUpdate() == 0) {
+                throw new InsufficientFundsException(habboId, guardAmount);
+            }
+        }
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT credits FROM users WHERE id = ?")) {
+            ps.setInt(1, habboId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) throw new SQLException("no users row for id=" + habboId);
+                return rs.getInt(1);
+            }
+        }
     }
 
     private static void validate(Habbo habbo, long amount) {

@@ -23,17 +23,9 @@ fetch() {
 }
 
 echo "[assets] c_images/album1584 (badges, may take a while)…"
-# habboassets.com hosts individual badge files. Fall back to shallow-clone of
-# an organized mirror if available; otherwise warn and move on.
-if ! [ -f "$GAMEDATA/c_images/album1584/.done" ]; then
-  if git clone --depth 1 https://git.krews.org/nitro/habbo-downloader-assets.git "$GAMEDATA/.badge-src" 2>/dev/null; then
-    rsync -a --ignore-existing "$GAMEDATA/.badge-src/c_images/" "$GAMEDATA/c_images/" || true
-    rm -rf "$GAMEDATA/.badge-src"
-  else
-    echo "[info] skipping badge bulk pull; seed manually from habboassets.com/c_images/album1584/"
-  fi
-  touch "$GAMEDATA/c_images/album1584/.done"
-fi
+# Delegate to pull-badges.sh — paginates habboassets.com/api/v1/badges and
+# downloads each code's .gif into c_images/album1584/. Idempotent.
+"$(dirname "$0")/pull-badges.sh"
 
 echo "[assets] sound_machine mp3 pack…"
 if ! [ -f "$GAMEDATA/dcr/hof_furni/mp3/.done" ]; then

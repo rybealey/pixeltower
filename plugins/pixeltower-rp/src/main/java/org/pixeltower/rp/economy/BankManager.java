@@ -85,6 +85,67 @@ public final class BankManager {
         }
     }
 
+    // ──────────── admin direct-adjust ────────────
+
+    /**
+     * Staff-driven adjustment of a bank balance. Signed delta: positive
+     * credits, negative debits. Auto-opens an account on positive delta if
+     * the user doesn't have one yet. Writes an audit row in
+     * {@code rp_money_ledger} (reason='admin_award_bank') with the staff's
+     * habbo id as ref_id.
+     *
+     * Does NOT touch users.credits — this mints/burns bank balance directly
+     * (the "admin award" shape). If you want the full deposit/withdraw
+     * semantics with fees + cash movement, use those APIs instead.
+     *
+     * @return new bank balance after the adjustment
+     * @throws InsufficientFundsException if delta is negative and balance
+     *                                    would go below zero
+     * @throws BankAccountNotOpenException if delta is negative and the
+     *                                     target has no account (we don't
+     *                                     silently create-then-overdraw)
+     */
+    public static long adminAdjust(int habboId, long delta, String reason, Long refId)
+            throws InsufficientFundsException, BankAccountNotOpenException {
+        if (delta == 0) throw new IllegalArgumentException("delta must be non-zero");
+
+        boolean hasAccount = hasAccount(habboId);
+        if (delta > 0 && !hasAccount) {
+            openAccount(habboId);
+        } else if (delta < 0 && !hasAccount) {
+            throw new BankAccountNotOpenException(habboId);
+        }
+
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                long balanceAfter;
+                if (delta > 0) {
+                    balanceAfter = creditBankInTx(conn, habboId, delta);
+                } else {
+                    balanceAfter = debitBankInTx(conn, habboId, -delta);
+                }
+                writePlayerLedger(conn, habboId, delta, balanceAfter, reason, refId);
+                conn.commit();
+                LOGGER.info("admin_bank_adjust habbo={} delta={} newBalance={} reason={} refId={}",
+                        habboId, delta, balanceAfter, reason, refId);
+                return balanceAfter;
+            } catch (SQLException inner) {
+                conn.rollback();
+                // debitBankInTx signals insufficient funds via message prefix; re-map to typed.
+                if (inner.getMessage() != null && inner.getMessage().startsWith("insufficient bank funds")) {
+                    throw new InsufficientFundsException(habboId, (int) Math.min(Integer.MAX_VALUE, -delta));
+                }
+                throw inner;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            LOGGER.error("adminAdjust habbo={} delta={} failed", habboId, delta, e);
+            throw new RuntimeException("adminAdjust failed", e);
+        }
+    }
+
     // ──────────── cash ↔ bank operations ────────────
 
     /**

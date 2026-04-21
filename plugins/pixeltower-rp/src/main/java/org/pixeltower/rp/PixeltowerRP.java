@@ -7,6 +7,7 @@ import com.eu.habbo.plugin.EventHandler;
 import com.eu.habbo.plugin.EventListener;
 import com.eu.habbo.plugin.HabboPlugin;
 import com.eu.habbo.plugin.events.emulator.EmulatorLoadedEvent;
+import org.pixeltower.rp.economy.commands.AwardCommand;
 import org.pixeltower.rp.economy.commands.BalanceCommand;
 import org.pixeltower.rp.economy.commands.BankCommand;
 import org.pixeltower.rp.economy.commands.DepositCommand;
@@ -83,6 +84,8 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         Emulator.getConfig().register("rp.bank.interest_min_balance", "100");
         Emulator.getConfig().register("rp.bank.atm_room_ids",         "");
 
+        Emulator.getConfig().register("rp.admin.min_rank",            "5");
+
         registerCommands();
         scheduleBankInterest();
 
@@ -97,6 +100,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         CommandHandler.addCommand(new DepositCommand());
         CommandHandler.addCommand(new WithdrawCommand());
         CommandHandler.addCommand(new TransferCommand());
+        CommandHandler.addCommand(new AwardCommand());
     }
 
     private void scheduleBankInterest() {
