@@ -20,10 +20,16 @@ export DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD \
 
 envsubst < /emulator/config.ini.template > /emulator/config.ini
 
-# Copy baked-in ms-websockets plugin into the volume-backed plugins/ dir
-# (idempotent; operator can add more plugins alongside)
+# Copy baked-in plugins into the volume-backed plugins/ dir.
+# Always overwrite pixeltower-rp.jar so a rebuild of the emulator image
+# propagates new plugin code on the next container restart (this plugin is
+# ours and ships with the image). ms-websockets is only copied once so
+# operator overrides aren't clobbered.
 if [ ! -f /emulator/plugins/ms-websockets.jar ]; then
   cp /emulator/plugins-baked/ms-websockets.jar /emulator/plugins/ms-websockets.jar
+fi
+if [ -f /emulator/plugins-baked/pixeltower-rp.jar ]; then
+  cp -f /emulator/plugins-baked/pixeltower-rp.jar /emulator/plugins/pixeltower-rp.jar
 fi
 
 exec java \

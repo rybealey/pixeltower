@@ -61,7 +61,9 @@ services:
 
   emulator:
     build:
-      context: ./docker/emulator
+      # Project root so the Dockerfile can COPY plugins/pixeltower-rp/
+      context: .
+      dockerfile: docker/emulator/Dockerfile
     restart: unless-stopped
     env_file: .env
     environment:

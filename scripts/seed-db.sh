@@ -54,6 +54,18 @@ if [ -f emulator/missing-tables.sql ]; then
   mariadb_exec < emulator/missing-tables.sql
 fi
 
+# Apply Pixeltower plugin migrations in filename order (V001, V002, ...).
+# Each plugin owns its own sql/ dir; everything is CREATE TABLE IF NOT EXISTS
+# / INSERT IGNORE so re-runs are idempotent.
+for plugin_sql_dir in plugins/*/sql; do
+  [ -d "$plugin_sql_dir" ] || continue
+  for f in "$plugin_sql_dir"/*.sql; do
+    [ -f "$f" ] || continue
+    echo "[seed] plugin migration: $f"
+    mariadb_exec < "$f"
+  done
+done
+
 if ls emulator/catalog-sqls/*.sql >/dev/null 2>&1; then
   for f in emulator/catalog-sqls/*.sql; do
     echo "[seed] catalog: $(basename "$f")"

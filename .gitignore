@@ -29,3 +29,6 @@ Thumbs.db
 
 # Claude local settings
 .claude/settings.local.json
+
+# Maven build outputs (plugin local builds)
+plugins/*/target/
