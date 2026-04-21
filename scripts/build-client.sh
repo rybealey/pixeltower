@@ -71,6 +71,32 @@ echo "[client] patching renderer-config.json ($SCHEME://$DOMAIN, ws at /ws)"
 echo "[client] patching ui-config.json"
 [ -f nitro/public/ui-config.json ] && rewrite_ui nitro/public/ui-config.json
 
+# nitro-react's vite.config.js ships without a `base`, so Vite emits
+# root-absolute asset paths (/assets/...) but nginx only serves Nitro under
+# /client/. Inject base: '/client/'. Idempotent — no-op if already present.
+if [ -f nitro/vite.config.js ] && ! grep -q "^[[:space:]]*base:" nitro/vite.config.js; then
+  echo "[client] injecting base: '/client/' into nitro/vite.config.js"
+  sed -i.bak \
+    -e "s|^export default defineConfig({|export default defineConfig({\\
+    base: '/client/',|" \
+    nitro/vite.config.js
+  rm -f nitro/vite.config.js.bak
+fi
+
+# The inline NitroConfig.config.urls in nitro/index.html ships with absolute
+# paths ('/renderer-config.json', '/ui-config.json'). Vite's `base` does not
+# rewrite inline script bodies, so nginx would 404 those under /client/.
+# Rewrite to relative so the template's `<base href="./">` resolves them
+# under /client/. Idempotent — no-op if already relative.
+if [ -f nitro/index.html ] && grep -q "'/renderer-config.json'" nitro/index.html; then
+  echo "[client] patching nitro/index.html NitroConfig URLs to relative"
+  sed -i.bak \
+    -e "s|'/renderer-config.json'|'renderer-config.json'|g" \
+    -e "s|'/ui-config.json'|'ui-config.json'|g" \
+    nitro/index.html
+  rm -f nitro/index.html.bak
+fi
+
 echo "[client] running yarn build:prod in container (takes ~10-15 min)"
 docker compose --env-file "$ENV_FILE" --profile tools run --rm nitro-builder
 

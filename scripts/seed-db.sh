@@ -46,6 +46,14 @@ done
 echo "[seed] importing $BASE"
 mariadb_exec < "$BASE"
 
+# The ms4-base-database dump is a snapshot that predates some tables the
+# Arcturus dev branch expects. Apply the IF-NOT-EXISTS patch afterwards so
+# chat_bubbles, catalog_items_limited, calendar_rewards exist before login.
+if [ -f emulator/missing-tables.sql ]; then
+  echo "[seed] applying missing-tables patch (dev-branch schema gaps)"
+  mariadb_exec < emulator/missing-tables.sql
+fi
+
 if ls emulator/catalog-sqls/*.sql >/dev/null 2>&1; then
   for f in emulator/catalog-sqls/*.sql; do
     echo "[seed] catalog: $(basename "$f")"

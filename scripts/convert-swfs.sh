@@ -38,4 +38,14 @@ fi
 SWF_PACK_DIR="$SWF_PACK_DIR" \
   docker compose --env-file "$ENV_FILE" --profile tools run --rm converter
 
+# nitro-converter writes `null` to ExternalTexts.json / UITexts.json when
+# texts conversion is disabled (convert.externaltexts=0). Nitro then stalls
+# at ~20% because it can't merge a null into its text map. Normalize to {}.
+for f in gamedata/gamedata/ExternalTexts.json gamedata/gamedata/UITexts.json; do
+  if [ -f "$f" ] && [ "$(tr -d '[:space:]' < "$f")" = "null" ]; then
+    echo "[post] $f was null → replacing with {}"
+    echo '{}' > "$f"
+  fi
+done
+
 echo "[done] gamedata/ populated with .nitro bundles"

@@ -33,7 +33,7 @@ if [ ! -d gamedata/.default-assets-pulled ]; then
   echo "[clone] git.krews.org/nitro/default-assets (baseline .nitro bundles)"
   git clone --depth 1 https://git.krews.org/nitro/default-assets.git "$TMP/default-assets"
   mkdir -p gamedata
-  for sub in bundled figure effect furniture pet gamedata c_images; do
+  for sub in bundled figure effect furniture pet gamedata c_images images logos sounds; do
     if [ -d "$TMP/default-assets/$sub" ]; then
       echo "  [+] gamedata/$sub/"
       rsync -a --ignore-existing "$TMP/default-assets/$sub/" "gamedata/$sub/"

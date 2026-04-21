@@ -60,6 +60,12 @@ server {
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
 
+    location /gamedata/gamedata/ {
+        alias /var/www/gamedata/gamedata/;
+        add_header Access-Control-Allow-Origin *;
+        add_header Cache-Control "no-cache";
+    }
+
     location /imaging/ {
         proxy_pass http://imager:3030/;
         proxy_set_header Host $host;
