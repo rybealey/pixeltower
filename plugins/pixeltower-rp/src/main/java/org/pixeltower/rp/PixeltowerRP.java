@@ -13,7 +13,6 @@ import org.pixeltower.rp.core.TargetTracker;
 import org.pixeltower.rp.core.commands.TargetCommand;
 import org.pixeltower.rp.economy.commands.AwardCommand;
 import org.pixeltower.rp.economy.commands.BalanceCommand;
-import org.pixeltower.rp.economy.commands.BankCommand;
 import org.pixeltower.rp.economy.commands.DepositCommand;
 import org.pixeltower.rp.economy.commands.GiveCommand;
 import org.pixeltower.rp.economy.commands.OpenAccountCommand;
@@ -100,7 +99,6 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         CommandHandler.addCommand(new BalanceCommand());
         CommandHandler.addCommand(new GiveCommand());
         CommandHandler.addCommand(new OpenAccountCommand());
-        CommandHandler.addCommand(new BankCommand());
         CommandHandler.addCommand(new DepositCommand());
         CommandHandler.addCommand(new WithdrawCommand());
         CommandHandler.addCommand(new TransferCommand());

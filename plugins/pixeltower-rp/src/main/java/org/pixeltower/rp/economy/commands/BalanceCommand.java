@@ -45,7 +45,7 @@ public class BalanceCommand extends Command {
 
         if (hide) {
             RpChat.emote(habbo, "*checks their balance*");
-            habbo.whisper("Balance: $" + bal, RoomChatMessageBubbles.ALERT);
+            RpChat.infoBubble(habbo, "You've got $" + bal + " in your bank account.");
             return true;
         }
         RpChat.emote(habbo, "*checks their balance, finding that they have $" + bal + "*");
