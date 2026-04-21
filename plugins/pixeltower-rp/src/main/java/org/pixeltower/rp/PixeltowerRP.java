@@ -1,11 +1,14 @@
 package org.pixeltower.rp;
 
 import com.eu.habbo.Emulator;
+import com.eu.habbo.habbohotel.commands.CommandHandler;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.plugin.EventHandler;
 import com.eu.habbo.plugin.EventListener;
 import com.eu.habbo.plugin.HabboPlugin;
 import com.eu.habbo.plugin.events.emulator.EmulatorLoadedEvent;
+import org.pixeltower.rp.economy.commands.BalanceCommand;
+import org.pixeltower.rp.economy.commands.GiveCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +68,13 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         Emulator.getConfig().register("rp.medical.hospital_room_id",  "0");
         Emulator.getConfig().register("rp.police.jail_room_id",       "0");
 
-        LOGGER.info("Pixeltower RP v{} — loaded (rp.* config keys registered)", VERSION);
+        registerCommands();
+
+        LOGGER.info("Pixeltower RP v{} — loaded (rp.* config keys registered, commands registered)", VERSION);
+    }
+
+    private void registerCommands() {
+        CommandHandler.addCommand(new BalanceCommand());
+        CommandHandler.addCommand(new GiveCommand());
     }
 }
