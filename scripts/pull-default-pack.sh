@@ -19,7 +19,7 @@ git clone --depth 1 "$REPO" "$TMP/pack"
 
 echo "[pack] extracting HOF furniture SWFs"
 mkdir -p gamedata/dcr/hof_furni
-rsync -a --exclude=icons --exclude=mp3 --exclude=.DS_Store \
+rsync -a --exclude=mp3 --exclude=.DS_Store \
   "$TMP/pack/dcr/hof_furni/" gamedata/dcr/hof_furni/
 swf_count=$(find gamedata/dcr/hof_furni -maxdepth 1 -name '*.swf' | wc -l | tr -d ' ')
 echo "[pack] $swf_count furniture SWFs → gamedata/dcr/hof_furni/"
@@ -35,7 +35,7 @@ mkdir -p gamedata/c_images
 for dir in Badgeparts reception web_promo web_promo_small Quests articles \
            guilds habbopages newroom talent targetedoffers \
            AdWarningsUK Habbo-Stories client_static hot_campaign_images_no \
-           playlist catalogue_otherlangs album3606 album137; do
+           playlist catalogue catalogue_otherlangs album3606 album137; do
   if [ -d "$TMP/pack/c_images/$dir" ]; then
     rsync -a --ignore-existing "$TMP/pack/c_images/$dir/" "gamedata/c_images/$dir/"
     echo "  [+] c_images/$dir/"
