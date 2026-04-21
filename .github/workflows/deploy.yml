@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild of all images'
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-production
@@ -13,19 +18,19 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: SSH + pull + rebuild on VPS
+      - name: SSH + deploy
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
+          envs: FORCE_REBUILD
           script: |
             set -euo pipefail
             cd /opt/pixeltower
             git fetch --all --prune
             git reset --hard origin/main
-            docker compose --env-file .env.production pull
-            docker compose --env-file .env.production up -d --build --remove-orphans
-            docker compose --env-file .env.production exec -T php php artisan migrate --force
-            docker image prune -f
+            ENV_FILE=.env.production FORCE_REBUILD="${FORCE_REBUILD:-0}" ./scripts/deploy.sh
+        env:
+          FORCE_REBUILD: ${{ inputs.force_rebuild && '1' || '0' }}

@@ -155,13 +155,64 @@ docker compose --env-file .env.production up -d --build
 
 ### 4. GitHub Actions continuous deploy
 
-Configure repo secrets:
+Configure repo secrets (Settings → Secrets and variables → Actions):
 - `DEPLOY_HOST` — VPS IP or hostname
 - `DEPLOY_USER` — `deploy`
-- `DEPLOY_SSH_KEY` — PEM private key
+- `DEPLOY_SSH_KEY` — PEM-format private key; public half goes in `/home/deploy/.ssh/authorized_keys` on the VPS
 - `DEPLOY_PORT` — optional, defaults to 22
 
-Every push to `main` triggers [.github/workflows/deploy.yml](.github/workflows/deploy.yml): pulls, rebuilds, runs migrations.
+Every push to `main` triggers [.github/workflows/deploy.yml](.github/workflows/deploy.yml). The workflow SSHes to the VPS, fast-forwards the repo to `origin/main`, and runs [`scripts/deploy.sh`](scripts/deploy.sh) — the single source of truth for the deploy sequence.
+
+#### How `scripts/deploy.sh` works
+
+Change-aware. Reads `.deploy-sha` (last deployed commit, stored in the repo dir on the VPS), diffs against the newly-checked-out HEAD, and rebuilds only what the diff touched:
+
+| Changed path | Action |
+|---|---|
+| `nitro-patches/` or `scripts/build-client.sh` | Re-run `scripts/build-client.sh` (Dockerized Vite build of the Nitro client) |
+| `atomcms/` | `docker compose --profile tools run --rm atom-builder` (atom + dusk theme rebuild) |
+| `plugins/`, `arcturus-patches/`, `docker/emulator/` | `docker compose build emulator` |
+| `plugins/*/sql/V*.sql` | Re-run `scripts/seed-db.sh` (idempotent) |
+
+After conditional rebuilds it always runs:
+1. `docker compose up -d --remove-orphans` — picks up any new images
+2. `php artisan migrate --force` — Laravel migrations
+3. Health check — `curl http://localhost/` + `curl http://localhost/imaging/?figure=...`; exits non-zero (turning the Action red) if it can't get a 200 within ~60s
+
+On a green deploy, `.deploy-sha` is updated to the new HEAD. On a red deploy it isn't, so the next green run still diffs against the last known-good commit.
+
+Safety nets baked in:
+- **Concurrency lock** — `flock` on `/tmp/pixeltower-deploy.lock` serializes any overlap between the GH Action and a manual `ssh ... ./scripts/deploy.sh`.
+- **Pre-deploy DB dump** — `data/backups/pre-deploy/<sha>.sql.gz` written before any migration runs. Last 10 are kept.
+- **Logs** — every deploy run tees to `/var/log/pixeltower-deploy.log` (falls back to `/tmp/pixeltower-deploy.log` if the former isn't writable).
+
+#### Operator cheat-sheet
+
+```bash
+# Trigger a deploy manually (without a push) — use the Actions tab's
+# "Run workflow" button, or push an empty commit:
+git commit --allow-empty -m "deploy: manual trigger" && git push
+
+# Force a full rebuild (bypass the diff classifier) via GH Actions UI:
+#   Actions → Deploy to production → Run workflow → force_rebuild = true
+
+# Run the deploy manually on the VPS:
+ssh deploy@VPS
+cd /opt/pixeltower
+ENV_FILE=.env.production ./scripts/deploy.sh
+
+# Same, but force full rebuild:
+FORCE_REBUILD=1 ENV_FILE=.env.production ./scripts/deploy.sh
+
+# Tail the deploy log:
+tail -f /var/log/pixeltower-deploy.log
+
+# Roll back DB to the last pre-deploy snapshot:
+ls -1t data/backups/pre-deploy/*.sql.gz | head -n 1   # find most recent
+gunzip -c data/backups/pre-deploy/<sha>.sql.gz \
+  | docker compose --env-file .env.production exec -T db sh -c \
+      'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE"'
+```
 
 ### 5. Cloudflare notes
 
