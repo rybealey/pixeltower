@@ -5,20 +5,25 @@ import com.eu.habbo.habbohotel.gameclients.GameClient;
 import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.users.Habbo;
 import org.pixeltower.rp.core.RpChat;
+import org.pixeltower.rp.economy.BankManager;
+
+import java.util.Optional;
 
 /**
- * {@code :balance} / {@code :bal} — public RP emote announcing the caller's
- * balance to everyone in the room:
- *   <code>*checks their balance, finding that they have $X*</code>
+ * {@code :balance} / {@code :bal} — public RP emote announcing the
+ * caller's bank balance to the room. "Balance" in RP vernacular means the
+ * money in your account, not the coins physically on you — those live on
+ * Habbo's top-bar counter already.
  *
- * {@code :balance hide} / {@code :bal hide} — same beat, amount kept private.
- * Public chat is just <code>*checks their balance*</code>; caller gets an
- * ephemeral whisper with the actual number.
+ * Synonym of {@link BankCommand} but with subtler emote wording (the
+ * target + observers learn the RP flavour without the explicit "bank"
+ * word, useful when you want to sound casual).
  *
- * Public emote styling (bold blue shout) lives in
- * {@link org.pixeltower.rp.core.RpChat#emote}.
+ * {@code :balance hide} / {@code :bal hide} — public emote drops the
+ * amount; private whisper carries the number.
  *
- * Permission is {@code null} so the CommandHandler permission bypass applies.
+ * Requires a bank account; no auto-open. Players who haven't run
+ * {@code :openaccount} get pointed there.
  */
 public class BalanceCommand extends Command {
 
@@ -29,16 +34,21 @@ public class BalanceCommand extends Command {
     @Override
     public boolean handle(GameClient gameClient, String[] params) {
         Habbo habbo = gameClient.getHabbo();
-        int credits = habbo.getHabboInfo().getCredits();
+        Optional<Long> balance = BankManager.getBalance(habbo.getHabboInfo().getId());
+        if (balance.isEmpty()) {
+            habbo.whisper("You don't have a bank account. Use :openaccount first.",
+                    RoomChatMessageBubbles.ALERT);
+            return true;
+        }
+        long bal = balance.get();
         boolean hide = params.length >= 2 && "hide".equalsIgnoreCase(params[1]);
 
         if (hide) {
             RpChat.emote(habbo, "*checks their balance*");
-            habbo.whisper("Balance: $" + credits, RoomChatMessageBubbles.ALERT);
+            habbo.whisper("Balance: $" + bal, RoomChatMessageBubbles.ALERT);
             return true;
         }
-
-        RpChat.emote(habbo, "*checks their balance, finding that they have $" + credits + "*");
+        RpChat.emote(habbo, "*checks their balance, finding that they have $" + bal + "*");
         return true;
     }
 }
