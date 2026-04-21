@@ -2,6 +2,7 @@ package org.pixeltower.rp.core;
 
 import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.users.Habbo;
+import com.eu.habbo.messages.outgoing.generic.alerts.BubbleAlertComposer;
 
 /**
  * Shared helpers for how RP-plugin commands emit chat. Centralises the
@@ -48,5 +49,19 @@ public final class RpChat {
         } else {
             habbo.whisper(text, RoomChatMessageBubbles.STAFF);
         }
+    }
+
+    /**
+     * Show the target an info-bubble notification — the centered green
+     * exclamation popup Nitro renders for administrative transient alerts.
+     * Only visible to the target; other players in the room see nothing.
+     *
+     * Backed by Arcturus's {@link BubbleAlertComposer} with the
+     * {@code admin.transient} key (auto-dismissing style). Safe no-op when
+     * the target has no active gameclient (offline).
+     */
+    public static void infoBubble(Habbo target, String message) {
+        if (target == null || target.getClient() == null) return;
+        target.getClient().sendResponse(new BubbleAlertComposer("admin.transient", message));
     }
 }

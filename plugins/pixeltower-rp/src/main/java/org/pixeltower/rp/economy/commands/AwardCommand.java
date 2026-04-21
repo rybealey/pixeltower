@@ -123,10 +123,28 @@ public class AwardCommand extends Command {
         staff.whisper("Awarded " + sign + amount + " " + currencyArg + " to " + resolved.username + ".",
                 RoomChatMessageBubbles.ALERT);
         if (resolved.isOnline() && resolved.habboId != staff.getHabboInfo().getId()) {
-            resolved.online.whisper("Staff adjusted your " + currencyArg + " by " + sign + amount + ".",
-                    RoomChatMessageBubbles.ALERT);
+            RpChat.infoBubble(resolved.online,
+                    buildRecipientNotice(currencyArg, amount, staff.getHabboInfo().getUsername()));
         }
         return true;
+    }
+
+    /**
+     * Private notification shown only to the target as a centered info
+     * bubble. Directional verb (received vs deducted, issued vs revoked)
+     * carries the sign; amount is always shown as an absolute value.
+     */
+    private static String buildRecipientNotice(String currency, long amount, String admin) {
+        boolean isBank = "bank".equals(currency);
+        long abs = Math.abs(amount);
+        if (amount > 0) {
+            return isBank
+                    ? admin + " issued $" + abs + " to your bank account."
+                    : admin + " awarded you $" + abs + ".";
+        }
+        return isBank
+                ? admin + " revoked $" + abs + " from your bank account."
+                : admin + " deducted $" + abs + " from you.";
     }
 
     /**
