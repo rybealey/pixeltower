@@ -11,7 +11,7 @@ import org.pixeltower.rp.economy.BankManager;
 import org.pixeltower.rp.economy.InsufficientFundsException;
 
 /**
- * {@code :deposit <amount>} — move cash to bank. 1% fee off the gross
+ * {@code :deposit <amount>} — move coins to bank. 1% fee off the gross
  * is routed to the Bank corp treasury (see {@code rp.bank.fee_rate} /
  * {@code rp.bank.fee_corp_key}).
  *
@@ -57,7 +57,7 @@ public class DepositCommand extends Command {
         try {
             net = BankManager.deposit(habbo, amount, "bank_deposit");
         } catch (InsufficientFundsException e) {
-            habbo.whisper("Not enough cash. Balance: $" + habbo.getHabboInfo().getCredits(),
+            habbo.whisper("Not enough coins. Balance: $" + habbo.getHabboInfo().getCredits(),
                     RoomChatMessageBubbles.ALERT);
             return true;
         } catch (BankAccountNotOpenException e) {

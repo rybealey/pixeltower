@@ -11,7 +11,7 @@ DEST=gamedata/c_images/album1584
 MANIFEST=gamedata/.badges.manifest
 API=https://www.habboassets.com/api/v1/badges
 PAGE_LIMIT=1000
-PARALLEL=24
+PARALLEL=8
 
 mkdir -p "$DEST"
 

@@ -10,7 +10,7 @@ import org.pixeltower.rp.economy.BankManager;
 import org.pixeltower.rp.economy.InsufficientFundsException;
 
 /**
- * {@code :withdraw <amount>} — move bank → cash. No fee in v1 (only
+ * {@code :withdraw <amount>} — move bank → coins. No fee in v1 (only
  * deposits are fee-bearing). Location-gated to ATM rooms (shared
  * {@link AtmGate}).
  *

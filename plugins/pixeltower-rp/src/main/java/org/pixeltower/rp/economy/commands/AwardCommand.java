@@ -5,31 +5,39 @@ import com.eu.habbo.habbohotel.commands.Command;
 import com.eu.habbo.habbohotel.gameclients.GameClient;
 import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.users.Habbo;
-import com.eu.habbo.habbohotel.users.HabboInfo;
-import com.eu.habbo.habbohotel.users.HabboManager;
+import org.pixeltower.rp.core.NoSuchUserException;
+import org.pixeltower.rp.core.NoTargetException;
+import org.pixeltower.rp.core.TargetResolver;
+import org.pixeltower.rp.core.TargetResolver.ResolvedTarget;
 import org.pixeltower.rp.economy.BankAccountNotOpenException;
 import org.pixeltower.rp.economy.BankManager;
 import org.pixeltower.rp.economy.InsufficientFundsException;
 import org.pixeltower.rp.economy.MoneyLedger;
 
 /**
- * {@code :award <user> <currency> <amount>} — staff currency adjustment.
+ * {@code :award <user|x> <currency> <amount>} — staff currency adjustment.
  *
  * Positive amount credits, negative amount debits. Every award writes an
  * {@code rp_money_ledger} row with {@code reason='admin_award_<currency>'}
  * and {@code ref_id=<staff habbo id>} so the audit shows who did it.
  *
- * Supported currencies (v1): {@code cash} (aliases: credits) and
- * {@code bank}. Works on offline users too.
+ * Supported currencies (v1):
+ *   - {@code coins}   — the primary RP dollar, maps to users.credits
+ *   - {@code credits} — silent alias for 'coins' (the DB column name)
+ *   - {@code bank}    — rp_player_bank.balance
+ *
+ * Works on offline users. Passing {@code x} in place of a username
+ * substitutes the caller's current target.
  *
  * Gated by rank — staff only. Threshold tuned via {@code rp.admin.min_rank}
- * in {@code emulator_settings} (default 5). Permission key is
- * {@code cmd_pt_award} but we self-gate on rank inside handle(), so it
- * works without touching the Arcturus {@code permissions} table.
+ * in {@code emulator_settings} (default 5). Self-gate on rank inside
+ * handle(), so it works without touching the Arcturus {@code permissions}
+ * table.
  *
  * Examples:
- *   :award Rye cash 500          → credit 500 to Rye's cash wallet
- *   :award Rye cash -250         → debit 250 from Rye's cash wallet
+ *   :award Rye coins 500         → credit 500 to Rye's coins wallet
+ *   :award Rye coins -250        → debit 250 from Rye's coins wallet
+ *   :award x coins 100           → same, to the clicked/target user
  *   :award Rye bank 10000        → credit 10000 to Rye's bank (opens acct if needed)
  *   :award Rye bank -1000        → debit 1000 from Rye's bank (must exist + have funds)
  */
@@ -50,14 +58,13 @@ public class AwardCommand extends Command {
         }
 
         if (params.length < 4) {
-            staff.whisper("Usage: :award <user> <currency> <amount>", RoomChatMessageBubbles.ALERT);
-            staff.whisper("Currencies: cash, bank. Negative amount deducts.",
+            staff.whisper("Usage: :award <user|x> <currency> <amount>", RoomChatMessageBubbles.ALERT);
+            staff.whisper("Currencies: coins, bank. Negative amount deducts.",
                     RoomChatMessageBubbles.ALERT);
             return true;
         }
 
-        String targetName = params[1];
-        String currency = params[2].toLowerCase();
+        String currencyArg = params[2].toLowerCase();
         long amount;
         try {
             amount = Long.parseLong(params[3]);
@@ -70,45 +77,37 @@ public class AwardCommand extends Command {
             return true;
         }
 
-        int targetId;
-        String targetUsername;
-        Habbo onlineTarget = Emulator.getGameEnvironment().getHabboManager().getHabbo(targetName);
-        if (onlineTarget != null) {
-            targetId = onlineTarget.getHabboInfo().getId();
-            targetUsername = onlineTarget.getHabboInfo().getUsername();
-        } else {
-            HabboInfo offline = HabboManager.getOfflineHabboInfo(targetName);
-            if (offline == null) {
-                staff.whisper("No such player.", RoomChatMessageBubbles.ALERT);
-                return true;
-            }
-            targetId = offline.getId();
-            targetUsername = offline.getUsername();
+        ResolvedTarget resolved;
+        try {
+            resolved = TargetResolver.resolve(staff, params[1]);
+        } catch (NoTargetException | NoSuchUserException e) {
+            staff.whisper(e.getMessage(), RoomChatMessageBubbles.ALERT);
+            return true;
         }
 
         long refId = (long) staff.getHabboInfo().getId();
-        String reason = "admin_award_" + currency;
+        String reason = "admin_award_" + currencyArg;
 
         try {
-            switch (currency) {
-                case "cash":
+            switch (currencyArg) {
+                case "coins":
                 case "credits":
-                    awardCash(onlineTarget, targetId, amount, reason, refId);
+                    awardCoins(resolved, amount, reason, refId);
                     break;
                 case "bank":
-                    BankManager.adminAdjust(targetId, amount, reason, refId);
+                    BankManager.adminAdjust(resolved.habboId, amount, reason, refId);
                     break;
                 default:
-                    staff.whisper("Unknown currency: " + currency + ". Use cash or bank.",
+                    staff.whisper("Unknown currency: " + currencyArg + ". Use coins or bank.",
                             RoomChatMessageBubbles.ALERT);
                     return true;
             }
         } catch (InsufficientFundsException e) {
-            staff.whisper(targetUsername + " doesn't have enough " + currency + " to deduct.",
+            staff.whisper(resolved.username + " doesn't have enough " + currencyArg + " to deduct.",
                     RoomChatMessageBubbles.ALERT);
             return true;
         } catch (BankAccountNotOpenException e) {
-            staff.whisper(targetUsername + " doesn't have a bank account (and delta is negative, so we won't auto-open).",
+            staff.whisper(resolved.username + " doesn't have a bank account (and delta is negative, so we won't auto-open).",
                     RoomChatMessageBubbles.ALERT);
             return true;
         } catch (IllegalArgumentException e) {
@@ -117,29 +116,29 @@ public class AwardCommand extends Command {
         }
 
         String sign = amount > 0 ? "+" : "";
-        staff.whisper("Awarded " + sign + amount + " " + currency + " to " + targetUsername + ".",
+        staff.whisper("Awarded " + sign + amount + " " + currencyArg + " to " + resolved.username + ".",
                 RoomChatMessageBubbles.ALERT);
-        if (onlineTarget != null && onlineTarget.getHabboInfo().getId() != staff.getHabboInfo().getId()) {
-            onlineTarget.whisper("Staff adjusted your " + currency + " by " + sign + amount + ".",
+        if (resolved.isOnline() && resolved.habboId != staff.getHabboInfo().getId()) {
+            resolved.online.whisper("Staff adjusted your " + currencyArg + " by " + sign + amount + ".",
                     RoomChatMessageBubbles.ALERT);
         }
         return true;
     }
 
-    private static void awardCash(Habbo onlineTarget, int targetId, long amount,
-                                  String reason, long refId) throws InsufficientFundsException {
-        if (onlineTarget != null) {
+    private static void awardCoins(ResolvedTarget target, long amount, String reason, long refId)
+            throws InsufficientFundsException {
+        if (target.isOnline()) {
             if (amount > 0) {
-                MoneyLedger.credit(onlineTarget, amount, reason, refId);
+                MoneyLedger.credit(target.online, amount, reason, refId);
             } else {
-                MoneyLedger.debit(onlineTarget, -amount, reason, refId);
+                MoneyLedger.debit(target.online, -amount, reason, refId);
             }
             return;
         }
         if (amount > 0) {
-            MoneyLedger.creditOffline(targetId, amount, reason, refId);
+            MoneyLedger.creditOffline(target.habboId, amount, reason, refId);
         } else {
-            MoneyLedger.debitOffline(targetId, -amount, reason, refId);
+            MoneyLedger.debitOffline(target.habboId, -amount, reason, refId);
         }
     }
 }

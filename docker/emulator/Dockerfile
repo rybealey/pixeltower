@@ -9,7 +9,18 @@ FROM maven:3.9-eclipse-temurin-17 AS emu-build
 WORKDIR /src
 RUN git clone --depth 1 --branch dev \
       https://git.krews.org/morningstar/Arcturus-Community.git arcturus
+# Apply local Arcturus patches (if any). Mirror of the nitro-patches flow in
+# scripts/build-client.sh. Each *.patch under arcturus-patches/ in the repo
+# root is a standard `git apply` diff against the upstream dev branch.
+COPY arcturus-patches /patches
 WORKDIR /src/arcturus
+RUN set -eux; \
+    shopt -s nullglob 2>/dev/null || true; \
+    for p in /patches/*.patch; do \
+      [ -f "$p" ] || continue; \
+      echo "applying $p"; \
+      git apply --whitespace=nowarn "$p"; \
+    done
 RUN mvn -B -DskipTests package
 # Arcturus packages a fat jar under target/; normalize its name
 RUN set -eux; \

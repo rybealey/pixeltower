@@ -14,7 +14,7 @@ import java.util.Optional;
 
 /**
  * The bank's write layer. All state lives in {@code rp_player_bank.balance}
- * (never on {@code users.credits} — that column is exclusively cash-on-hand).
+ * (never on {@code users.credits} — that column is exclusively coins-on-hand).
  *
  * Deposits pay a {@code rp.bank.fee_rate} (default 1%) of gross to the
  * Bank corp's treasury. Withdrawals and bank-to-bank transfers are free
@@ -96,7 +96,7 @@ public final class BankManager {
      *
      * Does NOT touch users.credits — this mints/burns bank balance directly
      * (the "admin award" shape). If you want the full deposit/withdraw
-     * semantics with fees + cash movement, use those APIs instead.
+     * semantics with fees + coin movement, use those APIs instead.
      *
      * @return new bank balance after the adjustment
      * @throws InsufficientFundsException if delta is negative and balance
@@ -146,10 +146,10 @@ public final class BankManager {
         }
     }
 
-    // ──────────── cash ↔ bank operations ────────────
+    // ──────────── coins ↔ bank operations ────────────
 
     /**
-     * Move cash → bank. Takes the configured deposit fee off the gross and
+     * Move coins → bank. Takes the configured deposit fee off the gross and
      * routes it to the Bank corp treasury.
      *
      * @return the amount actually credited to the player's bank (gross - fee)
@@ -165,7 +165,7 @@ public final class BankManager {
         long fee = (long) Math.floor(gross * feeRate);
         long net = gross - fee;
 
-        // Debit cash for the full gross — this writes the player-side
+        // Debit coins for the full gross — this writes the player-side
         // ledger row and syncs HabboInfo + top-bar.
         MoneyLedger.debit(habbo, gross, reason, null);
 
@@ -187,7 +187,7 @@ public final class BankManager {
                 return net;
             } catch (SQLException inner) {
                 conn.rollback();
-                // Refund the cash we just debited — best-effort; if this also
+                // Refund the coins we just debited — best-effort; if this also
                 // throws we log loudly so ops can reconcile manually.
                 try {
                     MoneyLedger.credit(habbo, gross, "bank_deposit_rollback", null);
@@ -206,7 +206,7 @@ public final class BankManager {
     }
 
     /**
-     * Move bank → cash. No fee. Player must have an account and sufficient
+     * Move bank → coins. No fee. Player must have an account and sufficient
      * bank balance.
      *
      * @return new bank balance after withdrawal
@@ -228,9 +228,9 @@ public final class BankManager {
                 long newBankBalance = debitBankInTx(conn, habboId, amount);
                 writePlayerLedger(conn, habboId, -amount, newBankBalance, "bank_withdraw", null);
                 conn.commit();
-                // Cash credit happens outside the tx — the MoneyLedger write
+                // Coin credit happens outside the tx — the MoneyLedger write
                 // has its own transaction; failure here means bank was
-                // debited but cash not credited (we log + continue; the
+                // debited but coins not credited (we log + continue; the
                 // inverse direction of the deposit rollback).
                 MoneyLedger.credit(habbo, amount, reason, null);
                 LOGGER.info("bank_withdraw habbo={} amount={} newBalance={}",
@@ -250,7 +250,7 @@ public final class BankManager {
 
     /**
      * Bank-to-bank transfer. Both parties must have accounts; recipient may
-     * be offline (that's the whole point of bank transfers vs. :give cash).
+     * be offline (that's the whole point of bank transfers vs. :give coins).
      * No fee.
      */
     public static void bankTransfer(int fromHabboId, int toHabboId, long amount, String reason)

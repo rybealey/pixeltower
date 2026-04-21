@@ -7,6 +7,10 @@ import com.eu.habbo.plugin.EventHandler;
 import com.eu.habbo.plugin.EventListener;
 import com.eu.habbo.plugin.HabboPlugin;
 import com.eu.habbo.plugin.events.emulator.EmulatorLoadedEvent;
+import com.eu.habbo.plugin.events.users.UserDisconnectEvent;
+import com.eu.habbo.plugin.events.users.UserProfileCardViewedEvent;
+import org.pixeltower.rp.core.TargetTracker;
+import org.pixeltower.rp.core.commands.TargetCommand;
 import org.pixeltower.rp.economy.commands.AwardCommand;
 import org.pixeltower.rp.economy.commands.BalanceCommand;
 import org.pixeltower.rp.economy.commands.BankCommand;
@@ -101,6 +105,23 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         CommandHandler.addCommand(new WithdrawCommand());
         CommandHandler.addCommand(new TransferCommand());
         CommandHandler.addCommand(new AwardCommand());
+        CommandHandler.addCommand(new TargetCommand());
+    }
+
+    @EventHandler
+    public void onUserProfileCardViewed(UserProfileCardViewedEvent event) {
+        if (event.habbo != null && event.target != null) {
+            TargetTracker.set(
+                    event.habbo.getHabboInfo().getId(),
+                    event.target.getHabboInfo().getId());
+        }
+    }
+
+    @EventHandler
+    public void onUserDisconnect(UserDisconnectEvent event) {
+        if (event.habbo != null) {
+            TargetTracker.clear(event.habbo.getHabboInfo().getId());
+        }
     }
 
     private void scheduleBankInterest() {

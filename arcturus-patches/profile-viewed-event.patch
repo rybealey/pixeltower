@@ -1,0 +1,52 @@
+diff --git a/src/main/java/com/eu/habbo/plugin/events/users/UserProfileCardViewedEvent.java b/src/main/java/com/eu/habbo/plugin/events/users/UserProfileCardViewedEvent.java
+new file mode 100644
+index 0000000..340924b
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/plugin/events/users/UserProfileCardViewedEvent.java
+@@ -0,0 +1,20 @@
++package com.eu.habbo.plugin.events.users;
++
++import com.eu.habbo.habbohotel.users.Habbo;
++
++/**
++ * Fired when a Habbo opens another Habbo's profile card (by clicking their
++ * avatar in a room, by finding them via search, etc.). The {@code habbo}
++ * field on the super-class is the viewer; {@code target} is the profile
++ * subject. Both are non-null — the handler's offline branch does not fire
++ * this event.
++ */
++public class UserProfileCardViewedEvent extends UserEvent {
++
++    public final Habbo target;
++
++    public UserProfileCardViewedEvent(Habbo viewer, Habbo target) {
++        super(viewer);
++        this.target = target;
++    }
++}
+diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/RequestUserProfileEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/RequestUserProfileEvent.java
+index e95b7e7..a514196 100644
+--- a/src/main/java/com/eu/habbo/messages/incoming/users/RequestUserProfileEvent.java
++++ b/src/main/java/com/eu/habbo/messages/incoming/users/RequestUserProfileEvent.java
+@@ -5,6 +5,7 @@ import com.eu.habbo.habbohotel.users.Habbo;
+ import com.eu.habbo.habbohotel.users.HabboManager;
+ import com.eu.habbo.messages.incoming.MessageHandler;
+ import com.eu.habbo.messages.outgoing.users.UserProfileComposer;
++import com.eu.habbo.plugin.events.users.UserProfileCardViewedEvent;
+ 
+ public class RequestUserProfileEvent extends MessageHandler {
+     @Override
+@@ -12,9 +13,11 @@ public class RequestUserProfileEvent extends MessageHandler {
+         int habboId = this.packet.readInt();
+         Habbo habbo = Emulator.getGameEnvironment().getHabboManager().getHabbo(habboId);
+ 
+-        if (habbo != null)
++        if (habbo != null) {
++            Emulator.getPluginManager().fireEvent(new UserProfileCardViewedEvent(this.client.getHabbo(), habbo));
+             this.client.sendResponse(new UserProfileComposer(habbo, this.client));
+-        else
++        } else {
+             this.client.sendResponse(new UserProfileComposer(HabboManager.getOfflineHabboInfo(habboId), this.client));
++        }
+     }
+ }

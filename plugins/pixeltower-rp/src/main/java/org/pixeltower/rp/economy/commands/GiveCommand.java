@@ -1,19 +1,27 @@
 package org.pixeltower.rp.economy.commands;
 
-import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.commands.Command;
 import com.eu.habbo.habbohotel.gameclients.GameClient;
 import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.users.Habbo;
+import org.pixeltower.rp.core.NoSuchUserException;
+import org.pixeltower.rp.core.NoTargetException;
+import org.pixeltower.rp.core.TargetResolver;
+import org.pixeltower.rp.core.TargetResolver.ResolvedTarget;
 import org.pixeltower.rp.economy.InsufficientFundsException;
 import org.pixeltower.rp.economy.MoneyLedger;
 
 /**
- * {@code :give <username> <amount>} — transfer credits from the caller to
- * another online player. Online-only by design; offline transfer is not a
- * Tier 1 feature and would require different UX (escrow vs. immediate).
+ * {@code :give <username|x> <amount>} — transfer coins (cash-on-hand) from
+ * the caller to another online player. Online-only by design; offline
+ * transfer is not a Tier 1 feature and would require different UX
+ * (escrow vs. immediate).
  *
- * Example in-game: {@code :give alice 500}
+ * Passing {@code x} as the username substitutes the caller's current
+ * target (the last user whose profile card they opened, or whoever
+ * they set via {@code :target}).
+ *
+ * Example in-game: {@code :give alice 500}  or  click alice then {@code :give x 500}
  */
 public class GiveCommand extends Command {
 
@@ -25,13 +33,11 @@ public class GiveCommand extends Command {
     public boolean handle(GameClient gameClient, String[] params) {
         Habbo sender = gameClient.getHabbo();
 
-        // params[0] is the command alias itself; args start at [1]
         if (params.length < 3) {
-            sender.whisper("Usage: :give <username> <amount>", RoomChatMessageBubbles.ALERT);
+            sender.whisper("Usage: :give <username|x> <amount>", RoomChatMessageBubbles.ALERT);
             return true;
         }
 
-        String targetName = params[1];
         long amount;
         try {
             amount = Long.parseLong(params[2]);
@@ -45,21 +51,29 @@ public class GiveCommand extends Command {
             return true;
         }
 
-        Habbo target = Emulator.getGameEnvironment().getHabboManager().getHabbo(targetName);
-        if (target == null) {
-            sender.whisper("That player is offline or doesn't exist. :give is online-only.",
+        ResolvedTarget resolved;
+        try {
+            resolved = TargetResolver.resolve(sender, params[1]);
+        } catch (NoTargetException | NoSuchUserException e) {
+            sender.whisper(e.getMessage(), RoomChatMessageBubbles.ALERT);
+            return true;
+        }
+
+        if (!resolved.isOnline()) {
+            sender.whisper("That player is offline. :give is online-only.",
                     RoomChatMessageBubbles.ALERT);
             return true;
         }
-        if (target.getHabboInfo().getId() == sender.getHabboInfo().getId()) {
+        if (resolved.habboId == sender.getHabboInfo().getId()) {
             sender.whisper("You can't give yourself money.", RoomChatMessageBubbles.ALERT);
             return true;
         }
 
+        Habbo target = resolved.online;
         try {
             MoneyLedger.transfer(sender, target, amount, "give", null);
         } catch (InsufficientFundsException e) {
-            sender.whisper("Not enough money. Balance: $" + sender.getHabboInfo().getCredits(),
+            sender.whisper("Not enough coins. Balance: $" + sender.getHabboInfo().getCredits(),
                     RoomChatMessageBubbles.ALERT);
             return true;
         } catch (IllegalArgumentException e) {
@@ -68,7 +82,7 @@ public class GiveCommand extends Command {
         }
 
         sender.whisper(
-                "Sent $" + amount + " to " + target.getHabboInfo().getUsername() + ".",
+                "Sent $" + amount + " to " + resolved.username + ".",
                 RoomChatMessageBubbles.ALERT
         );
         target.whisper(
