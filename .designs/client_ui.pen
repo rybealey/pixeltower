@@ -56,24 +56,14 @@
               "name": "avatarWrap",
               "width": 120,
               "height": 120,
-              "fill": "#FFD028",
+              "fill": "#0A1424",
               "cornerRadius": 3,
               "stroke": {
                 "align": "outside",
                 "thickness": 2,
                 "fill": "#0A1424"
               },
-              "effect": {
-                "type": "shadow",
-                "shadowType": "outer",
-                "color": "#FFF4B0",
-                "offset": {
-                  "x": 0,
-                  "y": 1
-                }
-              },
               "layout": "vertical",
-              "padding": 3,
               "children": [
                 {
                   "type": "frame",
@@ -122,7 +112,7 @@
                       "width": "fill_container",
                       "content": "AVATAR",
                       "textAlign": "center",
-                      "fontFamily": "Inter",
+                      "fontFamily": "Ubuntu Condensed",
                       "fontSize": 9,
                       "fontWeight": "900",
                       "letterSpacing": 1.8
@@ -146,7 +136,7 @@
                           "name": "usernameText",
                           "fill": "#FFFFFF",
                           "content": "Peggy",
-                          "fontFamily": "Inter",
+                          "fontFamily": "Ubuntu Condensed",
                           "fontSize": 16,
                           "fontWeight": "900"
                         }
@@ -237,7 +227,7 @@
                       "width": "fill_container",
                       "content": "170/170",
                       "textAlign": "center",
-                      "fontFamily": "Inter",
+                      "fontFamily": "Ubuntu Condensed",
                       "fontSize": 16,
                       "fontWeight": "900"
                     }
@@ -316,7 +306,7 @@
                       "width": "fill_container",
                       "content": "150/150",
                       "textAlign": "center",
-                      "fontFamily": "Inter",
+                      "fontFamily": "Ubuntu Condensed",
                       "fontSize": 16,
                       "fontWeight": "900"
                     }
@@ -701,7 +691,7 @@
                           "width": "fill_container",
                           "content": "155/155",
                           "textAlign": "center",
-                          "fontFamily": "Inter",
+                          "fontFamily": "Ubuntu Condensed",
                           "fontSize": 16,
                           "fontWeight": "900"
                         },
@@ -780,7 +770,7 @@
                           "width": "fill_container",
                           "content": "135/135",
                           "textAlign": "center",
-                          "fontFamily": "Inter",
+                          "fontFamily": "Ubuntu Condensed",
                           "fontSize": 16,
                           "fontWeight": "900"
                         },
@@ -816,24 +806,14 @@
                   "name": "tAvatarWrap",
                   "width": 120,
                   "height": 120,
-                  "fill": "#FFD028",
+                  "fill": "#0A1424",
                   "cornerRadius": 3,
                   "stroke": {
                     "align": "outside",
                     "thickness": 2,
                     "fill": "#0A1424"
                   },
-                  "effect": {
-                    "type": "shadow",
-                    "shadowType": "outer",
-                    "color": "#FFF4B0",
-                    "offset": {
-                      "x": 0,
-                      "y": 1
-                    }
-                  },
                   "layout": "vertical",
-                  "padding": 3,
                   "children": [
                     {
                       "type": "frame",
@@ -882,7 +862,7 @@
                           "width": "fill_container",
                           "content": "AVATAR",
                           "textAlign": "center",
-                          "fontFamily": "Inter",
+                          "fontFamily": "Ubuntu Condensed",
                           "fontSize": 10,
                           "fontWeight": "900",
                           "letterSpacing": 1.5
@@ -906,7 +886,7 @@
                               "name": "tUsernameText",
                               "fill": "#FFFFFF",
                               "content": "mae",
-                              "fontFamily": "Inter",
+                              "fontFamily": "Ubuntu Condensed",
                               "fontSize": 16,
                               "fontWeight": "900"
                             }
@@ -1077,7 +1057,7 @@
                       "name": "vipBadgeText",
                       "fill": "#2A1A00",
                       "content": "VIP",
-                      "fontFamily": "Inter",
+                      "fontFamily": "Ubuntu Condensed",
                       "fontSize": 11,
                       "fontWeight": "900",
                       "letterSpacing": 0.5
@@ -1090,7 +1070,7 @@
                   "name": "vipDays",
                   "fill": "#FFFFFF",
                   "content": "6 d.",
-                  "fontFamily": "Inter",
+                  "fontFamily": "Ubuntu Condensed",
                   "fontSize": 13,
                   "fontWeight": "900"
                 }
@@ -1144,7 +1124,7 @@
                   "name": "helpIcon",
                   "width": 20,
                   "height": 20,
-                  "iconFontName": "message-square",
+                  "iconFontName": "messages-square",
                   "iconFontFamily": "lucide",
                   "fill": "#FFFFFF"
                 }
@@ -1267,7 +1247,7 @@
               "name": "coinText",
               "fill": "#FFFFFF",
               "content": "0",
-              "fontFamily": "Inter",
+              "fontFamily": "Ubuntu Condensed",
               "fontSize": 16,
               "fontWeight": "900"
             }
@@ -1334,27 +1314,13 @@
               "name": "diaText",
               "fill": "#FFFFFF",
               "content": "0",
-              "fontFamily": "Inter",
+              "fontFamily": "Ubuntu Condensed",
               "fontSize": 16,
               "fontWeight": "900"
             }
           ]
         }
       ]
-    },
-    {
-      "type": "rectangle",
-      "id": "XHTMT",
-      "x": -383,
-      "y": -78,
-      "fill": {
-        "type": "image",
-        "enabled": true,
-        "url": "Screenshot 2026-04-21 at 6.41.54 AM.png",
-        "mode": "fill"
-      },
-      "width": 244,
-      "height": 742
     },
     {
       "type": "frame",
@@ -1726,6 +1692,359 @@
               "iconFontName": "chevron-right",
               "iconFontFamily": "lucide",
               "fill": "#FFFFFF"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "rectangle",
+      "id": "sqLPJ",
+      "x": -803,
+      "y": -336,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "Screenshot 2026-04-22 at 1.40.38 PM.png",
+        "mode": "fill"
+      },
+      "width": 2586,
+      "height": 126
+    },
+    {
+      "type": "frame",
+      "id": "Y6gyQ",
+      "x": 250,
+      "y": 180,
+      "name": "Toolbar HUD",
+      "width": 800,
+      "height": 60,
+      "fill": "#3E4E6E80",
+      "cornerRadius": 3,
+      "stroke": {
+        "align": "outside",
+        "thickness": 2,
+        "fill": "#0A1424"
+      },
+      "effect": [
+        {
+          "type": "background_blur",
+          "radius": 8
+        },
+        {
+          "type": "shadow",
+          "shadowType": "outer",
+          "color": "#00000070",
+          "offset": {
+            "x": 0,
+            "y": 3
+          }
+        },
+        {
+          "type": "shadow",
+          "shadowType": "outer",
+          "color": "#7A95B8",
+          "offset": {
+            "x": 0,
+            "y": 2
+          }
+        }
+      ],
+      "gap": 8,
+      "padding": [
+        8,
+        12
+      ],
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "W0BVS",
+          "name": "leftGroup",
+          "width": "fill_container",
+          "height": "fill_container",
+          "fill": "#00000000",
+          "gap": 8,
+          "justifyContent": "end",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "n6sgA",
+              "name": "navBtn",
+              "width": 40,
+              "height": 40,
+              "fill": {
+                "type": "gradient",
+                "gradientType": "linear",
+                "enabled": true,
+                "rotation": 180,
+                "size": {
+                  "height": 1
+                },
+                "colors": [
+                  {
+                    "color": "#5E7FA3",
+                    "position": 0
+                  },
+                  {
+                    "color": "#5E7FA3",
+                    "position": 0.5
+                  },
+                  {
+                    "color": "#2B3A54",
+                    "position": 0.5
+                  },
+                  {
+                    "color": "#2B3A54",
+                    "position": 1
+                  }
+                ]
+              },
+              "cornerRadius": 3,
+              "stroke": {
+                "align": "outside",
+                "thickness": 2,
+                "fill": "#0A1424"
+              },
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#9AB4D3",
+                "offset": {
+                  "x": 0,
+                  "y": 1
+                }
+              },
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "Dwezg",
+                  "name": "navIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "compass",
+                  "iconFontFamily": "lucide",
+                  "fill": "#FFFFFF"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "PneIt",
+              "name": "modBtn",
+              "width": 40,
+              "height": 40,
+              "fill": {
+                "type": "gradient",
+                "gradientType": "linear",
+                "enabled": true,
+                "rotation": 180,
+                "size": {
+                  "height": 1
+                },
+                "colors": [
+                  {
+                    "color": "#5E7FA3",
+                    "position": 0
+                  },
+                  {
+                    "color": "#5E7FA3",
+                    "position": 0.5
+                  },
+                  {
+                    "color": "#2B3A54",
+                    "position": 0.5
+                  },
+                  {
+                    "color": "#2B3A54",
+                    "position": 1
+                  }
+                ]
+              },
+              "cornerRadius": 3,
+              "stroke": {
+                "align": "outside",
+                "thickness": 2,
+                "fill": "#0A1424"
+              },
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#9AB4D3",
+                "offset": {
+                  "x": 0,
+                  "y": 1
+                }
+              },
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "6599y",
+                  "name": "modIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "shield-alert",
+                  "iconFontFamily": "lucide",
+                  "fill": "#FFFFFF"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "WzNWK",
+          "name": "chatField",
+          "width": 420,
+          "height": 40,
+          "fill": {
+            "type": "gradient",
+            "gradientType": "linear",
+            "enabled": true,
+            "rotation": 180,
+            "size": {
+              "height": 1
+            },
+            "colors": [
+              {
+                "color": "#1A2436",
+                "position": 0
+              },
+              {
+                "color": "#1A2436",
+                "position": 0.5
+              },
+              {
+                "color": "#2B3A54",
+                "position": 0.5
+              },
+              {
+                "color": "#2B3A54",
+                "position": 1
+              }
+            ]
+          },
+          "cornerRadius": 3,
+          "stroke": {
+            "align": "outside",
+            "thickness": 2,
+            "fill": "#0A1424"
+          },
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "color": "#00000080",
+            "offset": {
+              "x": 0,
+              "y": 1
+            }
+          },
+          "gap": 8,
+          "padding": [
+            8,
+            12
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon_font",
+              "id": "X8QVe",
+              "name": "chatIcon",
+              "width": 16,
+              "height": 16,
+              "iconFontName": "message-square",
+              "iconFontFamily": "lucide",
+              "fill": "#7A95B8"
+            },
+            {
+              "type": "text",
+              "id": "UGH5W",
+              "name": "chatPlaceholder",
+              "fill": "#9FB3CC",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Say something…",
+              "fontFamily": "Ubuntu Condensed",
+              "fontSize": 14,
+              "fontWeight": "700"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "5rdYe",
+          "name": "rightGroup",
+          "width": "fill_container",
+          "height": "fill_container",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "ptKjM",
+              "name": "phoneBtn",
+              "width": 40,
+              "height": 40,
+              "fill": {
+                "type": "gradient",
+                "gradientType": "linear",
+                "enabled": true,
+                "rotation": 180,
+                "size": {
+                  "height": 1
+                },
+                "colors": [
+                  {
+                    "color": "#5E7FA3",
+                    "position": 0
+                  },
+                  {
+                    "color": "#5E7FA3",
+                    "position": 0.5
+                  },
+                  {
+                    "color": "#2B3A54",
+                    "position": 0.5
+                  },
+                  {
+                    "color": "#2B3A54",
+                    "position": 1
+                  }
+                ]
+              },
+              "cornerRadius": 3,
+              "stroke": {
+                "align": "outside",
+                "thickness": 2,
+                "fill": "#0A1424"
+              },
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#9AB4D3",
+                "offset": {
+                  "x": 0,
+                  "y": 1
+                }
+              },
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon_font",
+                  "id": "jPpCG",
+                  "name": "phoneIcon",
+                  "width": 20,
+                  "height": 20,
+                  "iconFontName": "smartphone",
+                  "iconFontFamily": "lucide",
+                  "fill": "#FFFFFF"
+                }
+              ]
             }
           ]
         }

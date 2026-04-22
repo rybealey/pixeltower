@@ -252,22 +252,45 @@ index 0000000..53fffee
 +{
 +    GetConnection()?.registerMessages(new PixeltowerMessages());
 +}
+diff --git a/src/common/draggable-window/DraggableWindow.tsx b/src/common/draggable-window/DraggableWindow.tsx
+index 286d51d..8fbd840 100644
+--- a/src/common/draggable-window/DraggableWindow.tsx
++++ b/src/common/draggable-window/DraggableWindow.tsx
+@@ -33,7 +33,11 @@ export const DraggableWindow: FC<DraggableWindowProps> = props =>
+ 
+     const bringToTop = useCallback(() =>
+     {
+-        let zIndex = 400;
++        // Start above the pixeltower HUD tier (canvas z:1000, HUDs z:1100)
++        // so draggable windows — Mod Tools, Navigator, Catalog, etc. — are
++        // never occluded by StatsHUD / StatusHUD / TargetHUD / DrawerHUD /
++        // ToolbarHUD. Upstream default was 400, which sat below the canvas.
++        let zIndex = 1200;
+ 
+         for(const existingWindow of CURRENT_WINDOWS)
+         {
 diff --git a/src/components/index.scss b/src/components/index.scss
-index 8e1cd2b..7704986 100644
+index 8e1cd2b..d27f012 100644
 --- a/src/components/index.scss
 +++ b/src/components/index.scss
-@@ -17,6 +17,9 @@
+@@ -17,10 +17,14 @@
  @import './navigator/NavigatorView';
  @import './nitropedia/NitropediaView';
  @import './notification-center/NotificationCenterView';
 +@import './pixeltower/StatsHUD';
 +@import './pixeltower/StatusHUD';
 +@import './pixeltower/DrawerHUD';
++@import './pixeltower/ToolbarHUD';
++@import './pixeltower/app-overrides';
  @import './purse/PurseView';
  @import './right-side/RightSideView';
  @import './room/RoomView';
+-@import './toolbar/ToolbarView';
+ @import './user-profile/UserProfileVew';
+ @import './wired/WiredView';
+ @import './game-center/GameCenterView.scss';
 diff --git a/src/components/main/MainView.tsx b/src/components/main/MainView.tsx
-index da7003d..ac236ed 100644
+index da7003d..708c943 100644
 --- a/src/components/main/MainView.tsx
 +++ b/src/components/main/MainView.tsx
 @@ -1,9 +1,8 @@
@@ -281,7 +304,7 @@ index da7003d..ac236ed 100644
  import { AvatarEditorView } from '../avatar-editor/AvatarEditorView';
  import { CameraWidgetView } from '../camera/CameraWidgetView';
  import { CampaignView } from '../campaign/CampaignView';
-@@ -16,10 +15,13 @@ import { GroupsView } from '../groups/GroupsView';
+@@ -16,14 +15,17 @@ import { GroupsView } from '../groups/GroupsView';
  import { GuideToolView } from '../guide-tool/GuideToolView';
  import { HcCenterView } from '../hc-center/HcCenterView';
  import { HelpView } from '../help/HelpView';
@@ -293,19 +316,28 @@ index da7003d..ac236ed 100644
 +import { StatsHUD } from '../pixeltower/StatsHUD';
 +import { StatusHUD } from '../pixeltower/StatusHUD';
 +import { TargetHUD } from '../pixeltower/TargetHUD';
++import { ToolbarHUD } from '../pixeltower/ToolbarHUD';
  import { NitropediaView } from '../nitropedia/NitropediaView';
  import { RightSideView } from '../right-side/RightSideView';
  import { RoomView } from '../room/RoomView';
-@@ -81,16 +83,19 @@ export const MainView: FC<{}> = props =>
+-import { ToolbarView } from '../toolbar/ToolbarView';
+ import { UserProfileView } from '../user-profile/UserProfileView';
+ import { UserSettingsView } from '../user-settings/UserSettingsView';
+ import { WiredView } from '../wired/WiredView';
+@@ -81,16 +83,22 @@ export const MainView: FC<{}> = props =>
  
      return (
          <Base fit>
 -            <TransitionAnimation type={ TransitionAnimationTypes.FADE_IN } inProp={ landingViewVisible } timeout={ 300 }>
 -                <HotelView />
 -            </TransitionAnimation>
+-            <ToolbarView isInRoom={ !landingViewVisible } />
 +            { /* HotelView intentionally removed — pixeltower pins users to a room on login
 +                 (see PixeltowerRP.onUserLogin), so the hotel-view lobby is never exposed. */ }
-             <ToolbarView isInRoom={ !landingViewVisible } />
++            { /* Upstream ToolbarView replaced by the pixeltower chat+phone HUD
++                 (.designs/client_ui.pen frame Y6gyQ). ToolbarView.tsx is left on
++                 disk for reference; it is no longer rendered. */ }
++            <ToolbarHUD />
 +            <StatsHUD />
 +            <StatusHUD />
 +            <TargetHUD />
@@ -343,10 +375,10 @@ index b22a2f6..9d9ee64 100644
      }
 diff --git a/src/components/pixeltower/DrawerHUD.scss b/src/components/pixeltower/DrawerHUD.scss
 new file mode 100644
-index 0000000..30fd451
+index 0000000..cba53ef
 --- /dev/null
 +++ b/src/components/pixeltower/DrawerHUD.scss
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,99 @@
 +@use './tokens' as *;
 +
 +// Left-edge collapsible drawer — matches .designs/client_ui.pen frame
@@ -359,7 +391,8 @@ index 0000000..30fd451
 +    top: 50%;
 +    left: 0;
 +    transform: translateY(-50%);
-+    z-index: 3;
++    // Above Nitro's global `canvas { z-index: 1000 }`.
++    z-index: 1100;
 +
 +    display: flex;
 +    flex-direction: row;
@@ -507,10 +540,10 @@ index 0000000..7a6d30c
 +}
 diff --git a/src/components/pixeltower/StatsHUD.scss b/src/components/pixeltower/StatsHUD.scss
 new file mode 100644
-index 0000000..7d40ac2
+index 0000000..145802e
 --- /dev/null
 +++ b/src/components/pixeltower/StatsHUD.scss
-@@ -0,0 +1,210 @@
+@@ -0,0 +1,211 @@
 +@use './tokens' as *;
 +
 +// Player HUD + Target HUD styles.
@@ -523,14 +556,15 @@ index 0000000..7d40ac2
 +    position: absolute;
 +    top: 12px;
 +    left: 12px;
-+    z-index: 3;
++    // Above Nitro's global `canvas { z-index: 1000 }`.
++    z-index: 1100;
 +
 +    @include pt-panel;
 +    width: 280px;
 +    padding: 6px;
 +
 +    color: $pt-text;
-+    font-family: Inter, Ubuntu, sans-serif;
++    font-family: $pt-font-family;
 +    pointer-events: none;
 +    user-select: none;
 +
@@ -686,7 +720,7 @@ index 0000000..7d40ac2
 +        text-align: center;
 +    }
 +
-+    // ──────────── wanted stars (5 slots) ────────────
++    // ──────────── wanted flags (5 slots) ────────────
 +
 +    &__wanted {
 +        display: flex;
@@ -695,7 +729,7 @@ index 0000000..7d40ac2
 +        padding: 0 2px;
 +    }
 +
-+    &__wanted-star {
++    &__wanted-flag {
 +        width: 14px;
 +        height: 14px;
 +        color: $pt-wanted-inactive;
@@ -703,7 +737,7 @@ index 0000000..7d40ac2
 +        flex-shrink: 0;
 +    }
 +
-+    &__wanted-star--active {
++    &__wanted-flag--active {
 +        color: $pt-wanted-active;
 +        filter: drop-shadow(0 0 2px rgba(255, 244, 176, 0.65));
 +    }
@@ -723,12 +757,12 @@ index 0000000..7d40ac2
 +}
 diff --git a/src/components/pixeltower/StatsHUD.tsx b/src/components/pixeltower/StatsHUD.tsx
 new file mode 100644
-index 0000000..3cc1538
+index 0000000..f297835
 --- /dev/null
 +++ b/src/components/pixeltower/StatsHUD.tsx
 @@ -0,0 +1,69 @@
 +import { FC } from 'react';
-+import { LuHeart, LuStar, LuZap } from 'react-icons/lu';
++import { LuFlag, LuHeart, LuZap } from 'react-icons/lu';
 +import { GetSessionDataManager } from '../../api';
 +import { LayoutAvatarImageView } from '../../common';
 +import { useSessionInfo, useStats } from '../../hooks';
@@ -786,9 +820,9 @@ index 0000000..3cc1538
 +                    </div>
 +                    <div className="pixeltower-stats-hud__wanted">
 +                        { Array.from({ length: WANTED_SLOT_COUNT }).map((_, i) => (
-+                            <LuStar
++                            <LuFlag
 +                                key={ i }
-+                                className={ 'pixeltower-stats-hud__wanted-star' + (i < wantedLevel ? ' pixeltower-stats-hud__wanted-star--active' : '') } />
++                                className={ 'pixeltower-stats-hud__wanted-flag' + (i < wantedLevel ? ' pixeltower-stats-hud__wanted-flag--active' : '') } />
 +                        )) }
 +                    </div>
 +                </div>
@@ -798,10 +832,10 @@ index 0000000..3cc1538
 +}
 diff --git a/src/components/pixeltower/StatusHUD.scss b/src/components/pixeltower/StatusHUD.scss
 new file mode 100644
-index 0000000..1804f2c
+index 0000000..d0c6d5b
 --- /dev/null
 +++ b/src/components/pixeltower/StatusHUD.scss
-@@ -0,0 +1,124 @@
+@@ -0,0 +1,125 @@
 +@use './tokens' as *;
 +
 +// Top-right Status HUD — matches .designs/client_ui.pen frame KVhc5.
@@ -814,7 +848,8 @@ index 0000000..1804f2c
 +    position: absolute;
 +    top: 12px;
 +    right: 12px;
-+    z-index: 3;
++    // Above Nitro's global `canvas { z-index: 1000 }`.
++    z-index: 1100;
 +
 +    @include pt-panel;
 +    width: fit-content;
@@ -825,7 +860,7 @@ index 0000000..1804f2c
 +    gap: 4px;
 +
 +    color: $pt-text;
-+    font-family: Inter, Ubuntu, sans-serif;
++    font-family: $pt-font-family;
 +    user-select: none;
 +    pointer-events: auto;
 +
@@ -1054,12 +1089,315 @@ index 0000000..5acbbdb
 +        </div>
 +    );
 +}
+diff --git a/src/components/pixeltower/ToolbarHUD.scss b/src/components/pixeltower/ToolbarHUD.scss
+new file mode 100644
+index 0000000..d6e75ad
+--- /dev/null
++++ b/src/components/pixeltower/ToolbarHUD.scss
+@@ -0,0 +1,187 @@
++@use './tokens' as *;
++
++// Bottom-center toolbar — matches .designs/client_ui.pen frame Y6gyQ.
++// Replaces upstream .nitro-toolbar entirely. Hosts the
++// #toolbar-chat-input-container portal target that ChatInputView
++// writes into.
++
++$pt-toolbar-chat-top:    #1A2436;                   // pressed-look (darker on top)
++$pt-toolbar-chat-bottom: #2B3A54;
++$pt-toolbar-chat-icon:   #7A95B8;
++$pt-toolbar-chat-placeholder: #9FB3CC;
++
++.pixeltower-toolbar-hud {
++    position: fixed;
++    bottom: 12px;
++    left: 50%;
++    transform: translateX(-50%);
++    // Above Nitro's global `canvas { z-index: 1000 }` so the HUD isn't
++    // occluded the moment RoomView un-hides. All pixeltower HUDs share
++    // this tier.
++    z-index: 1100;
++
++    display: flex;
++    flex-direction: row;
++    align-items: center;
++    gap: 8px;
++    width: 800px;
++    max-width: calc(100vw - 24px);
++    height: 60px;
++    padding: 8px 12px;
++
++    @include pt-panel;
++    border-radius: 3px;                              // design spec: tighter than default 7px
++
++    &__left-group {
++        // Staff-only buttons (Navigator, Mod Tools) live here; non-staff
++        // render nothing. The group still flexes to fill remaining space
++        // and right-aligns its contents so buttons sit immediately before
++        // the chatfield (mirrors `.pen` Y6gyQ > W0BVS justifyContent:end).
++        flex: 1 1 auto;
++        display: flex;
++        flex-direction: row;
++        align-items: center;
++        justify-content: flex-end;
++        gap: 8px;
++        align-self: stretch;
++    }
++
++    &__chat-field {
++        display: flex;
++        flex-direction: row;
++        align-items: center;
++        gap: 8px;
++        width: 420px;
++        max-width: 60%;
++        height: 40px;
++        padding: 8px 12px;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 2px;
++        // inverse-bevel: darker top, lighter bottom = pressed/inset field
++        background: linear-gradient(180deg,
++            $pt-toolbar-chat-top 0%, $pt-toolbar-chat-top 50%,
++            $pt-toolbar-chat-bottom 50%, $pt-toolbar-chat-bottom 100%);
++        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
++
++        > svg {
++            width: 16px;
++            height: 16px;
++            flex: 0 0 auto;
++            color: $pt-toolbar-chat-icon;
++        }
++    }
++
++    &__chat-input-slot {
++        flex: 1 1 auto;
++        min-width: 0;
++        display: flex;
++        align-items: center;
++
++        // Placeholder visible only before ChatInputView portals its
++        // DOM into this slot (first frame on mount).
++        &:empty::before {
++            content: 'Say something…';
++            font-family: $pt-font-family;
++            font-size: 14px;
++            font-weight: 700;
++            color: $pt-toolbar-chat-placeholder;
++        }
++
++        // Neutralise the upstream chat-input pill (#EDEDED body, black
++        // border, 8px radius, ::before highlight, overflow:hidden).
++        // Every descendant rule is nested inside this block so the
++        // compiled selector chain is 3 classes deep (specificity 0,3,_)
++        // — upstream's `.nitro-chat-input-container .input-sizer`
++        // (0,2,0) would otherwise win the cascade on offset, silently
++        // reinstating `display: inline-grid` + `padding: 0 10px` and
++        // shoving the placeholder right.
++        .nitro-chat-input-container {
++            flex: 1 1 auto;
++            display: flex;
++            align-items: center;
++            gap: 8px;
++            width: 100%;
++            max-width: 100%;
++            padding: 0;
++            background: transparent;
++            border: 0;
++            border-radius: 0;
++            box-shadow: none;
++            overflow: visible;
++
++            &::before { display: none; }
++
++            // Upstream: display:inline-grid + padding:0 10px. Replace
++            // with flex fill so the placeholder anchors left, right
++            // after the chat-bubble icon.
++            .input-sizer {
++                flex: 1 1 auto;
++                min-width: 0;
++                padding: 0;
++                background: transparent;
++                display: flex;
++                align-items: center;
++
++                &::after { display: none; }
++            }
++
++            .chat-input,
++            input.chat-input {
++                width: 100%;
++                background: transparent;
++                border: 0;
++                outline: none;
++                color: $pt-text;
++                font-family: $pt-font-family;
++                font-size: 14px;
++                font-weight: 700;
++                text-align: left;
++
++                &::placeholder { color: $pt-toolbar-chat-placeholder; }
++            }
++
++            // ChatInputStyleSelectorView's trigger icon sits inline;
++            // the pixeltower design doesn't surface chat-style
++            // customisation, so hide the trigger entirely.
++            .chatstyles-icon { display: none; }
++        }
++    }
++
++    &__right-group {
++        // Mirrors the `&__left-group` so the 420px chatfield sits
++        // horizontally centred in the 800px toolbar. The phone button
++        // is left-aligned inside this group, landing immediately after
++        // the chatfield (with the root `gap: 8px`).
++        flex: 1 1 auto;
++        display: flex;
++        align-items: center;
++        height: 100%;
++    }
++
++    // Shared styling for every toolbar icon button (Navigator, Mod Tools,
++    // Phone) — all three share the same 40×40 raised 2D-bevel per
++    // .pen frame Y6gyQ (n6sgA/PneIt/ptKjM).
++    &__icon-btn {
++        @include pt-chip;                           // raised 50/50 bevel from tokens
++        width: 40px;
++        height: 40px;
++        padding: 0;
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        color: $pt-text;
++        cursor: pointer;
++        box-shadow: 0 1px 0 $pt-panel-shadow-rim;    // periwinkle underglow
++        font-family: inherit;
++        transition: filter 150ms ease, transform 80ms ease, box-shadow 80ms ease;
++
++        svg { width: 20px; height: 20px; }
++
++        &:hover { filter: brightness(1.12); }
++
++        &:active {
++            transform: translateY(1px);
++            box-shadow: none;
++        }
++    }
++}
+diff --git a/src/components/pixeltower/ToolbarHUD.tsx b/src/components/pixeltower/ToolbarHUD.tsx
+new file mode 100644
+index 0000000..29f102f
+--- /dev/null
++++ b/src/components/pixeltower/ToolbarHUD.tsx
+@@ -0,0 +1,72 @@
++import { FC } from 'react';
++import { LuCompass, LuMessageSquare, LuShieldAlert, LuSmartphone } from 'react-icons/lu';
++import { CreateLinkEvent, GetSessionDataManager } from '../../api';
++
++// Bottom-center toolbar replacing upstream ToolbarView. Matches
++// .designs/client_ui.pen frame Y6gyQ:
++//   left-group (staff only)  — Navigator + Mod Tools
++//   chatField                — hosts the #toolbar-chat-input-container
++//                              portal target used by ChatInputView
++//   right-group              — phone button, toggles the friends list
++//
++// Staff gate mirrors upstream ToolbarView: GetSessionDataManager().
++// isModerator is populated from the server's SecureLoginOK payload, so
++// it's stable for the session. Non-staff render an empty left-group,
++// which still occupies the flex slot so the chatfield stays centred.
++//
++// Also carries a hidden #toolbar-friend-bar-container portal target —
++// FriendsView portals FriendBarView into it unconditionally, so the
++// slot must exist in the DOM even though the pixeltower design
++// doesn't surface the online-friends pill. Removing it triggers
++// React error #200 ("Target container is not a DOM element") the
++// first time FriendsView renders, which unmounts MainView.
++//
++// Shop and inventory will be re-introduced as bespoke pixeltower UI
++// in a later pass — intentionally absent here.
++
++export const ToolbarHUD: FC<{}> = () =>
++{
++    const isMod = GetSessionDataManager().isModerator;
++
++    return (
++        <div className="pixeltower-toolbar-hud">
++            <div className="pixeltower-toolbar-hud__left-group">
++                { isMod && (
++                    <button
++                        type="button"
++                        className="pixeltower-toolbar-hud__icon-btn"
++                        aria-label="Navigator"
++                        title="Navigator"
++                        onClick={ () => CreateLinkEvent('navigator/toggle') }>
++                        <LuCompass />
++                    </button>
++                ) }
++                { isMod && (
++                    <button
++                        type="button"
++                        className="pixeltower-toolbar-hud__icon-btn"
++                        aria-label="Mod tools"
++                        title="Mod tools"
++                        onClick={ () => CreateLinkEvent('mod-tools/toggle') }>
++                        <LuShieldAlert />
++                    </button>
++                ) }
++            </div>
++            <div className="pixeltower-toolbar-hud__chat-field">
++                <LuMessageSquare />
++                <div id="toolbar-chat-input-container" className="pixeltower-toolbar-hud__chat-input-slot" />
++            </div>
++            <div className="pixeltower-toolbar-hud__right-group">
++                <button
++                    type="button"
++                    className="pixeltower-toolbar-hud__icon-btn"
++                    aria-label="Friends list"
++                    title="Friends"
++                    onClick={ () => CreateLinkEvent('friends/toggle') }>
++                    <LuSmartphone />
++                </button>
++            </div>
++            <div id="toolbar-friend-bar-container" style={ { display: 'none' } } />
++        </div>
++    );
++}
+diff --git a/src/components/pixeltower/_app-overrides.scss b/src/components/pixeltower/_app-overrides.scss
+new file mode 100644
+index 0000000..1133e31
+--- /dev/null
++++ b/src/components/pixeltower/_app-overrides.scss
+@@ -0,0 +1,26 @@
++@use './tokens' as *;
++
++// Nitro's Bootstrap fork sets $body-bg: $black (see
++// assets/styles/bootstrap/_variables.scss), and upstream relied on
++// HotelView painting a full-viewport background over that black until
++// a room loaded. Pixeltower removes HotelView (users are pinned to a
++// room on login), so the black body shows through whenever the PIXI
++// canvas hasn't painted room pixels yet — both on first mount and for
++// a few frames during every room swap. Paint a slate-blue fallback
++// that matches the HUD panel language so those gap frames feel
++// intentional instead of looking like a crash.
++
++:root {
++    --bs-body-bg: #{$pt-panel-stroke};
++}
++
++body {
++    background: linear-gradient(180deg, #1a2436 0%, $pt-panel-stroke 100%);
++}
++
++// LoadingView.scss paints $primary teal over the body — drop that so the
++// slate-blue body gradient shows through and the preloader matches the
++// room-swap fallback.
++.nitro-loading {
++    background: transparent;
++}
 diff --git a/src/components/pixeltower/_tokens.scss b/src/components/pixeltower/_tokens.scss
 new file mode 100644
-index 0000000..a3076a4
+index 0000000..1bc5a1d
 --- /dev/null
 +++ b/src/components/pixeltower/_tokens.scss
-@@ -0,0 +1,79 @@
+@@ -0,0 +1,85 @@
 +// Shared design tokens + mixins for pixeltower HUDs.
 +// Palette extracted from .designs/client_ui.pen — all four HUD frames
 +// (Player HzOI4, Target 1hvgH, Status KVhc5, Drawer tW1BU) share the same
@@ -1115,6 +1453,12 @@ index 0000000..a3076a4
 +$pt-diamond-blue: #3E8FD8;
 +
 +$pt-text:       #FFFFFF;
++
++// Ubuntu is loaded via nitro/src/assets/styles/fonts.scss from
++// Ubuntu-C.ttf — the Condensed variant. Use this token across every
++// pixeltower HUD so the .pen designs (which reference system fonts
++// like Inter) always render in Ubuntu Condensed in-game.
++$pt-font-family: Ubuntu, sans-serif;
 +
 +// ──────────── mixins ────────────
 +
@@ -1201,58 +1545,6 @@ index c72e269..f5e66cf 100644
                      { (avatarInfo.carryItem > 0) &&
                          <ContextMenuListItemView onClick={ event => processAction('drop_carry_item') }>
                              { LocalizeText('avatar.widget.drop_hand_item') }
-diff --git a/src/components/toolbar/ToolbarMeView.tsx b/src/components/toolbar/ToolbarMeView.tsx
-index 8a66a91..0e5bd5c 100644
---- a/src/components/toolbar/ToolbarMeView.tsx
-+++ b/src/components/toolbar/ToolbarMeView.tsx
-@@ -1,7 +1,7 @@
- import { MouseEventType, RoomObjectCategory } from '@nitrots/nitro-renderer';
- import { Dispatch, FC, PropsWithChildren, SetStateAction, useEffect, useRef } from 'react';
- import { CreateLinkEvent, DispatchUiEvent, GetConfiguration, GetRoomEngine, GetRoomSession, GetSessionDataManager, GetUserProfile } from '../../api';
--import { Base, Flex, LayoutItemCountView } from '../../common';
-+import { Base, Flex } from '../../common';
- import { GuideToolEvent } from '../../events';
- 
- interface ToolbarMeViewProps
-@@ -38,10 +38,9 @@ export const ToolbarMeView: FC<PropsWithChildren<ToolbarMeViewProps>> = props =>
-         <Flex innerRef={ elementRef } alignItems="center" className="nitro-toolbar-me p-2" gap={ 2 }>
-             { (GetConfiguration('guides.enabled') && useGuideTool) &&
-                 <Base pointer className="navigation-item icon icon-me-helper-tool" onClick={ event => DispatchUiEvent(new GuideToolEvent(GuideToolEvent.TOGGLE_GUIDE_TOOL)) } /> }
--            <Base pointer className="navigation-item icon icon-me-achievements" onClick={ event => CreateLinkEvent('achievements/toggle') }>
--                { (unseenAchievementCount > 0) &&
--                    <LayoutItemCountView count={ unseenAchievementCount } /> }
--            </Base>
-+            { /* Achievements button intentionally removed — pixeltower has achievements
-+                 disabled from the UI. Server-side tracking continues silently so the feature
-+                 can be re-enabled by reverting this patch. */ }
-             <Base pointer className="navigation-item icon icon-me-profile" onClick={ event => GetUserProfile(GetSessionDataManager().userId) } />
-             <Base pointer className="navigation-item icon icon-me-rooms" onClick={ event => CreateLinkEvent('navigator/search/myworld_view') } />
-             <Base pointer className="navigation-item icon icon-me-clothing" onClick={ event => CreateLinkEvent('avatar-editor/toggle') } />
-diff --git a/src/components/toolbar/ToolbarView.tsx b/src/components/toolbar/ToolbarView.tsx
-index 0efab76..4464248 100644
---- a/src/components/toolbar/ToolbarView.tsx
-+++ b/src/components/toolbar/ToolbarView.tsx
-@@ -1,6 +1,6 @@
- import { Dispose, DropBounce, EaseOut, JumpBy, Motions, NitroToolbarAnimateIconEvent, PerkAllowancesMessageEvent, PerkEnum, Queue, Wait } from '@nitrots/nitro-renderer';
- import { FC, useState } from 'react';
--import { CreateLinkEvent, GetConfiguration, GetSessionDataManager, MessengerIconState, OpenMessengerChat, VisitDesktop } from '../../api';
-+import { CreateLinkEvent, GetConfiguration, GetSessionDataManager, MessengerIconState, OpenMessengerChat } from '../../api';
- import { Base, Flex, LayoutAvatarImageView, LayoutItemCountView, TransitionAnimation, TransitionAnimationTypes } from '../../common';
- import { useAchievements, useFriends, useInventoryUnseenTracker, useMessageEvent, useMessenger, useRoomEngineEvent, useSessionInfo } from '../../hooks';
- import { ToolbarMeView } from './ToolbarMeView';
-@@ -76,10 +76,8 @@ export const ToolbarView: FC<{ isInRoom: boolean }> = props =>
-                             { (getTotalUnseen > 0) &&
-                                 <LayoutItemCountView count={ getTotalUnseen } /> }
-                         </Flex>
--                        { isInRoom &&
--                            <Base pointer className="navigation-item icon icon-habbo" onClick={ event => VisitDesktop() } /> }
--                        { !isInRoom &&
--                            <Base pointer className="navigation-item icon icon-house" onClick={ event => CreateLinkEvent('navigator/goto/home') } /> }
-+                        { /* "Go to hotel view" button intentionally removed — pixeltower keeps
-+                             users pinned to a room (home_room / default spawn). No hotel-view exit. */ }
-                         <Base pointer className="navigation-item icon icon-rooms" onClick={ event => CreateLinkEvent('navigator/toggle') } />
-                         { GetConfiguration('game.center.enabled') && <Base pointer className="navigation-item icon icon-game" onClick={ event => CreateLinkEvent('games/toggle') } /> }
-                         <Base pointer className="navigation-item icon icon-catalog" onClick={ event => CreateLinkEvent('catalog/toggle') } />
 diff --git a/src/hooks/index.ts b/src/hooks/index.ts
 index a551574..0de8786 100644
 --- a/src/hooks/index.ts
