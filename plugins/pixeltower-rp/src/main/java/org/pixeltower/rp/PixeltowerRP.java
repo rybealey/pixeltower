@@ -170,7 +170,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         Emulator.getConfig().register("rp.stats.default_energy",      "100");
         Emulator.getConfig().register("rp.fight.hit_window_ms",       "500");
         Emulator.getConfig().register("rp.fight.fade_window_ms",      "500");
-        Emulator.getConfig().register("rp.fight.energy_per_hit",      "10");
+        Emulator.getConfig().register("rp.fight.energy_per_hit",      "0.2");
         Emulator.getConfig().register("rp.fight.damage_variance",     "0.2");
         Emulator.getConfig().register("rp.fight.base_damage",         "6");
         Emulator.getConfig().register("rp.fight.endurance_per_point", "0.04");

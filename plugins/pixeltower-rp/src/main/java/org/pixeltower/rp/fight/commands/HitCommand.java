@@ -10,15 +10,14 @@ import org.pixeltower.rp.core.RpChat;
 import org.pixeltower.rp.core.TargetResolver;
 import org.pixeltower.rp.core.TargetResolver.ResolvedTarget;
 import org.pixeltower.rp.fight.FightService;
-
-import java.util.Optional;
+import org.pixeltower.rp.fight.FightService.HitResult;
 
 /**
  * {@code :hit <user|x>} — swing at a target in range. All preconditions
  * (range, safe zone, alive, energy, cooldown, corp fratricide) are
  * enforced by {@link FightService#hit}; this command is a thin wrapper
  * that resolves the target and relays the deny reason (if any) as an
- * ALERT whisper.
+ * ALERT whisper, or shouts a damage emote on a successful hit.
  */
 public class HitCommand extends Command {
 
@@ -48,13 +47,17 @@ public class HitCommand extends Command {
             return true;
         }
 
-        Optional<String> deny = FightService.hit(attacker, resolved.online);
-        if (deny.isPresent()) {
-            attacker.whisper(deny.get(), RoomChatMessageBubbles.ALERT);
+        HitResult result = FightService.hit(attacker, resolved.online);
+        if (result.denied()) {
+            attacker.whisper(result.denyReason(), RoomChatMessageBubbles.ALERT);
             return true;
         }
 
-        RpChat.emote(attacker, "*swings at " + resolved.username + "*");
+        // The YELLOW-bubble action-emote Nitro patch prepends the speaker's
+        // username to asterisk-wrapped shouts, so the viewer renders this as
+        // "<attacker> hits <target>, causing N damage".
+        RpChat.emote(attacker, "*hits " + resolved.username
+                + ", causing " + result.damage() + " damage*");
         return true;
     }
 }

@@ -132,17 +132,22 @@ Covers `FightRange`, `RoomFlags`, `FightRules.canEngage`, `Engagement`,
       into the same corp. `A: :hit B` → ALERT whisper "You can't fight a
       member of your own corp." Flip to `true`, repeat → hit goes
       through.
-- [ ] `S: :fighttest A 100` → A's energy is 100. `A: :hit B` 10 times in
-      rapid succession (spacing ≥ 1s to clear cooldown): first 10
-      succeed; 11th → ALERT whisper "You're out of energy — rest a
-      moment."
+- [ ] Zero out A's energy (`UPDATE rp_player_stats SET energy=0 WHERE habbo_id=A`)
+      and `A: :hit B` → ALERT whisper "You're out of energy — rest a
+      moment." Restore energy and the command goes through.
+- [ ] Default `rp.fight.energy_per_hit=0.2`: `A: :hit B` 5 times (spaced
+      ≥ 1s) — A's energy drops by exactly 1 between the 4th and 5th
+      swing (fractional debt accumulator in FightService).
 - [ ] `A: :hit B` twice within 1 second → second attempt → ALERT whisper
       "Too soon — swing cooldown NNNms left." (default 1000ms).
 
 **Damage + engagement row lifecycle**
 
 - [ ] `A: :hit B` (first swing, both full HP) → B's HP drops per formula,
-      A's energy -10. A shouts "*swings at B*" (YELLOW emote). A new
+      A's fractional energy debt advances (integer energy unchanged on
+      the first swing at the default 0.2 rate). A shouts
+      "\*hits B, causing N damage\*" (YELLOW emote, client splices A's
+      name in so viewers see "A hits B, causing N damage"). A new
       `rp_fights` row exists with `attacker_id=A`, `defender_id=B`,
       `room_id=<current>`, `started_at≈now`, `ended_at IS NULL`,
       `attacker_hits=1`, `defender_hits=0`,

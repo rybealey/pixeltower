@@ -26,7 +26,7 @@ import java.util.Optional;
  *   <li>safe zone: target room's {@code rp_room_flags.no_pvp=0}</li>
  *   <li>attacker / defender both alive (HP &gt; 0)</li>
  *   <li>corp fratricide rule ({@code rp.fight.allow_corp_fratricide})</li>
- *   <li>attacker has ≥ {@code rp.fight.energy_per_hit} energy</li>
+ *   <li>attacker has &gt; 0 energy</li>
  *   <li>attacker not on per-swing cooldown
  *       ({@code rp.fight.cooldown_ms}; tracked in
  *       {@link FightService#getLastSwingAtMs})</li>
@@ -83,8 +83,7 @@ public final class FightRules {
             return Optional.of("You can't fight a member of your own corp.");
         }
 
-        int energyPerHit = Emulator.getConfig().getInt("rp.fight.energy_per_hit", 10);
-        if (attStats.get().getEnergy() < energyPerHit) {
+        if (attStats.get().getEnergy() <= 0) {
             return Optional.of("You're out of energy — rest a moment.");
         }
 
