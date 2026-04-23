@@ -64,7 +64,7 @@ public class HitCommand extends Command {
                     RoomChatMessageBubbles.ALERT);
         } else {
             RpChat.emote(attacker,
-                    "*hits " + resolved.username
+                    "*swings at " + resolved.username
                             + ", causing " + result.damage() + " damage*");
         }
         return true;
