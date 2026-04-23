@@ -42,6 +42,37 @@ public final class RoomFlags {
         CACHE.clear();
     }
 
+    /**
+     * Drop the cached entry for {@code roomId} so the next {@link #get}
+     * re-reads from DB. Cheaper than {@link #clear} when only one
+     * room's flags changed.
+     */
+    public static void invalidate(int roomId) {
+        CACHE.remove(roomId);
+    }
+
+    /**
+     * Upsert {@code rp_room_flags.no_pvp} for {@code roomId} and
+     * invalidate the cache entry so the new value is picked up on the
+     * next {@link #get}. Returns {@code false} only if the DB write
+     * fails; the row is created on first set.
+     */
+    public static boolean setNoPvp(int roomId, boolean noPvp) {
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "INSERT INTO rp_room_flags (room_id, no_pvp) VALUES (?, ?) "
+                             + "ON DUPLICATE KEY UPDATE no_pvp = VALUES(no_pvp)")) {
+            ps.setInt(1, roomId);
+            ps.setBoolean(2, noPvp);
+            ps.executeUpdate();
+            invalidate(roomId);
+            return true;
+        } catch (SQLException e) {
+            LOGGER.error("setNoPvp failed room={} no_pvp={}", roomId, noPvp, e);
+            return false;
+        }
+    }
+
     private static Flags fetch(int roomId) {
         try (Connection conn = Emulator.getDatabase().getDataSource().getConnection();
              PreparedStatement ps = conn.prepareStatement(

@@ -122,9 +122,10 @@ Covers `FightRange`, `RoomFlags`, `FightRules.canEngage`, `Engagement`,
       mark\*" (YELLOW emote, client splices A's name in so viewers
       see "A takes a swing at B, but misses the mark"). No cooldown
       applied — out-of-range is a flavor-only non-action.
-- [ ] Insert `rp_room_flags (room_id, no_pvp) VALUES (<room>, 1)`; both
-      in range → `A: :hit B` → ALERT whisper "This is a safe zone — you
-      can't fight here." Delete the row or set no_pvp=0 to re-enable.
+- [ ] Staff `:setzone safe` in the current room → `A: :hit B` → ALERT
+      whisper "This is a safe zone — you can't fight here." Staff
+      `:setzone unsafe` flips it back and `:hit` goes through. (Tests
+      the RoomFlags cache invalidation path as well as the upsert.)
 - [ ] `S: :kill A` → A downed. `A: :hit B` while A is downed → ALERT
       whisper "You're downed — you can't fight." (A can't type `:hit`
       anyway once the chat-lock from P3 lands; for P2 we just refuse the
