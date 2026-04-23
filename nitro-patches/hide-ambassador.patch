@@ -1,0 +1,15 @@
+diff --git a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetAvatarView.tsx b/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetAvatarView.tsx
+--- a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetAvatarView.tsx
++++ b/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetAvatarView.tsx
+@@ -236,11 +236,6 @@
+                             <FaChevronRight className="right fa-icon" />
+                             { LocalizeText('infostand.link.moderate') }
+                         </ContextMenuListItemView> }
+-                    { avatarInfo.isAmbassador &&
+-                        <ContextMenuListItemView onClick={ event => processAction('ambassador') }>
+-                            <FaChevronRight className="right fa-icon" />
+-                            { LocalizeText('infostand.link.ambassador') }
+-                        </ContextMenuListItemView> }
+                     { canGiveHandItem && <ContextMenuListItemView onClick={ event => processAction('pass_hand_item') }>
+                         { LocalizeText('avatar.widget.pass_hand_item') }
+                     </ContextMenuListItemView> }
