@@ -53,11 +53,20 @@ public class HitCommand extends Command {
             return true;
         }
 
-        // The YELLOW-bubble action-emote Nitro patch prepends the speaker's
-        // username to asterisk-wrapped shouts, so the viewer renders this as
-        // "<attacker> hits <target>, causing N damage".
-        RpChat.emote(attacker, "*hits " + resolved.username
-                + ", causing " + result.damage() + " damage*");
+        // Client patch prepends the speaker's username to asterisk-wrapped
+        // shouts; viewers render as "<attacker> hits <target>, causing N damage"
+        // (or the KO variant on the final blow). Red ALERT bubble on the KO
+        // emote signals the mechanical outcome distinct from routine hits.
+        if (result.knockout()) {
+            RpChat.emote(attacker,
+                    "*lands the final blow on " + resolved.username
+                            + ", knocking them out*",
+                    RoomChatMessageBubbles.ALERT);
+        } else {
+            RpChat.emote(attacker,
+                    "*hits " + resolved.username
+                            + ", causing " + result.damage() + " damage*");
+        }
         return true;
     }
 }

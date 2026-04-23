@@ -27,8 +27,19 @@ public final class RpChat {
      * like dice roll results want the formatting without asterisks).
      */
     public static void emote(Habbo habbo, String text) {
+        emote(habbo, text, RoomChatMessageBubbles.YELLOW);
+    }
+
+    /**
+     * Same as {@link #emote(Habbo, String)} but lets the caller pick the
+     * shout bubble — e.g. {@link RoomChatMessageBubbles#ALERT} (red) for
+     * combat knockouts. The action-emote client patch applies the
+     * username-splice regardless of bubble color (the STAFF bubble is
+     * the only one it treats specially).
+     */
+    public static void emote(Habbo habbo, String text, RoomChatMessageBubbles bubble) {
         if (habbo.getRoomUnit() != null && habbo.getRoomUnit().isInRoom()) {
-            habbo.shout(text, RoomChatMessageBubbles.YELLOW);
+            habbo.shout(text, bubble);
         } else {
             habbo.whisper(text, RoomChatMessageBubbles.ALERT);
         }
