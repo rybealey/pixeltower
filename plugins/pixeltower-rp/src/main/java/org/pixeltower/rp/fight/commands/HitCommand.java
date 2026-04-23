@@ -9,6 +9,7 @@ import org.pixeltower.rp.core.NoTargetException;
 import org.pixeltower.rp.core.RpChat;
 import org.pixeltower.rp.core.TargetResolver;
 import org.pixeltower.rp.core.TargetResolver.ResolvedTarget;
+import org.pixeltower.rp.fight.FightRules;
 import org.pixeltower.rp.fight.FightService;
 import org.pixeltower.rp.fight.FightService.HitResult;
 
@@ -49,14 +50,23 @@ public class HitCommand extends Command {
 
         HitResult result = FightService.hit(attacker, resolved.online);
         if (result.denied()) {
-            attacker.whisper(result.denyReason(), RoomChatMessageBubbles.ALERT);
+            // Out-of-range is narrative: render a public miss emote instead
+            // of a private whisper so bystanders see the telegraphed swing.
+            if (result.denyReason() == FightRules.Deny.Reason.OUT_OF_RANGE) {
+                RpChat.emote(attacker,
+                        "*takes a swing at " + resolved.username
+                                + ", but misses the mark*");
+            } else {
+                attacker.whisper(result.denyMessage(), RoomChatMessageBubbles.ALERT);
+            }
             return true;
         }
 
         // Client patch prepends the speaker's username to asterisk-wrapped
-        // shouts; viewers render as "<attacker> hits <target>, causing N damage"
-        // (or the KO variant on the final blow). Red ALERT bubble on the KO
-        // emote signals the mechanical outcome distinct from routine hits.
+        // shouts; viewers render as "<attacker> swings at <target>, causing
+        // N damage" (or the KO variant on the final blow). Red ALERT bubble
+        // on the KO emote signals the mechanical outcome distinct from
+        // routine hits.
         if (result.knockout()) {
             RpChat.emote(attacker,
                     "*lands the final blow on " + resolved.username

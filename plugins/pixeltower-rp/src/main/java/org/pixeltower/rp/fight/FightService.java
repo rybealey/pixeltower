@@ -46,12 +46,14 @@ public final class FightService {
 
     /**
      * Outcome of a {@link #hit} attempt. Either landed (with the final
-     * damage applied and a knockout flag) or denied (with a reason the
-     * command layer should whisper to the attacker).
+     * damage applied and a knockout flag) or denied (with a typed
+     * {@link FightRules.Deny} the command layer can branch on).
      */
-    public record HitResult(String denyReason, int damage, boolean knockout) {
-        public boolean denied() { return denyReason != null; }
-        public static HitResult deny(String reason) { return new HitResult(reason, 0, false); }
+    public record HitResult(FightRules.Deny deny, int damage, boolean knockout) {
+        public boolean denied() { return deny != null; }
+        public String denyMessage() { return deny == null ? null : deny.message(); }
+        public FightRules.Deny.Reason denyReason() { return deny == null ? null : deny.reason(); }
+        public static HitResult fromDeny(FightRules.Deny d) { return new HitResult(d, 0, false); }
         public static HitResult land(int damage, boolean knockout) {
             return new HitResult(null, damage, knockout);
         }
@@ -59,13 +61,26 @@ public final class FightService {
 
     /**
      * Attempt an attacker→defender hit. Returns a {@link HitResult}
-     * carrying either the denial reason or the damage applied. Non-
+     * carrying either the typed denial or the damage applied. Non-
      * range preconditions (energy, cooldown, safe-room, alive, etc.)
      * are checked inside {@link FightRules#canEngage}.
      */
     public static HitResult hit(Habbo attacker, Habbo defender) {
-        Optional<String> deny = FightRules.canEngage(attacker, defender);
-        if (deny.isPresent()) return HitResult.deny(deny.get());
+        Optional<FightRules.Deny> deny = FightRules.canEngage(attacker, defender);
+        if (deny.isPresent()) {
+            // Out-of-range still counts as "the attacker swung" for cooldown
+            // purposes — the miss emote fires publicly, and without recording
+            // a last-swing timestamp, :hit spam at distance would be a free
+            // flood. All other denies (downed, safe zone, energy, cooldown
+            // itself, corp, etc.) don't mark cooldown since the attacker
+            // never committed to the action.
+            if (attacker != null
+                    && deny.get().reason() == FightRules.Deny.Reason.OUT_OF_RANGE) {
+                LAST_SWING_AT_MS.put(attacker.getHabboInfo().getId(),
+                        System.currentTimeMillis());
+            }
+            return HitResult.fromDeny(deny.get());
+        }
 
         int attackerId = attacker.getHabboInfo().getId();
         int defenderId = defender.getHabboInfo().getId();

@@ -179,7 +179,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         Emulator.getConfig().register("rp.fight.endurance_per_point", "0.04");
         Emulator.getConfig().register("rp.fight.endurance_floor",     "0.40");
         Emulator.getConfig().register("rp.fight.engagement_timeout_s","30");
-        Emulator.getConfig().register("rp.fight.cooldown_ms",         "1000");
+        Emulator.getConfig().register("rp.fight.cooldown_ms",         "3000");
         Emulator.getConfig().register("rp.fight.range_tiles",         "1");
         Emulator.getConfig().register("rp.fight.allow_corp_fratricide","false");
         Emulator.getConfig().register("rp.medical.respawn_timeout_s", "180");

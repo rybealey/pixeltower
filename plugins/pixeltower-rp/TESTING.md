@@ -117,8 +117,11 @@ Covers `FightRange`, `RoomFlags`, `FightRules.canEngage`, `Engagement`,
 - [ ] `A:` `:hit <offline user>` → ALERT whisper "… isn't online."
 - [ ] `A:` `:hit B` when in different rooms → ALERT whisper "B isn't in
       this room."
-- [ ] `A:` `:hit B` when ≥ 2 tiles apart (same room) → ALERT whisper "B
-      is out of range."
+- [ ] `A:` `:hit B` when ≥ 2 tiles apart (same room) → no damage, no
+      engagement row; A shouts "\*takes a swing at B, but misses the
+      mark\*" (YELLOW emote, client splices A's name in so viewers
+      see "A takes a swing at B, but misses the mark"). No cooldown
+      applied — out-of-range is a flavor-only non-action.
 - [ ] Insert `rp_room_flags (room_id, no_pvp) VALUES (<room>, 1)`; both
       in range → `A: :hit B` → ALERT whisper "This is a safe zone — you
       can't fight here." Delete the row or set no_pvp=0 to re-enable.
@@ -138,8 +141,12 @@ Covers `FightRange`, `RoomFlags`, `FightRules.canEngage`, `Engagement`,
 - [ ] Default `rp.fight.energy_per_hit=0.2`: `A: :hit B` 5 times (spaced
       ≥ 1s) — A's energy drops by exactly 1 between the 4th and 5th
       swing (fractional debt accumulator in FightService).
-- [ ] `A: :hit B` twice within 1 second → second attempt → ALERT whisper
-      "Too soon — swing cooldown NNNms left." (default 1000ms).
+- [ ] `A: :hit B` twice within 3 seconds → second attempt → ALERT
+      whisper "Too soon — swing cooldown NNNms left." (default 3000ms).
+- [ ] `A: :hit B` while out of range (miss emote) then `A: :hit B`
+      again within 3 seconds → second attempt → ALERT whisper
+      "Too soon — swing cooldown …". Out-of-range misses still mark
+      the cooldown so distance can't be used to bypass rate-limiting.
 
 **Damage + engagement row lifecycle**
 
