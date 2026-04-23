@@ -8,6 +8,7 @@ import com.eu.habbo.plugin.EventHandler;
 import com.eu.habbo.plugin.EventListener;
 import com.eu.habbo.plugin.HabboPlugin;
 import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
+import com.eu.habbo.habbohotel.rooms.RoomChatType;
 import com.eu.habbo.habbohotel.rooms.RoomTile;
 import com.eu.habbo.habbohotel.rooms.RoomUnit;
 import com.eu.habbo.habbohotel.rooms.RoomUserRotation;
@@ -21,6 +22,7 @@ import com.eu.habbo.plugin.events.users.UserExitRoomEvent;
 import com.eu.habbo.plugin.events.users.UserIdleEvent;
 import com.eu.habbo.plugin.events.users.UserLoginEvent;
 import com.eu.habbo.plugin.events.users.UserSavedLookEvent;
+import com.eu.habbo.plugin.events.users.UserTalkEvent;
 import com.eu.habbo.plugin.events.users.UserTargetSelectedEvent;
 import org.pixeltower.rp.core.HomePositionStore;
 import org.pixeltower.rp.core.TargetService;
@@ -43,7 +45,13 @@ import org.pixeltower.rp.economy.commands.OpenAccountCommand;
 import org.pixeltower.rp.economy.commands.TransferCommand;
 import org.pixeltower.rp.economy.commands.WithdrawCommand;
 import org.pixeltower.rp.economy.tasks.BankInterestTask;
+import org.pixeltower.rp.fight.EngagementRegistry;
+import org.pixeltower.rp.fight.FightService;
+import org.pixeltower.rp.fight.commands.FightTestCommand;
+import org.pixeltower.rp.fight.commands.HitCommand;
 import org.pixeltower.rp.functional.FunctionalFurnitureService;
+import org.pixeltower.rp.medical.RespawnScheduler;
+import org.pixeltower.rp.medical.commands.RespawnCommand;
 import org.pixeltower.rp.functional.InteractionRpFunctional;
 import org.pixeltower.rp.stats.PlayerStats;
 import org.pixeltower.rp.stats.StatsManager;
@@ -164,7 +172,15 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         Emulator.getConfig().register("rp.fight.fade_window_ms",      "500");
         Emulator.getConfig().register("rp.fight.energy_per_hit",      "10");
         Emulator.getConfig().register("rp.fight.damage_variance",     "0.2");
+        Emulator.getConfig().register("rp.fight.base_damage",         "6");
+        Emulator.getConfig().register("rp.fight.endurance_per_point", "0.04");
+        Emulator.getConfig().register("rp.fight.endurance_floor",     "0.40");
+        Emulator.getConfig().register("rp.fight.engagement_timeout_s","30");
+        Emulator.getConfig().register("rp.fight.cooldown_ms",         "1000");
+        Emulator.getConfig().register("rp.fight.range_tiles",         "1");
+        Emulator.getConfig().register("rp.fight.allow_corp_fratricide","false");
         Emulator.getConfig().register("rp.medical.respawn_timeout_s", "180");
+        Emulator.getConfig().register("rp.medical.respawn_penalty_credits", "500");
         Emulator.getConfig().register("rp.medical.hospital_room_id",  "0");
         Emulator.getConfig().register("rp.police.jail_room_id",       "0");
 
@@ -183,6 +199,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         registerCommands();
         scheduleBankInterest();
         schedulePaycheck();
+        scheduleEngagementReaper();
 
         LOGGER.info("Pixeltower RP v{} — loaded (rp.* config keys registered, commands registered)", VERSION);
     }
@@ -204,6 +221,9 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         CommandHandler.addCommand(new StatsCommand());
         CommandHandler.addCommand(new RestoreCommand());
         CommandHandler.addCommand(new KillCommand());
+        CommandHandler.addCommand(new FightTestCommand());
+        CommandHandler.addCommand(new HitCommand());
+        CommandHandler.addCommand(new RespawnCommand());
     }
 
     /**
@@ -233,6 +253,26 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         if (event.habbo == null || event.isCancelled()) return;
         TargetService.broadcastStatsUpdate(
                 event.habbo.getHabboInfo().getId(), event.newLook);
+    }
+
+    /**
+     * Downed players speak only in whispers. TALK / SHOUT are cancelled
+     * with an ALERT whisper back to the speaker; command chat
+     * ({@code isCommand=true}) passes regardless of type so a downed
+     * user can still run {@code :respawn} or similar.
+     *
+     * Cancelling UserTalkEvent short-circuits the vanilla broadcast so
+     * the downed player's talk/shout never reaches the room.
+     */
+    @EventHandler
+    public void onUserTalk(UserTalkEvent event) {
+        if (event.habbo == null || event.chatMessage == null) return;
+        if (event.chatMessage.isCommand) return;
+        if (event.chatType == RoomChatType.WHISPER) return;
+        if (!DeathState.isDead(event.habbo.getHabboInfo().getId())) return;
+        event.setCancelled(true);
+        event.habbo.whisper("You can only whisper while downed.",
+                RoomChatMessageBubbles.ALERT);
     }
 
     /**
@@ -273,6 +313,8 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
             TargetTracker.clear(habboId);
             ShiftManager.stopWork(habboId);
             StatsManager.onDisconnect(habboId);
+            EngagementRegistry.terminateAll(habboId, "logout");
+            FightService.onDisconnect(habboId);
         }
     }
 
@@ -382,10 +424,12 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
     @EventHandler
     public void onUserExitRoom(UserExitRoomEvent event) {
         if (event.habbo == null) return;
+        int habboId = event.habbo.getHabboInfo().getId();
+        EngagementRegistry.terminateAll(habboId, "roomchange");
         RoomUnit unit = event.habbo.getRoomUnit();
         if (unit == null || !unit.isInRoom()) return;
         HomePositionStore.save(
-                event.habbo.getHabboInfo().getId(),
+                habboId,
                 unit.getX(),
                 unit.getY(),
                 unit.getBodyRotation().getValue());
@@ -406,6 +450,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         if (stats != null && event.habbo.getClient() != null) {
             event.habbo.getClient().sendResponse(new UpdatePlayerStatsComposer(stats));
         }
+        rehydrateRespawnTimer(habboId);
         int homeRoom = event.habbo.getHabboInfo().getHomeRoom();
         // Fall back to the configured default spawn so new users (home_room=0)
         // never hit the hotel view. The Nitro patch strips the HotelView
@@ -484,5 +529,37 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         Emulator.getThreading().getService().scheduleAtFixedRate(
                 new PaycheckTask(), 60L, 60L, TimeUnit.SECONDS);
         LOGGER.info("PaycheckTask scheduled every 60s (shift heartbeat)");
+    }
+
+    /**
+     * Engagement timeout sweeper. Runs every 10s, finalizes any
+     * engagement whose lastHitAt is older than rp.fight.engagement_timeout_s
+     * with {@code ender_reason='timeout'}. The fixed 10s cadence is fast
+     * enough that a 30s timeout expires within 30-40s of real time;
+     * tuning down tightens that window if needed.
+     */
+    private void scheduleEngagementReaper() {
+        Emulator.getThreading().getService().scheduleAtFixedRate(
+                EngagementRegistry::reapTimeouts, 10L, 10L, TimeUnit.SECONDS);
+        LOGGER.info("EngagementRegistry reaper scheduled every 10s");
+    }
+
+    /**
+     * On login, if the user is in {@code rp_downed_players} (i.e. was
+     * downed when they logged off and never revived), re-arm the
+     * respawn scheduler with whatever time is left on the clock. The
+     * in-memory {@code ScheduledFuture} from the original schedule was
+     * lost on disconnect (and possibly emulator restart) — {@code
+     * respawn_at} is the DB-backed source of truth.
+     *
+     * A 2s floor on the delay lets the user's room-enter flow settle
+     * before we teleport them to the hospital — otherwise enterRoom
+     * can race with the login's own enterRoom placement.
+     */
+    private static void rehydrateRespawnTimer(int habboId) {
+        Long remaining = RespawnScheduler.computeRemainingSeconds(habboId);
+        if (remaining == null) return;
+        long delay = Math.max(2L, remaining);
+        RespawnScheduler.schedule(habboId, delay);
     }
 }

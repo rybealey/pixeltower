@@ -78,4 +78,14 @@ public final class DeathState {
             if (stats.getHp() <= 0) enter(habbo);
         });
     }
+
+    /**
+     * Whether {@code habboId} currently has HP &lt;= 0 in the online
+     * stats cache. Returns {@code false} for users not in cache (offline
+     * or pre-login) — chat / command gates using this can safely
+     * interpret "unknown" as "not dead".
+     */
+    public static boolean isDead(int habboId) {
+        return StatsManager.get(habboId).map(s -> s.getHp() <= 0).orElse(false);
+    }
 }
