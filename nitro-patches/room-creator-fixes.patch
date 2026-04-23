@@ -1,0 +1,70 @@
+diff --git a/src/components/navigator/views/NavigatorRoomCreatorView.tsx b/src/components/navigator/views/NavigatorRoomCreatorView.tsx
+index 516fd09..7866cc2 100644
+--- a/src/components/navigator/views/NavigatorRoomCreatorView.tsx
++++ b/src/components/navigator/views/NavigatorRoomCreatorView.tsx
+@@ -1,9 +1,9 @@
+ /* eslint-disable no-template-curly-in-string */
+-import { CreateFlatMessageComposer, HabboClubLevelEnum } from '@nitrots/nitro-renderer';
++import { CreateFlatMessageComposer } from '@nitrots/nitro-renderer';
+ import { FC, useEffect, useState } from 'react';
+-import { GetClubMemberLevel, GetConfiguration, IRoomModel, LocalizeText, SendMessageComposer } from '../../../api';
+-import { Button, Column, Flex, Grid, LayoutCurrencyIcon, LayoutGridItem, Text } from '../../../common';
+-import { useNavigator } from '../../../hooks';
++import { GetConfiguration, IRoomModel, LocalizeText, SendMessageComposer } from '../../../api';
++import { Button, Column, Flex, Grid, LayoutGridItem, Text } from '../../../common';
++import { useNavigator, useNotification } from '../../../hooks';
+ 
+ export const NavigatorRoomCreatorView: FC<{}> = props =>
+ {
+@@ -16,20 +16,25 @@ export const NavigatorRoomCreatorView: FC<{}> = props =>
+     const [ roomModels, setRoomModels ] = useState<IRoomModel[]>([]);
+     const [ selectedModelName, setSelectedModelName ] = useState<string>('');
+     const { categories = null } = useNavigator();
+-
+-    const hcDisabled = GetConfiguration<boolean>('hc.disabled', false);
++    const { simpleAlert = null } = useNotification();
+ 
+     const getRoomModelImage = (name: string) => GetConfiguration<string>('images.url') + `/navigator/models/model_${ name }.png`;
+ 
+     const selectModel = (model: IRoomModel, index: number) =>
+     {
+-        if(!model || (model.clubLevel > GetClubMemberLevel())) return;
++        if(!model) return;
+ 
+         setSelectedModelName(roomModels[index].name);
+     };
+ 
+     const createRoom = () =>
+     {
++        if(name && name.length > 50)
++        {
++            simpleAlert('Room name is too long. Please keep it to 50 characters or fewer.');
++            return;
++        }
++
+         SendMessageComposer(new CreateFlatMessageComposer(name, description, 'model_' + selectedModelName, Number(category), Number(visitorsCount), tradesSetting));
+     };
+ 
+@@ -68,7 +73,7 @@ export const NavigatorRoomCreatorView: FC<{}> = props =>
+                 <Column size={ 6 } gap={ 1 } overflow="auto">
+                     <Column gap={ 1 }>
+                         <Text>{ LocalizeText('navigator.createroom.roomnameinfo') }</Text>
+-                        <input type="text" className="form-control form-control-sm" maxLength={ 60 } onChange={ event => setName(event.target.value) } placeholder={ LocalizeText('navigator.createroom.roomnameinfo') } />
++                        <input type="text" className="form-control form-control-sm" maxLength={ 50 } onChange={ event => setName(event.target.value) } placeholder={ LocalizeText('navigator.createroom.roomnameinfo') } />
+                     </Column>
+                     <Column grow gap={ 1 }>
+                         <Text>{ LocalizeText('navigator.createroom.roomdescinfo') }</Text>
+@@ -105,12 +110,11 @@ export const NavigatorRoomCreatorView: FC<{}> = props =>
+                     {
+                         roomModels.map((model, index )=>
+                         {
+-                            return (<LayoutGridItem fullHeight key={ model.name } onClick={ () => selectModel(model, index) } itemActive={ (selectedModelName === model.name) } overflow="unset" gap={ 0 } className="p-1" disabled={ (GetClubMemberLevel() < model.clubLevel) }>
++                            return (<LayoutGridItem fullHeight key={ model.name } onClick={ () => selectModel(model, index) } itemActive={ (selectedModelName === model.name) } overflow="unset" gap={ 0 } className="p-1">
+                                 <Flex fullHeight center overflow="hidden">
+                                     <img alt="" src={ getRoomModelImage(model.name) } />
+                                 </Flex>
+                                 <Text bold>{ model.tileSize } { LocalizeText('navigator.createroom.tilesize') }</Text>
+-                                { !hcDisabled && model.clubLevel > HabboClubLevelEnum.NO_CLUB && <LayoutCurrencyIcon position="absolute" className="top-1 end-1" type="hc" /> }
+                             </LayoutGridItem>);
+                         })
+                     }
