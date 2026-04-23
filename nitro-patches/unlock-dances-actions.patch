@@ -1,0 +1,61 @@
+diff --git a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx b/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx
+--- a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx
++++ b/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx
+@@ -1,8 +1,8 @@
+ import { AvatarAction, AvatarExpressionEnum, RoomControllerLevel, RoomObjectCategory, RoomUnitDropHandItemComposer } from '@nitrots/nitro-renderer';
+ import { Dispatch, FC, SetStateAction, useState } from 'react';
+ import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+-import { AvatarInfoUser, CreateLinkEvent, DispatchUiEvent, GetCanStandUp, GetCanUseExpression, GetOwnPosture, GetUserProfile, HasHabboClub, HasHabboVip, IsRidingHorse, LocalizeText, PostureTypeEnum, SendMessageComposer } from '../../../../../api';
+-import { Flex, LayoutCurrencyIcon } from '../../../../../common';
++import { AvatarInfoUser, CreateLinkEvent, DispatchUiEvent, GetCanStandUp, GetCanUseExpression, GetOwnPosture, GetUserProfile, IsRidingHorse, LocalizeText, PostureTypeEnum, SendMessageComposer } from '../../../../../api';
++import { Flex } from '../../../../../common';
+ import { HelpNameChangeEvent } from '../../../../../events';
+ import { useRoom } from '../../../../../hooks';
+ import { ContextMenuHeaderView } from '../../context-menu/ContextMenuHeaderView';
+@@ -26,7 +26,8 @@
+ export const AvatarInfoWidgetOwnAvatarView: FC<AvatarInfoWidgetOwnAvatarViewProps> = props =>
+ {
+     const { avatarInfo = null, isDancing = false, setIsDecorating = null, onClose = null } = props;
+-    const [ mode, setMode ] = useState((isDancing && HasHabboClub()) ? MODE_CLUB_DANCES : MODE_NORMAL);
++    // pixeltower: HC-gating removed — every user gets the full dance picker.
++    const [ mode, setMode ] = useState(isDancing ? MODE_CLUB_DANCES : MODE_NORMAL);
+     const { roomSession = null } = useRoom();
+ 
+     const processAction = (name: string) =>
+@@ -130,19 +131,11 @@
+                         <ContextMenuListItemView onClick={ event => processAction('decorate') }>
+                             { LocalizeText('widget.avatar.decorate') }
+                         </ContextMenuListItemView> }
+-                    { (HasHabboClub() && !isRidingHorse) &&
++                    { !isRidingHorse &&
+                         <ContextMenuListItemView onClick={ event => processAction('dance_menu') }>
+                             <FaChevronRight className="right fa-icon" />
+                             { LocalizeText('widget.memenu.dance') }
+                         </ContextMenuListItemView> }
+-                    { (!isDancing && !HasHabboClub() && !isRidingHorse) &&
+-                        <ContextMenuListItemView onClick={ event => processAction('dance') }>
+-                            { LocalizeText('widget.memenu.dance') }
+-                        </ContextMenuListItemView> }
+-                    { (isDancing && !HasHabboClub() && !isRidingHorse) &&
+-                        <ContextMenuListItemView onClick={ event => processAction('dance_stop') }>
+-                            { LocalizeText('widget.memenu.dance.stop') }
+-                        </ContextMenuListItemView> }
+                     <ContextMenuListItemView onClick={ event => processAction('expressions') }>
+                         <FaChevronRight className="right fa-icon" />
+                         { LocalizeText('infostand.link.expressions') }
+@@ -190,13 +183,11 @@
+                             { LocalizeText('widget.memenu.wave') }
+                         </ContextMenuListItemView> }
+                     { GetCanUseExpression() &&
+-                        <ContextMenuListItemView disabled={ !HasHabboVip() } onClick={ event => processAction('laugh') }>
+-                            { !HasHabboVip() && <LayoutCurrencyIcon type="hc" /> }
++                        <ContextMenuListItemView onClick={ event => processAction('laugh') }>
+                             { LocalizeText('widget.memenu.laugh') }
+                         </ContextMenuListItemView> }
+                     { GetCanUseExpression() &&
+-                        <ContextMenuListItemView disabled={ !HasHabboVip() } onClick={ event => processAction('blow') }>
+-                            { !HasHabboVip() && <LayoutCurrencyIcon type="hc" /> }
++                        <ContextMenuListItemView onClick={ event => processAction('blow') }>
+                             { LocalizeText('widget.memenu.blow') }
+                         </ContextMenuListItemView> }
+                     <ContextMenuListItemView onClick={ event => processAction('idle') }>
