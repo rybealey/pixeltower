@@ -1285,7 +1285,7 @@ index 0000000..0103fb3
 +    // ──────────── Target HUD variant (mirrored layout) ────────────
 +
 +    &--target {
-+        left: 300px;
++        left: 296px;
 +
 +        .pixeltower-stats-hud__row { flex-direction: row-reverse; }
 +        .pixeltower-stats-hud__bar-content { flex-direction: row-reverse; }
@@ -1439,9 +1439,9 @@ index 0000000..893daa9
 +    z-index: 1100;
 +
 +    // Full-scale layout reads as too heavy in the top-right corner;
-+    // scale the whole HUD down 25% from its anchor so it sits as an
++    // scale the whole HUD down ~17.5% from its anchor so it sits as an
 +    // accent next to the StatsHUD rather than dominating the screen.
-+    transform: scale(0.75);
++    transform: scale(0.825);
 +    transform-origin: top right;
 +
 +    display: flex;
