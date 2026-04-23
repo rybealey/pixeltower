@@ -110,4 +110,10 @@ sed "s|\${DOMAIN}|$DOMAIN|g" emulator/nitrowebsockets-settings.sql | mariadb_exe
 echo "[seed] disabling console.mode"
 echo "UPDATE emulator_settings SET \`value\`='0' WHERE \`key\`='console.mode';" | mariadb_exec
 
+echo "[seed] setting default home room to 57"
+mariadb_exec <<'SQL'
+UPDATE emulator_settings SET `value`='57' WHERE `key`='hotel.home.room';
+UPDATE website_settings  SET `value`='57' WHERE `key`='hotel_home_room';
+SQL
+
 echo "[done] database seeded"
