@@ -92,6 +92,18 @@ else
   echo "[seed] no catalog SQLs found (skipping) — run pull-default-pack.sh if needed"
 fi
 
+# emulator/catalog-sqls/items_base.sql DROPs + recreates the table, clobbering
+# any custom interaction_type values. Re-bind every items_base row referenced
+# by rp_functional_furniture back to 'rp_functional' so walk-on / click
+# handlers fire post-boot. V007 creates rp_functional_furniture earlier in
+# this script, so the JOIN is always safe.
+echo "[seed] re-binding rp_functional interaction_type overrides"
+mariadb_exec <<'SQL'
+UPDATE items_base ib
+JOIN rp_functional_furniture rf ON rf.item_base_id = ib.id AND rf.enabled = 1
+SET ib.interaction_type = 'rp_functional';
+SQL
+
 echo "[seed] applying NitroWebsockets whitelist (DOMAIN=$DOMAIN)"
 sed "s|\${DOMAIN}|$DOMAIN|g" emulator/nitrowebsockets-settings.sql | mariadb_exec
 
