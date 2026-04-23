@@ -64,14 +64,15 @@ public class HitCommand extends Command {
 
         // Client patch prepends the speaker's username to asterisk-wrapped
         // shouts; viewers render as "<attacker> swings at <target>, causing
-        // N damage" (or the KO variant on the final blow). Red ALERT bubble
-        // on the KO emote signals the mechanical outcome distinct from
-        // routine hits.
+        // N damage" (or the KO variant on the final blow). RED bubble on
+        // the KO emote signals the mechanical outcome distinct from routine
+        // hits — ALERT is Arcturus bubble-style 1 (tan/system-alert); RED
+        // is bubble-style 3 which renders as the actual red combat bubble.
         if (result.knockout()) {
             RpChat.emote(attacker,
                     "*lands the final blow on " + resolved.username
                             + ", knocking them out*",
-                    RoomChatMessageBubbles.ALERT);
+                    RoomChatMessageBubbles.RED);
         } else {
             RpChat.emote(attacker,
                     "*swings at " + resolved.username
