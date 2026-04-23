@@ -116,4 +116,11 @@ UPDATE emulator_settings SET `value`='57' WHERE `key`='hotel.home.room';
 UPDATE website_settings  SET `value`='57' WHERE `key`='hotel_home_room';
 SQL
 
+echo "[seed] rebranding welcome alerts: Habbo Hotel -> PixelRP"
+mariadb_exec <<'SQL'
+UPDATE emulator_settings SET `value`='PixelRP'                    WHERE `key`='hotel.name';
+UPDATE emulator_settings SET `value`='Welcome to PixelRP %user%!' WHERE `key`='hotel.welcome.alert.message';
+UPDATE emulator_texts    SET `value`='Welcome to PixelRP %user%'  WHERE `key`='hotel.alert.message.welcome';
+SQL
+
 echo "[done] database seeded"
