@@ -16,6 +16,7 @@ import com.eu.habbo.plugin.events.emulator.EmulatorLoadItemsManagerEvent;
 import com.eu.habbo.plugin.events.emulator.EmulatorLoadedEvent;
 import com.eu.habbo.plugin.events.users.UserDisconnectEvent;
 import com.eu.habbo.plugin.events.users.UserEnterRoomEvent;
+import com.eu.habbo.plugin.events.users.UserExecuteCommandEvent;
 import com.eu.habbo.plugin.events.users.UserExitRoomEvent;
 import com.eu.habbo.plugin.events.users.UserIdleEvent;
 import com.eu.habbo.plugin.events.users.UserLoginEvent;
@@ -33,6 +34,7 @@ import org.pixeltower.rp.corp.commands.PromoteCommand;
 import org.pixeltower.rp.corp.commands.StartWorkCommand;
 import org.pixeltower.rp.corp.commands.StopWorkCommand;
 import org.pixeltower.rp.corp.tasks.PaycheckTask;
+import org.pixeltower.rp.death.DeathState;
 import org.pixeltower.rp.economy.commands.AwardCommand;
 import org.pixeltower.rp.economy.commands.BalanceCommand;
 import org.pixeltower.rp.economy.commands.DepositCommand;
@@ -55,6 +57,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -232,6 +235,37 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
                 event.habbo.getHabboInfo().getId(), event.newLook);
     }
 
+    /**
+     * Block {@code :lay}, {@code :sit}, {@code :stand} while a player's HP
+     * is 0 — otherwise a dead player could stand themselves back up out of
+     * the freeze+lay pose {@link DeathState#enter} applied. The event is
+     * cancelable and fired before Command.handle, so cancelling short-
+     * circuits the vanilla posture change entirely.
+     */
+    @EventHandler
+    public void onUserExecuteCommand(UserExecuteCommandEvent event) {
+        if (event.habbo == null || event.command == null) return;
+        String[] keys = event.command.keys;
+        if (keys == null) return;
+        boolean isPosture = false;
+        for (String k : keys) {
+            if ("lay".equalsIgnoreCase(k) || "sit".equalsIgnoreCase(k)
+                    || "stand".equalsIgnoreCase(k)) {
+                isPosture = true;
+                break;
+            }
+        }
+        if (!isPosture) return;
+
+        int habboId = event.habbo.getHabboInfo().getId();
+        StatsManager.get(habboId).ifPresent(stats -> {
+            if (stats.getHp() <= 0) {
+                event.habbo.whisper("You are dead.", RoomChatMessageBubbles.ALERT);
+                event.setCancelled(true);
+            }
+        });
+    }
+
     @EventHandler
     public void onUserDisconnect(UserDisconnectEvent event) {
         if (event.habbo != null) {
@@ -265,11 +299,20 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         // Login-triggered entry: drop the user back on the tile they left on.
         // UserEnterRoomEvent fires BEFORE Arcturus's room-ready state is
         // populated (RoomUnit.room + HabboInfo.currentRoom both come later).
-        // Poll until ready, then teleport — see attemptTeleportAfterReady.
+        // Poll until ready, then teleport — see attemptTeleportAfterReady. The
+        // teleport chains DeathState.reapplyIfDead at the end, so a player who
+        // logged off dead lands back in the lay+freeze pose.
         if (RESTORE_POSITION_ON_ENTER.remove(habboId)) {
-            HomePositionStore.load(habboId).ifPresent(pos ->
-                    attemptTeleportAfterReady(event.habbo, event.room, pos, 0));
+            Optional<HomePositionStore.Position> pos = HomePositionStore.load(habboId);
+            if (pos.isPresent()) {
+                attemptTeleportAfterReady(event.habbo, event.room, pos.get(), 0);
+                return;
+            }
         }
+        // No teleport queued (first-time login, mid-session room change). We
+        // still need to re-apply death state if HP is 0 — the RoomUnit flags
+        // (LAY status, canWalk) don't persist across sessions or rooms.
+        attemptReapplyAfterReady(event.habbo, event.room, 0);
     }
 
     /**
@@ -298,6 +341,35 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
                 return;
             }
             teleportToHomePosition(habbo, room, pos);
+        }, POSITION_RESTORE_POLL_MS);
+    }
+
+    /**
+     * Same readiness poll as {@link #attemptTeleportAfterReady}, but runs
+     * {@link DeathState#reapplyIfDead} once the RoomUnit is placed in the
+     * room. Scheduled from onUserEnterRoom on every room-enter that isn't
+     * accompanied by a home-position teleport (the teleport chain handles
+     * reapply itself so the teleport's status broadcast doesn't clobber
+     * the lay status).
+     */
+    private static void attemptReapplyAfterReady(Habbo habbo,
+                                                 com.eu.habbo.habbohotel.rooms.Room room,
+                                                 int attempt) {
+        Emulator.getThreading().run(() -> {
+            if (habbo == null || room == null) return;
+            if (attempt >= POSITION_RESTORE_MAX_ATTEMPTS) return;
+            com.eu.habbo.habbohotel.rooms.Room current =
+                    habbo.getHabboInfo().getCurrentRoom();
+            RoomUnit unit = habbo.getRoomUnit();
+            boolean ready = current != null
+                    && current.getId() == room.getId()
+                    && unit != null
+                    && unit.isInRoom();
+            if (!ready) {
+                attemptReapplyAfterReady(habbo, room, attempt + 1);
+                return;
+            }
+            DeathState.reapplyIfDead(habbo);
         }, POSITION_RESTORE_POLL_MS);
     }
 
@@ -361,6 +433,9 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         unit.setZ(tile.getStackHeight());
         unit.setRotation(RoomUserRotation.fromValue(pos.rotation()));
         room.sendComposer(new RoomUserStatusComposer(unit).compose());
+        // Dead players land in lay+freeze — re-applied after the teleport's
+        // status broadcast so the LAY status wins the last-write-wins race.
+        DeathState.reapplyIfDead(habbo);
     }
 
     private static void updateHomeRoom(int habboId, int roomId) {

@@ -1,7 +1,9 @@
 package org.pixeltower.rp.stats;
 
 import com.eu.habbo.Emulator;
+import com.eu.habbo.habbohotel.users.Habbo;
 import org.pixeltower.rp.core.TargetService;
+import org.pixeltower.rp.death.DeathState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,6 +87,7 @@ public final class StatsManager {
         PlayerStats cached = CACHE.get(habboId);
         int maxHp;
         int maxEnergy;
+        boolean wasDead = cached != null && cached.getHp() <= 0;
         if (cached != null) {
             maxHp = cached.getMaxHp();
             maxEnergy = cached.getMaxEnergy();
@@ -98,6 +101,10 @@ public final class StatsManager {
         if (cached != null) {
             cached.setHp(maxHp);
             cached.setEnergy(maxEnergy);
+        }
+        if (wasDead) {
+            Habbo habbo = Emulator.getGameEnvironment().getHabboManager().getHabbo(habboId);
+            if (habbo != null) DeathState.exit(habbo);
         }
         TargetService.broadcastStatsUpdate(habboId);
         return true;
@@ -114,6 +121,8 @@ public final class StatsManager {
         if (cached == null && fetch(habboId) == null) return false;
         if (!persistHp(habboId, 0)) return false;
         if (cached != null) cached.setHp(0);
+        Habbo habbo = Emulator.getGameEnvironment().getHabboManager().getHabbo(habboId);
+        if (habbo != null) DeathState.enter(habbo);
         TargetService.broadcastStatsUpdate(habboId);
         return true;
     }
