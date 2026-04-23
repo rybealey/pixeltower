@@ -7,8 +7,6 @@ import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.rooms.RoomUnit;
 import com.eu.habbo.habbohotel.rooms.RoomUnitType;
 import com.eu.habbo.habbohotel.users.Habbo;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,8 +29,6 @@ import java.sql.SQLException;
  * {@link FunctionalActionDispatcher#dispatch}.
  */
 public class InteractionRpFunctional extends InteractionDefault {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(InteractionRpFunctional.class);
 
     public InteractionRpFunctional(ResultSet set, Item baseItem) throws SQLException {
         super(set, baseItem);
@@ -72,39 +68,17 @@ public class InteractionRpFunctional extends InteractionDefault {
     }
 
     private void fireFor(RoomUnit roomUnit, Room room, TriggerType trigger) {
-        // TEMP DEBUG: trace every walk-on / walk-off call so we can pinpoint
-        // why the dressing-room walk-on dispatch isn't reaching the client.
-        // Strip once the issue is diagnosed.
-        LOGGER.info("rp_functional {} fired: baseId={} placedFurniId={} unit={} unitType={}",
-                trigger,
-                this.getBaseItem() != null ? this.getBaseItem().getId() : -1,
-                this.getId(),
-                roomUnit != null ? roomUnit.getId() : -1,
-                roomUnit != null ? roomUnit.getRoomUnitType() : "null");
         if (roomUnit == null || room == null) return;
         if (roomUnit.getRoomUnitType() != RoomUnitType.USER) return;
         Habbo habbo = room.getHabbo(roomUnit);
-        if (habbo == null) {
-            LOGGER.warn("rp_functional {} skipped — room.getHabbo(unit) returned null", trigger);
-            return;
-        }
-        java.util.Optional<FunctionalAction> action = FunctionalFurnitureService.lookup(
-                this.getBaseItem().getId(), trigger);
-        if (action.isEmpty()) {
-            LOGGER.warn("rp_functional {} skipped — no row in rp_functional_furniture for baseId={}",
-                    trigger, this.getBaseItem().getId());
-            return;
-        }
-        if (!FunctionalFurnitureService.tryFire(
-                habbo.getHabboInfo().getId(), this.getId(),
-                trigger, action.get().cooldownMs())) {
-            LOGGER.info("rp_functional {} cooldown-gated for habboId={} placedFurni={}",
-                    trigger, habbo.getHabboInfo().getId(), this.getId());
-            return;
-        }
-        LOGGER.info("rp_functional {} dispatching action_type={} payload={} to habboId={}",
-                trigger, action.get().actionType(), action.get().payload(),
-                habbo.getHabboInfo().getId());
-        FunctionalActionDispatcher.dispatch(habbo, action.get());
+        if (habbo == null) return;
+        FunctionalFurnitureService.lookup(this.getBaseItem().getId(), trigger)
+                .ifPresent(action -> {
+                    if (FunctionalFurnitureService.tryFire(
+                            habbo.getHabboInfo().getId(), this.getId(),
+                            trigger, action.cooldownMs())) {
+                        FunctionalActionDispatcher.dispatch(habbo, action);
+                    }
+                });
     }
 }
