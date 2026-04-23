@@ -40,7 +40,7 @@ else
   echo "$CHANGED" | grep -qE '^(nitro-patches/|scripts/build-client\.sh$)'   && need_nitro=1 || true
   echo "$CHANGED" | grep -qE '^atomcms/'                                     && need_atom=1  || true
   echo "$CHANGED" | grep -qE '^(plugins/|arcturus-patches/|docker/emulator/)' && need_emu=1  || true
-  echo "$CHANGED" | grep -qE '^plugins/[^/]+/sql/'                           && need_sql=1  || true
+  echo "$CHANGED" | grep -qE '^(plugins/[^/]+/sql/|scripts/seed-db\.sh$)'    && need_sql=1  || true
   echo "[deploy] rebuild needed: nitro=$need_nitro atom=$need_atom emu=$need_emu sql=$need_sql"
 fi
 
