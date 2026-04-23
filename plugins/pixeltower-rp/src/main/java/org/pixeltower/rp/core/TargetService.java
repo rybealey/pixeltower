@@ -8,6 +8,8 @@ import com.eu.habbo.habbohotel.users.HabboManager;
 import org.pixeltower.rp.stats.StatsManager;
 import org.pixeltower.rp.stats.outgoing.UpdateTargetStatsComposer;
 
+import java.util.Set;
+
 /**
  * Set-and-push semantics for the client-visible target slot.
  *
@@ -33,8 +35,32 @@ public final class TargetService {
         GameClient client = viewer.getClient();
         if (client == null) return;
 
-        String figure = null;
-        String username = null;
+        sendSnapshot(client, targetHabboId);
+    }
+
+    /**
+     * Push a fresh UpdateTargetStatsComposer to every online viewer currently
+     * targeting {@code targetHabboId}. Called after any stat mutation so
+     * observers' TargetHUDs reflect the change without re-clicking the target.
+     * No-op when nobody is watching.
+     */
+    public static void broadcastStatsUpdate(int targetHabboId) {
+        Set<Integer> viewers = TargetTracker.viewersOf(targetHabboId);
+        if (viewers.isEmpty()) return;
+
+        HabboManager hm = Emulator.getGameEnvironment().getHabboManager();
+        for (int viewerId : viewers) {
+            Habbo viewer = hm.getHabbo(viewerId);
+            if (viewer == null) continue;
+            GameClient client = viewer.getClient();
+            if (client == null) continue;
+            sendSnapshot(client, targetHabboId);
+        }
+    }
+
+    private static void sendSnapshot(GameClient client, int targetHabboId) {
+        String figure;
+        String username;
         Habbo online = Emulator.getGameEnvironment().getHabboManager().getHabbo(targetHabboId);
         if (online != null) {
             figure = online.getHabboInfo().getLook();
@@ -45,7 +71,6 @@ public final class TargetService {
             figure = offline.getLook();
             username = offline.getUsername();
         }
-
         final String figureF = figure;
         final String usernameF = username;
         StatsManager.getOrFetch(targetHabboId).ifPresent(stats ->

@@ -1,6 +1,8 @@
 package org.pixeltower.rp.core;
 
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -37,5 +39,18 @@ public final class TargetTracker {
 
     public static void clear(int viewerHabboId) {
         TARGETS.remove(viewerHabboId);
+    }
+
+    /**
+     * Reverse lookup: viewer ids whose current target == {@code targetHabboId}.
+     * Scan-based (O(n)) — fine at retro-server player counts; revisit if the
+     * forward map ever grows past a few thousand entries.
+     */
+    public static Set<Integer> viewersOf(int targetHabboId) {
+        Set<Integer> result = new HashSet<>();
+        TARGETS.forEach((viewer, target) -> {
+            if (target == targetHabboId) result.add(viewer);
+        });
+        return result;
     }
 }

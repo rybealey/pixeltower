@@ -1,6 +1,7 @@
 package org.pixeltower.rp.stats;
 
 import com.eu.habbo.Emulator;
+import org.pixeltower.rp.core.TargetService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,6 +99,7 @@ public final class StatsManager {
             cached.setHp(maxHp);
             cached.setEnergy(maxEnergy);
         }
+        TargetService.broadcastStatsUpdate(habboId);
         return true;
     }
 
@@ -112,6 +114,7 @@ public final class StatsManager {
         if (cached == null && fetch(habboId) == null) return false;
         if (!persistHp(habboId, 0)) return false;
         if (cached != null) cached.setHp(0);
+        TargetService.broadcastStatsUpdate(habboId);
         return true;
     }
 

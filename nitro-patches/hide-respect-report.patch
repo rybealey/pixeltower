@@ -1,0 +1,24 @@
+diff --git a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetAvatarView.tsx b/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetAvatarView.tsx
+--- a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetAvatarView.tsx
++++ b/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetAvatarView.tsx
+@@ -218,10 +218,6 @@
+                     <ContextMenuListItemView onClick={ event => processAction('whisper') }>
+                         { LocalizeText('infostand.button.whisper') }
+                     </ContextMenuListItemView>
+-                    { (userRespectRemaining > 0) &&
+-                        <ContextMenuListItemView onClick={ event => processAction('respect') }>
+-                            { LocalizeText('infostand.button.respect', [ 'count' ], [ userRespectRemaining.toString() ]) }
+-                        </ContextMenuListItemView> }
+                     { !canRequestFriend(avatarInfo.webID) &&
+                         <ContextMenuListItemView onClick={ event => processAction('relationship') }>
+                             { LocalizeText('infostand.link.relationship') }
+@@ -235,9 +231,6 @@
+                         <ContextMenuListItemView onClick={ event => processAction('unignore') }>
+                             { LocalizeText('infostand.button.unignore') }
+                         </ContextMenuListItemView> }
+-                    <ContextMenuListItemView onClick={ event => processAction('report') }>
+-                        { LocalizeText('infostand.button.report') }
+-                    </ContextMenuListItemView>
+                     { moderateMenuHasContent &&
+                         <ContextMenuListItemView onClick={ event => processAction('moderate') }>
+                             <FaChevronRight className="right fa-icon" />
