@@ -290,10 +290,11 @@ diff --git a/src/components/index.scss b/src/components/index.scss
 index 8e1cd2b..d27f012 100644
 --- a/src/components/index.scss
 +++ b/src/components/index.scss
-@@ -17,10 +17,14 @@
+@@ -17,10 +17,15 @@
  @import './navigator/NavigatorView';
  @import './nitropedia/NitropediaView';
  @import './notification-center/NotificationCenterView';
++@import './pixeltower/CommandsListView';
 +@import './pixeltower/StatsHUD';
 +@import './pixeltower/StatusHUD';
 +@import './pixeltower/DrawerHUD';
@@ -321,7 +322,7 @@ index da7003d..708c943 100644
  import { AvatarEditorView } from '../avatar-editor/AvatarEditorView';
  import { CameraWidgetView } from '../camera/CameraWidgetView';
  import { CampaignView } from '../campaign/CampaignView';
-@@ -16,14 +15,17 @@ import { GroupsView } from '../groups/GroupsView';
+@@ -16,14 +15,18 @@ import { GroupsView } from '../groups/GroupsView';
  import { GuideToolView } from '../guide-tool/GuideToolView';
  import { HcCenterView } from '../hc-center/HcCenterView';
  import { HelpView } from '../help/HelpView';
@@ -329,6 +330,7 @@ index da7003d..708c943 100644
  import { InventoryView } from '../inventory/InventoryView';
  import { ModToolsView } from '../mod-tools/ModToolsView';
  import { NavigatorView } from '../navigator/NavigatorView';
++import { CommandsListView } from '../pixeltower/CommandsListView';
 +import { DrawerHUD } from '../pixeltower/DrawerHUD';
 +import { StatsHUD } from '../pixeltower/StatsHUD';
 +import { StatusHUD } from '../pixeltower/StatusHUD';
@@ -341,7 +343,7 @@ index da7003d..708c943 100644
  import { UserProfileView } from '../user-profile/UserProfileView';
  import { UserSettingsView } from '../user-settings/UserSettingsView';
  import { WiredView } from '../wired/WiredView';
-@@ -81,16 +83,22 @@ export const MainView: FC<{}> = props =>
+@@ -81,16 +84,23 @@ export const MainView: FC<{}> = props =>
 
      return (
          <Base fit>
@@ -359,6 +361,7 @@ index da7003d..708c943 100644
 +            <StatusHUD />
 +            <TargetHUD />
 +            <DrawerHUD />
++            <CommandsListView />
              <ModToolsView />
              <RoomView />
              <ChatHistoryView />
@@ -390,6 +393,385 @@ index b22a2f6..9d9ee64 100644
          default:
              return <NotificationDefaultBubbleView { ...props } />
      }
+diff --git a/src/components/pixeltower/CommandsListView.scss b/src/components/pixeltower/CommandsListView.scss
+new file mode 100644
+index 0000000..1000004
+--- /dev/null
++++ b/src/components/pixeltower/CommandsListView.scss
+@@ -0,0 +1,187 @@
++@use './tokens' as *;
++
++// Commands List window — .designs/client_ui.pen frame I2LwC. The outer
++// shell is NitroCardView (theme="primary") so it uses Nitro's native
++// Habbo card chrome including the red close button; the custom red
++// close drawn in the .pen is intentionally disregarded for consistency
++// with every other Habbo dialog in the client.
++
++$pt-cmd-search-top:    #1A2436;
++$pt-cmd-search-bottom: #2B3A54;
++$pt-cmd-search-icon:   #7A95B8;
++$pt-cmd-search-hint:   #9FB3CC;
++
++$pt-cmd-tab-label:         #C4D1E0;
++$pt-cmd-tab-label-active:  #FFFFFF;
++$pt-cmd-tab-underglow:     #9AB4D3;
++
++$pt-cmd-table-bg:              #2B3A54;
++$pt-cmd-table-header-bg:       #1F2C40;
++$pt-cmd-table-header-fg:       #9FB3CC;
++$pt-cmd-table-row-desc:        #C4D1E0;
++$pt-cmd-table-row-param:       #7A95B8;
++$pt-cmd-table-row-placeholder: #FFD028;
++
++.pixeltower-commands-list {
++    width: 560px;
++    max-width: calc(100vw - 24px);
++    color: $pt-text;
++    font-family: $pt-font-family;
++
++    &__body {
++        display: flex;
++        flex-direction: column;
++        gap: 12px;
++        padding: 16px;
++        min-height: 0;
++    }
++
++    &__top-row {
++        display: flex;
++        flex-direction: column;
++        gap: 12px;
++    }
++
++    &__search {
++        display: flex;
++        align-items: center;
++        gap: 8px;
++        height: 36px;
++        padding: 0 12px;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++        background: linear-gradient(180deg,
++            $pt-cmd-search-top 0%, $pt-cmd-search-top 50%,
++            $pt-cmd-search-bottom 50%, $pt-cmd-search-bottom 100%);
++        box-shadow: 0 -1px 0 $pt-cmd-tab-underglow;
++    }
++
++    &__search-icon {
++        width: 14px;
++        height: 14px;
++        color: $pt-cmd-search-icon;
++        flex-shrink: 0;
++    }
++
++    &__search-input {
++        flex: 1 1 auto;
++        min-width: 0;
++        background: transparent;
++        border: 0;
++        outline: none;
++        color: $pt-text;
++        font-family: inherit;
++        font-size: 14px;
++        font-weight: 700;
++
++        &::placeholder { color: $pt-cmd-search-hint; }
++    }
++
++    &__tabs {
++        display: flex;
++        height: 36px;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++        overflow: hidden;
++        box-shadow: 0 1px 0 $pt-cmd-tab-underglow;
++    }
++
++    &__tab {
++        flex: 1 1 0;
++        background: linear-gradient(180deg,
++            $pt-chip-top 0%, $pt-chip-top 50%,
++            $pt-chip-bottom 50%, $pt-chip-bottom 100%);
++        border: 0;
++        padding: 0 16px;
++        color: $pt-cmd-tab-label;
++        font-family: inherit;
++        font-size: 14px;
++        font-weight: 700;
++        cursor: pointer;
++        transition: filter 120ms ease;
++
++        &:hover { filter: brightness(1.08); }
++
++        &--active {
++            background: linear-gradient(180deg,
++                $pt-chip-bottom 0%, $pt-chip-bottom 50%,
++                $pt-chip-top 50%, $pt-chip-top 100%);
++            color: $pt-cmd-tab-label-active;
++        }
++    }
++
++    &__tab-divider {
++        width: 2px;
++        background: $pt-panel-stroke;
++        flex-shrink: 0;
++    }
++
++    &__table {
++        display: flex;
++        flex-direction: column;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++        background: $pt-cmd-table-bg;
++        overflow: hidden;
++        min-height: 0;
++    }
++
++    &__table-header {
++        display: flex;
++        gap: 12px;
++        padding: 8px 12px;
++        background: $pt-cmd-table-header-bg;
++        font-size: 12px;
++        font-weight: 700;
++        letter-spacing: 1px;
++        color: $pt-cmd-table-header-fg;
++        text-transform: uppercase;
++    }
++
++    &__table-body {
++        display: flex;
++        flex-direction: column;
++        max-height: 50vh;
++        overflow-y: auto;
++    }
++
++    &__row {
++        display: flex;
++        gap: 12px;
++        padding: 10px 12px;
++        align-items: center;
++        border-bottom: 1px solid $pt-panel-stroke;
++
++        &:last-child { border-bottom: 0; }
++    }
++
++    &__col-command {
++        width: 100px;
++        flex-shrink: 0;
++        font-size: 14px;
++        font-weight: 700;
++        color: $pt-text;
++    }
++
++    &__col-params {
++        width: 150px;
++        flex-shrink: 0;
++        font-size: 14px;
++        color: $pt-cmd-table-row-param;
++
++        &--placeholder { color: $pt-cmd-table-row-placeholder; }
++    }
++
++    &__col-description {
++        flex: 1 1 auto;
++        font-size: 14px;
++        color: $pt-cmd-table-row-desc;
++    }
++
++    &__empty {
++        padding: 24px 12px;
++        text-align: center;
++        color: $pt-cmd-table-row-desc;
++        font-size: 14px;
++    }
++}
+diff --git a/src/components/pixeltower/CommandsListView.tsx b/src/components/pixeltower/CommandsListView.tsx
+new file mode 100644
+index 0000000..1000005
+--- /dev/null
++++ b/src/components/pixeltower/CommandsListView.tsx
+@@ -0,0 +1,180 @@
++import { ILinkEventTracker } from '@nitrots/nitro-renderer';
++import { FC, useEffect, useMemo, useState } from 'react';
++import { LuSearch } from 'react-icons/lu';
++import { AddEventLinkTracker, GetSessionDataManager, RemoveLinkEventTracker } from '../../api';
++import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
++import { useEmployment, usePurse } from '../../hooks';
++
++// Reference window for every chat command the server + client expose.
++// Opens via `:commands` (see useChatInputWidget.ts).
++//
++// Tabs + their contents are gated per the viewer's status:
++//   - General → visible to everyone
++//   - Job     → only employed users (useEmployment — server signal TBD,
++//               stub currently returns isEmployed:false)
++//   - VIP     → only users with active HC (usePurse → totalClubDays > 0)
++//   - Staff   → only moderators (GetSessionDataManager().isModerator)
++//
++// Hidden tabs aren't rendered at all, so a regular player never sees
++// evidence of commands they can't run.
++
++type Category = 'general' | 'job' | 'vip' | 'staff';
++
++interface CommandDef {
++    name: string;
++    params?: string;
++    description: string;
++    category: Category;
++    /** When true, the params cell renders in the yellow placeholder style. */
++    paramsPlaceholder?: boolean;
++}
++
++const COMMANDS: CommandDef[] = [
++    { name: 'bal',          description: 'Check your bank balance',                  category: 'general' },
++    { name: 'target',       params: '%user%',           paramsPlaceholder: true, description: 'Target a player to view their stats',       category: 'general' },
++    { name: 'open-account', description: 'Open a corp bank account',                 category: 'general' },
++    { name: 'deposit',      params: '%amount%',         paramsPlaceholder: true, description: 'Deposit credits into your account',        category: 'general' },
++    { name: 'withdraw',     params: '%amount%',         paramsPlaceholder: true, description: 'Withdraw credits from your account',       category: 'general' },
++    { name: 'transfer',     params: '%user% %amount%',  paramsPlaceholder: true, description: 'Send credits to another user',             category: 'general' },
++    { name: 'stats',        description: 'Show your stats',                          category: 'general' },
++    { name: 'restore',      description: 'Restore your HP and energy',               category: 'general' },
++    { name: 'commands',     description: 'Open this reference window',               category: 'general' },
++    { name: 'startwork',    description: 'Start a shift at your corp',               category: 'job' },
++    { name: 'stopwork',     description: 'End your current shift',                   category: 'job' },
++    { name: 'give',         params: '%user% %amount%',  paramsPlaceholder: true, description: 'Grant credits to a user',                  category: 'staff' },
++    { name: 'award',        params: '%user% %amount%',  paramsPlaceholder: true, description: 'Award currency to a user',                 category: 'staff' },
++    { name: 'hire',         params: '%user% %corp%',    paramsPlaceholder: true, description: 'Hire a user into a corp',                  category: 'staff' },
++    { name: 'fire',         params: '%user%',           paramsPlaceholder: true, description: 'Remove a user from their corp',            category: 'staff' },
++    { name: 'promote',      params: '%user%',           paramsPlaceholder: true, description: "Promote a user's corp rank",               category: 'staff' },
++    { name: 'roomsettings', description: 'Open room settings for the current room',  category: 'staff' },
++    { name: 'floorplan',    description: 'Open the floor plan editor',               category: 'staff' }
++];
++
++const TAB_LABEL: Record<Category, string> = {
++    general: 'General',
++    job:     'Job',
++    vip:     'VIP',
++    staff:   'Staff'
++};
++
++export const CommandsListView: FC<{}> = () =>
++{
++    const [ isVisible, setIsVisible ] = useState(false);
++    const [ activeTab, setActiveTab ] = useState<Category>('general');
++    const [ query, setQuery ] = useState<string>('');
++
++    const { purse = null } = usePurse();
++    const { isEmployed } = useEmployment();
++    const isModerator = GetSessionDataManager().isModerator;
++    const totalClubDays = purse ? (purse.clubPeriods * 31) + purse.clubDays : 0;
++    const isVip = totalClubDays > 0;
++
++    const visibleTabs = useMemo<Category[]>(() =>
++    {
++        const tabs: Category[] = [ 'general' ];
++        if(isEmployed) tabs.push('job');
++        if(isVip) tabs.push('vip');
++        if(isModerator) tabs.push('staff');
++        return tabs;
++    }, [ isEmployed, isVip, isModerator ]);
++
++    // If the active tab becomes hidden (e.g. HC expired while the
++    // window was open), fall back to General so the body doesn't render
++    // a tab the user no longer has access to.
++    useEffect(() =>
++    {
++        if(!visibleTabs.includes(activeTab)) setActiveTab('general');
++    }, [ visibleTabs, activeTab ]);
++
++    useEffect(() =>
++    {
++        const linkTracker: ILinkEventTracker = {
++            linkReceived: (url: string) =>
++            {
++                const parts = url.split('/');
++                if(parts.length < 2) return;
++                switch(parts[1])
++                {
++                    case 'show':   setIsVisible(true); return;
++                    case 'hide':   setIsVisible(false); return;
++                    case 'toggle': setIsVisible(v => !v); return;
++                }
++            },
++            eventUrlPrefix: 'commands-list/'
++        };
++        AddEventLinkTracker(linkTracker);
++        return () => RemoveLinkEventTracker(linkTracker);
++    }, []);
++
++    const filtered = useMemo(() =>
++    {
++        const q = query.trim().toLowerCase();
++        return COMMANDS.filter(c =>
++        {
++            if(c.category !== activeTab) return false;
++            if(!q) return true;
++            return c.name.toLowerCase().includes(q) || c.description.toLowerCase().includes(q);
++        });
++    }, [ activeTab, query ]);
++
++    if(!isVisible) return null;
++
++    return (
++        <NitroCardView uniqueKey="pixeltower-commands" theme="primary" classNames={ [ 'pixeltower-commands-list' ] }>
++            <NitroCardHeaderView headerText="Commands List" onCloseClick={ () => setIsVisible(false) } />
++            <NitroCardContentView classNames={ [ 'pixeltower-commands-list__body' ] } overflow="hidden">
++                <div className="pixeltower-commands-list__top-row">
++                    <label className="pixeltower-commands-list__search">
++                        <LuSearch className="pixeltower-commands-list__search-icon" />
++                        <input
++                            type="text"
++                            className="pixeltower-commands-list__search-input"
++                            placeholder="Search commands…"
++                            value={ query }
++                            onChange={ e => setQuery(e.target.value) } />
++                    </label>
++                    <div className="pixeltower-commands-list__tabs">
++                        { visibleTabs.flatMap((tab, i) =>
++                        {
++                            const btn = (
++                                <button
++                                    key={ tab }
++                                    type="button"
++                                    className={ 'pixeltower-commands-list__tab' + (tab === activeTab ? ' pixeltower-commands-list__tab--active' : '') }
++                                    onClick={ () => setActiveTab(tab) }>
++                                    { TAB_LABEL[tab] }
++                                </button>
++                            );
++                            return i === 0
++                                ? [ btn ]
++                                : [ <div key={ `${ tab }-div` } className="pixeltower-commands-list__tab-divider" />, btn ];
++                        }) }
++                    </div>
++                </div>
++                <div className="pixeltower-commands-list__table">
++                    <div className="pixeltower-commands-list__table-header">
++                        <span className="pixeltower-commands-list__col-command">Command</span>
++                        <span className="pixeltower-commands-list__col-params">Parameters</span>
++                        <span className="pixeltower-commands-list__col-description">Description</span>
++                    </div>
++                    <div className="pixeltower-commands-list__table-body">
++                        { filtered.length === 0
++                            ? <div className="pixeltower-commands-list__empty">
++                                { activeTab === 'vip' ? 'No VIP commands yet.' : 'No commands match your search.' }
++                            </div>
++                            : filtered.map(cmd => (
++                                <div key={ cmd.name } className="pixeltower-commands-list__row">
++                                    <span className="pixeltower-commands-list__col-command">{ cmd.name }</span>
++                                    <span className={ 'pixeltower-commands-list__col-params' + (cmd.paramsPlaceholder ? ' pixeltower-commands-list__col-params--placeholder' : '') }>
++                                        { cmd.params ?? 'N/A' }
++                                    </span>
++                                    <span className="pixeltower-commands-list__col-description">{ cmd.description }</span>
++                                </div>
++                            ))
++                        }
++                    </div>
++                </div>
++            </NitroCardContentView>
++        </NitroCardView>
++    );
++}
 diff --git a/src/components/pixeltower/DrawerHUD.scss b/src/components/pixeltower/DrawerHUD.scss
 new file mode 100644
 index 0000000..cba53ef
@@ -913,7 +1295,7 @@ new file mode 100644
 index 0000000..d0c6d5b
 --- /dev/null
 +++ b/src/components/pixeltower/StatusHUD.scss
-@@ -0,0 +1,123 @@
+@@ -0,0 +1,113 @@
 +@use './tokens' as *;
 +
 +// Top-right Status HUD — matches .designs/client_ui.pen frame KVhc5.
@@ -921,13 +1303,6 @@ index 0000000..d0c6d5b
 +// into its top rows; chat-history + user-settings buttons moved to
 +// the ToolbarHUD. The outer container is transparent per the updated
 +// design — each pill/row carries its own chrome.
-+
-+// Green VIP row palette — unique to this HUD, kept inline since no
-+// other component references these shades.
-+$pt-vip-row-top:    #2F8A4C;
-+$pt-vip-row-bottom: #0F4422;
-+$pt-vip-row-stroke: #051C0E;
-+$pt-vip-row-glow:   #6FBF88;
 +
 +.pixeltower-status-hud {
 +    position: absolute;
@@ -1000,41 +1375,38 @@ index 0000000..d0c6d5b
 +    }
 +
 +    // ──────────── currency + VIP rows ────────────
++    // Coin, diamond, and VIP rows share the same pt-panel shell as the
++    // info pills above — the only VIP-specific treatment is a yellow
++    // crown icon to flag subscription status.
 +
 +    &__row {
-+        @include pt-chip;
++        @include pt-panel;
++        border-radius: 3px;
 +        display: flex;
 +        flex-direction: row;
 +        align-items: center;
-+        gap: 10px;
-+        padding: 6px 10px;
++        gap: 6px;
++        padding: 6px 12px;
 +        box-sizing: border-box;
 +        align-self: stretch;
 +    }
 +
 +    &__row-icon {
-+        width: 18px;
-+        height: 18px;
++        width: 16px;
++        height: 16px;
 +        flex-shrink: 0;
 +        color: $pt-text;
 +    }
 +
-+    &__row-value {
-+        font-size: 16px;
-+        font-weight: 900;
-+        line-height: 1;
-+        font-variant-numeric: tabular-nums;
++    &__row-icon--vip {
++        color: #FFD028;
 +    }
 +
-+    // Green-gradient variant for the VIP row at the bottom of the stack.
-+    &__row--vip {
-+        background: linear-gradient(180deg,
-+            $pt-vip-row-top 0%, $pt-vip-row-top 50%,
-+            $pt-vip-row-bottom 50%, $pt-vip-row-bottom 100%);
-+        border-color: $pt-vip-row-stroke;
-+        box-shadow: 0 1px 0 $pt-vip-row-glow;
-+
-+        .pixeltower-status-hud__row-value { font-weight: 700; }
++    &__row-value {
++        font-size: 15px;
++        font-weight: 700;
++        line-height: 1;
++        font-variant-numeric: tabular-nums;
 +    }
 +}
 diff --git a/src/components/pixeltower/StatusHUD.tsx b/src/components/pixeltower/StatusHUD.tsx
@@ -1148,8 +1520,8 @@ index 0000000..e5bc5fc
 +                <LuGem className="pixeltower-status-hud__row-icon" />
 +                <span className="pixeltower-status-hud__row-value">{ diamonds }</span>
 +            </div>
-+            <div className="pixeltower-status-hud__row pixeltower-status-hud__row--vip">
-+                <LuCrown className="pixeltower-status-hud__row-icon" />
++            <div className="pixeltower-status-hud__row">
++                <LuCrown className="pixeltower-status-hud__row-icon pixeltower-status-hud__row-icon--vip" />
 +                <span className="pixeltower-status-hud__row-value">VIP · { totalClubDays } d.</span>
 +            </div>
 +        </div>
@@ -1221,7 +1593,7 @@ new file mode 100644
 index 0000000..d6e75ad
 --- /dev/null
 +++ b/src/components/pixeltower/ToolbarHUD.scss
-@@ -0,0 +1,224 @@
+@@ -0,0 +1,226 @@
 +@use './tokens' as *;
 +
 +// Bottom-center toolbar — matches .designs/client_ui.pen frame Y6gyQ.
@@ -1229,10 +1601,11 @@ index 0000000..d6e75ad
 +// #toolbar-chat-input-container portal target that ChatInputView
 +// writes into.
 +
-+$pt-toolbar-chat-top:    #1A2436;                   // pressed-look (darker on top)
-+$pt-toolbar-chat-bottom: #2B3A54;
-+$pt-toolbar-chat-icon:   #7A95B8;
-+$pt-toolbar-chat-placeholder: #9FB3CC;
++$pt-toolbar-chat-top:    #D9DFE6;                   // light-bevel top (soft gray)
++$pt-toolbar-chat-bottom: #FFFFFF;                   // light-bevel bottom (white)
++$pt-toolbar-chat-icon:   #3E4E6E;
++$pt-toolbar-chat-placeholder: #6B7A8F;
++$pt-toolbar-chat-text:   #0A1424;                   // dark typed text on light bevel
 +
 +.pixeltower-toolbar-hud {
 +    position: fixed;
@@ -1280,12 +1653,13 @@ index 0000000..d6e75ad
 +        height: 40px;
 +        padding: 8px 12px;
 +        border: 2px solid $pt-panel-stroke;
-+        border-radius: 2px;
-+        // inverse-bevel: darker top, lighter bottom = pressed/inset field
++        border-radius: 3px;
++        // light-bevel: soft-gray top, white bottom — inverse of the dark chip
++        // gradient used on the button groups. Per .pen qkSYj > hKnXO.
 +        background: linear-gradient(180deg,
 +            $pt-toolbar-chat-top 0%, $pt-toolbar-chat-top 50%,
 +            $pt-toolbar-chat-bottom 50%, $pt-toolbar-chat-bottom 100%);
-+        box-shadow: 0 -1px 0 #9AB4D3;                // periwinkle top-edge highlight per .pen qkSYj > hKnXO
++        box-shadow: 0 -1px 0 #FFFFFF;                // white top-edge highlight per .pen qkSYj > hKnXO
 +    }
 +
 +    &__chat-input-slot {
@@ -1348,7 +1722,7 @@ index 0000000..d6e75ad
 +                background: transparent;
 +                border: 0;
 +                outline: none;
-+                color: $pt-text;
++                color: $pt-toolbar-chat-text;
 +                font-family: $pt-font-family;
 +                font-size: 14px;
 +                font-weight: 700;
@@ -1776,6 +2150,17 @@ diff --git a/src/components/room/widgets/RoomWidgetsView.tsx b/src/components/ro
              <RoomFilterWordsWidgetView />
              <RoomThumbnailWidgetView />
              <FurniChooserWidgetView />
+diff --git a/src/components/room/widgets/avatar-info/AvatarInfoWidgetView.tsx b/src/components/room/widgets/avatar-info/AvatarInfoWidgetView.tsx
+--- a/src/components/room/widgets/avatar-info/AvatarInfoWidgetView.tsx
++++ b/src/components/room/widgets/avatar-info/AvatarInfoWidgetView.tsx
+@@ -104,6 +104,7 @@
+         switch(avatarInfo.type)
+         {
+             case AvatarInfoFurni.FURNI:
++                if(!GetSessionDataManager().isModerator && !(roomSession?.isRoomOwner)) return null;
+                 return <InfoStandWidgetFurniView avatarInfo={ (avatarInfo as AvatarInfoFurni) } onClose={ () => setAvatarInfo(null) } />;
+             case AvatarInfoUser.OWN_USER:
+             case AvatarInfoUser.PEER:
 diff --git a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx b/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx
 index c72e269..f5e66cf 100644
 --- a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx
@@ -1881,9 +2266,27 @@ new file mode 100644
 index 0000000..62bdcf4
 --- /dev/null
 +++ b/src/hooks/pixeltower/index.ts
-@@ -0,0 +1,2 @@
+@@ -0,0 +1,3 @@
++export * from './useEmployment';
 +export * from './useStats';
 +export * from './useTarget';
+diff --git a/src/hooks/pixeltower/useEmployment.ts b/src/hooks/pixeltower/useEmployment.ts
+new file mode 100644
+index 0000000..1000003
+--- /dev/null
++++ b/src/hooks/pixeltower/useEmployment.ts
+@@ -0,0 +1,11 @@
++// Deferred: the pixeltower-rp plugin doesn't send an employment status
++// message to the client yet. Returning a stable non-employed state
++// keeps the Commands List's "Job" tab hidden for everyone until the
++// server signal lands, at which point this hook will start listening
++// for UpdateEmploymentStatusEvent (or similar) and flip the flag.
++
++export interface EmploymentState {
++    isEmployed: boolean;
++}
++
++export const useEmployment = (): EmploymentState => ({ isEmployed: false });
 diff --git a/src/hooks/pixeltower/useStats.ts b/src/hooks/pixeltower/useStats.ts
 new file mode 100644
 index 0000000..633918d
@@ -2013,9 +2416,9 @@ index 6bb5a54..d91dc5a 100644
 diff --git a/src/hooks/rooms/widgets/useChatInputWidget.ts b/src/hooks/rooms/widgets/useChatInputWidget.ts
 --- a/src/hooks/rooms/widgets/useChatInputWidget.ts
 +++ b/src/hooks/rooms/widgets/useChatInputWidget.ts
-@@ -171,6 +171,20 @@
+@@ -171,6 +171,24 @@
                      }
-
+ 
                      return null;
 +                case ':roomsettings':
 +                    if(GetSessionDataManager().isModerator)
@@ -2031,9 +2434,13 @@ diff --git a/src/hooks/rooms/widgets/useChatInputWidget.ts b/src/hooks/rooms/wid
 +                    }
 +
 +                    return null;
++                case ':commands':
++                    CreateLinkEvent('commands-list/toggle');
++
++                    return null;
              }
          }
-
+ 
 diff --git a/vite.config.js b/vite.config.js
 index 1c4696c..e05278a 100644
 --- a/vite.config.js

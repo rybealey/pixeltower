@@ -48,14 +48,22 @@ Everything in this section is **live** in the current server build.
 ### In-game UI
 
 - **Player HUD** (top-left) — avatar frame, HP/energy bars, wanted-stars meter.
-- **Status HUD** (top-right) — VIP club days remaining, coin balance, diamond balance,
-  quick buttons for chat history and settings.
+- **Status HUD** (top-right) — current room, hotel time, live online-user count, coin
+  balance, diamond balance, and VIP club days remaining. Slate-blue pill stack that
+  doubles as at-a-glance context for the whole session.
 - **Target HUD** — click any player's profile to surface their live stats next to yours,
   so you know who you're dealing with before you roll up on them.
+- **Toolbar HUD** (bottom) — chat field with a one-click chat-log shortcut, phone button
+  that opens the friends panel, and a settings button. Staff additionally get a grouped
+  chip of Navigator / Shop / Inventory / Mod Tools shortcuts.
+- **Drawer HUD** (left edge) — slide-out panel for quick actions.
 - **Action emotes** — when anyone wraps chat in asterisks (`*dusts off jacket*`), the
   client renders it as a proper RP emote with the speaker's name spliced in.
-- **Room-load polish** — the default "moderated chat" nag is suppressed; the hotel view
-  lobby is bypassed so you drop straight into your home room.
+- **Bespoke chrome** — hotel-view lobby is bypassed (users drop straight into a home
+  room), door tiles are entry-only so you can't accidentally walk yourself out of the
+  world, and every dialog window carries the Pixel slate-blue palette instead of
+  upstream teal. Staff-only `:roomsettings` and `:floorplan` commands re-expose the
+  tools that used to live on the removed bottom-left widget.
 
 ### Commands
 
@@ -76,9 +84,15 @@ Everything in this section is **live** in the current server build.
 | `:startwork` / `:stopwork` | Employees | Clock in / clock out (auto-clockout on idle) |
 | `:award <user\|x> <currency> <amount>` | Staff (rank 5+) | Audited coin/bank adjustment |
 | `:restore <user\|x>` | Staff (rank 5+) | Full HP + energy refill |
+| `:roomsettings` | Staff | Opens the room settings window for the current room |
+| `:floorplan` | Staff | Opens the floor-plan editor for the current room |
+| `:commands` | Everyone | Opens a searchable reference of every command you can use |
 
 > **Protip:** any command that takes a `<user>` accepts `x` as shorthand for your last
 > clicked target. `:give x 500` is faster than typing a username every time.
+>
+> Forgot a command? `:commands` opens a searchable window filtered by tab
+> (General / Job / VIP / Staff) — tabs only appear for statuses you actually have.
 
 ### Corporations — how the jobs work
 

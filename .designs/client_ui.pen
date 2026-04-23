@@ -539,7 +539,7 @@
     {
       "type": "frame",
       "id": "1hvgH",
-      "x": 500,
+      "x": 520,
       "y": 0,
       "name": "Target HUD",
       "width": 480,
@@ -853,7 +853,7 @@
     {
       "type": "frame",
       "id": "KVhc5",
-      "x": 1000,
+      "x": 1040,
       "y": 0,
       "name": "Status HUD",
       "fill": "#00000000",
@@ -1073,43 +1073,41 @@
           "id": "HdhKJ",
           "name": "coinRow",
           "width": "fill_container",
-          "fill": {
-            "type": "gradient",
-            "gradientType": "linear",
-            "enabled": true,
-            "rotation": 180,
-            "size": {
-              "height": 1
-            },
-            "colors": [
-              {
-                "color": "#5E7FA3",
-                "position": 0
-              },
-              {
-                "color": "#5E7FA3",
-                "position": 0.5
-              },
-              {
-                "color": "#2B3A54",
-                "position": 0.5
-              },
-              {
-                "color": "#2B3A54",
-                "position": 1
-              }
-            ]
-          },
+          "fill": "#3E4E6E80",
           "cornerRadius": 3,
           "stroke": {
             "align": "outside",
             "thickness": 2,
             "fill": "#0A1424"
           },
-          "gap": 10,
+          "effect": [
+            {
+              "type": "background_blur",
+              "radius": 8
+            },
+            {
+              "type": "shadow",
+              "shadowType": "outer",
+              "color": "#00000070",
+              "offset": {
+                "x": 0,
+                "y": 3
+              }
+            },
+            {
+              "type": "shadow",
+              "shadowType": "outer",
+              "color": "#7A95B8",
+              "offset": {
+                "x": 0,
+                "y": 2
+              }
+            }
+          ],
+          "gap": 6,
           "padding": [
             6,
-            10
+            12
           ],
           "alignItems": "center",
           "children": [
@@ -1117,8 +1115,8 @@
               "type": "icon_font",
               "id": "g8CJG",
               "name": "coinIcon",
-              "width": 18,
-              "height": 18,
+              "width": 16,
+              "height": 16,
               "iconFontName": "wallet",
               "iconFontFamily": "lucide",
               "fill": "#FFFFFF"
@@ -1130,8 +1128,8 @@
               "fill": "#FFFFFF",
               "content": "0",
               "fontFamily": "Ubuntu Condensed",
-              "fontSize": 16,
-              "fontWeight": "900"
+              "fontSize": 15,
+              "fontWeight": "700"
             }
           ]
         },
@@ -1140,43 +1138,41 @@
           "id": "aF5a3",
           "name": "diaRow",
           "width": "fill_container",
-          "fill": {
-            "type": "gradient",
-            "gradientType": "linear",
-            "enabled": true,
-            "rotation": 180,
-            "size": {
-              "height": 1
-            },
-            "colors": [
-              {
-                "color": "#5E7FA3",
-                "position": 0
-              },
-              {
-                "color": "#5E7FA3",
-                "position": 0.5
-              },
-              {
-                "color": "#2B3A54",
-                "position": 0.5
-              },
-              {
-                "color": "#2B3A54",
-                "position": 1
-              }
-            ]
-          },
+          "fill": "#3E4E6E80",
           "cornerRadius": 3,
           "stroke": {
             "align": "outside",
             "thickness": 2,
             "fill": "#0A1424"
           },
-          "gap": 10,
+          "effect": [
+            {
+              "type": "background_blur",
+              "radius": 8
+            },
+            {
+              "type": "shadow",
+              "shadowType": "outer",
+              "color": "#00000070",
+              "offset": {
+                "x": 0,
+                "y": 3
+              }
+            },
+            {
+              "type": "shadow",
+              "shadowType": "outer",
+              "color": "#7A95B8",
+              "offset": {
+                "x": 0,
+                "y": 2
+              }
+            }
+          ],
+          "gap": 6,
           "padding": [
             6,
-            10
+            12
           ],
           "alignItems": "center",
           "children": [
@@ -1184,8 +1180,8 @@
               "type": "icon_font",
               "id": "QQh0B",
               "name": "diaIcon",
-              "width": 18,
-              "height": 18,
+              "width": 16,
+              "height": 16,
               "iconFontName": "gem",
               "iconFontFamily": "lucide",
               "fill": "#FFFFFF"
@@ -1197,8 +1193,8 @@
               "fill": "#FFFFFF",
               "content": "0",
               "fontFamily": "Ubuntu Condensed",
-              "fontSize": 16,
-              "fontWeight": "900"
+              "fontSize": 15,
+              "fontWeight": "700"
             }
           ]
         },
@@ -1207,52 +1203,41 @@
           "id": "IiGBk",
           "name": "vipRow",
           "width": "fill_container",
-          "fill": {
-            "type": "gradient",
-            "gradientType": "linear",
-            "enabled": true,
-            "rotation": 180,
-            "size": {
-              "height": 1
-            },
-            "colors": [
-              {
-                "color": "#2F8A4C",
-                "position": 0
-              },
-              {
-                "color": "#2F8A4C",
-                "position": 0.5
-              },
-              {
-                "color": "#0F4422",
-                "position": 0.5
-              },
-              {
-                "color": "#0F4422",
-                "position": 1
-              }
-            ]
-          },
+          "fill": "#3E4E6E80",
           "cornerRadius": 3,
           "stroke": {
             "align": "outside",
             "thickness": 2,
-            "fill": "#051C0E"
+            "fill": "#0A1424"
           },
-          "effect": {
-            "type": "shadow",
-            "shadowType": "outer",
-            "color": "#6FBF88",
-            "offset": {
-              "x": 0,
-              "y": 1
+          "effect": [
+            {
+              "type": "background_blur",
+              "radius": 8
+            },
+            {
+              "type": "shadow",
+              "shadowType": "outer",
+              "color": "#00000070",
+              "offset": {
+                "x": 0,
+                "y": 3
+              }
+            },
+            {
+              "type": "shadow",
+              "shadowType": "outer",
+              "color": "#7A95B8",
+              "offset": {
+                "x": 0,
+                "y": 2
+              }
             }
-          },
-          "gap": 10,
+          ],
+          "gap": 6,
           "padding": [
             6,
-            10
+            12
           ],
           "alignItems": "center",
           "children": [
@@ -1260,11 +1245,11 @@
               "type": "icon_font",
               "id": "NwA9h",
               "name": "vipIcon",
-              "width": 18,
-              "height": 18,
+              "width": 16,
+              "height": 16,
               "iconFontName": "crown",
               "iconFontFamily": "lucide",
-              "fill": "#FFFFFF"
+              "fill": "#FFD028"
             },
             {
               "type": "text",
@@ -1273,7 +1258,7 @@
               "fill": "#FFFFFF",
               "content": "VIP · 6 d.",
               "fontFamily": "Ubuntu Condensed",
-              "fontSize": 16,
+              "fontSize": 15,
               "fontWeight": "700"
             }
           ]
@@ -1283,7 +1268,7 @@
     {
       "type": "frame",
       "id": "tW1BU",
-      "x": 1300,
+      "x": 1280,
       "y": 0,
       "name": "Drawer HUD",
       "alignItems": "center",
@@ -1658,8 +1643,8 @@
     {
       "type": "rectangle",
       "id": "sqLPJ",
-      "x": -803,
-      "y": -336,
+      "x": 1600,
+      "y": 0,
       "fill": {
         "type": "image",
         "enabled": true,
@@ -1671,386 +1656,10 @@
     },
     {
       "type": "frame",
-      "id": "Y6gyQ",
-      "x": 297,
-      "y": 200,
-      "name": "Toolbar HUD",
-      "width": 800,
-      "height": 60,
-      "fill": "#00000000",
-      "cornerRadius": 3,
-      "stroke": {
-        "thickness": 0
-      },
-      "gap": 8,
-      "padding": [
-        8,
-        12
-      ],
-      "alignItems": "center",
-      "children": [
-        {
-          "type": "frame",
-          "id": "W0BVS",
-          "name": "leftGroup",
-          "width": "fill_container",
-          "height": "fill_container",
-          "fill": "#00000000",
-          "gap": 8,
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "n6sgA",
-              "name": "navBtn",
-              "width": 40,
-              "height": 40,
-              "fill": {
-                "type": "gradient",
-                "gradientType": "linear",
-                "enabled": true,
-                "rotation": 180,
-                "size": {
-                  "height": 1
-                },
-                "colors": [
-                  {
-                    "color": "#5E7FA3",
-                    "position": 0
-                  },
-                  {
-                    "color": "#5E7FA3",
-                    "position": 0.5
-                  },
-                  {
-                    "color": "#2B3A54",
-                    "position": 0.5
-                  },
-                  {
-                    "color": "#2B3A54",
-                    "position": 1
-                  }
-                ]
-              },
-              "cornerRadius": 3,
-              "stroke": {
-                "align": "outside",
-                "thickness": 2,
-                "fill": "#0A1424"
-              },
-              "effect": {
-                "type": "shadow",
-                "shadowType": "outer",
-                "color": "#9AB4D3",
-                "offset": {
-                  "x": 0,
-                  "y": 1
-                }
-              },
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon_font",
-                  "id": "Dwezg",
-                  "name": "navIcon",
-                  "width": 20,
-                  "height": 20,
-                  "iconFontName": "compass",
-                  "iconFontFamily": "lucide",
-                  "fill": "#FFFFFF"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "9TqKn",
-              "name": "shopBtn",
-              "width": 40,
-              "height": 40,
-              "fill": {
-                "type": "gradient",
-                "gradientType": "linear",
-                "enabled": true,
-                "rotation": 180,
-                "size": {
-                  "height": 1
-                },
-                "colors": [
-                  {
-                    "color": "#5E7FA3",
-                    "position": 0
-                  },
-                  {
-                    "color": "#5E7FA3",
-                    "position": 0.5
-                  },
-                  {
-                    "color": "#2B3A54",
-                    "position": 0.5
-                  },
-                  {
-                    "color": "#2B3A54",
-                    "position": 1
-                  }
-                ]
-              },
-              "cornerRadius": 3,
-              "stroke": {
-                "align": "outside",
-                "thickness": 2,
-                "fill": "#0A1424"
-              },
-              "effect": {
-                "type": "shadow",
-                "shadowType": "outer",
-                "color": "#9AB4D3",
-                "offset": {
-                  "x": 0,
-                  "y": 1
-                }
-              },
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon_font",
-                  "id": "4QK9M",
-                  "name": "shopIcon",
-                  "width": 20,
-                  "height": 20,
-                  "iconFontName": "shopping-bag",
-                  "iconFontFamily": "lucide",
-                  "fill": "#FFFFFF"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "PneIt",
-              "name": "modBtn",
-              "width": 40,
-              "height": 40,
-              "fill": {
-                "type": "gradient",
-                "gradientType": "linear",
-                "enabled": true,
-                "rotation": 180,
-                "size": {
-                  "height": 1
-                },
-                "colors": [
-                  {
-                    "color": "#5E7FA3",
-                    "position": 0
-                  },
-                  {
-                    "color": "#5E7FA3",
-                    "position": 0.5
-                  },
-                  {
-                    "color": "#2B3A54",
-                    "position": 0.5
-                  },
-                  {
-                    "color": "#2B3A54",
-                    "position": 1
-                  }
-                ]
-              },
-              "cornerRadius": 3,
-              "stroke": {
-                "align": "outside",
-                "thickness": 2,
-                "fill": "#0A1424"
-              },
-              "effect": {
-                "type": "shadow",
-                "shadowType": "outer",
-                "color": "#9AB4D3",
-                "offset": {
-                  "x": 0,
-                  "y": 1
-                }
-              },
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon_font",
-                  "id": "6599y",
-                  "name": "modIcon",
-                  "width": 20,
-                  "height": 20,
-                  "iconFontName": "shield-alert",
-                  "iconFontFamily": "lucide",
-                  "fill": "#FFFFFF"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "WzNWK",
-          "name": "chatField",
-          "width": 420,
-          "height": 40,
-          "fill": {
-            "type": "gradient",
-            "gradientType": "linear",
-            "enabled": true,
-            "rotation": 180,
-            "size": {
-              "height": 1
-            },
-            "colors": [
-              {
-                "color": "#1A2436",
-                "position": 0
-              },
-              {
-                "color": "#1A2436",
-                "position": 0.5
-              },
-              {
-                "color": "#2B3A54",
-                "position": 0.5
-              },
-              {
-                "color": "#2B3A54",
-                "position": 1
-              }
-            ]
-          },
-          "cornerRadius": 3,
-          "stroke": {
-            "align": "outside",
-            "thickness": 2,
-            "fill": "#0A1424"
-          },
-          "effect": {
-            "type": "shadow",
-            "shadowType": "outer",
-            "color": "#9AB4D3",
-            "offset": {
-              "x": 0,
-              "y": -1
-            }
-          },
-          "gap": 8,
-          "padding": [
-            8,
-            12
-          ],
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "icon_font",
-              "id": "X8QVe",
-              "name": "chatIcon",
-              "width": 16,
-              "height": 16,
-              "iconFontName": "messages-square",
-              "iconFontFamily": "lucide",
-              "fill": "#7A95B8"
-            },
-            {
-              "type": "text",
-              "id": "UGH5W",
-              "name": "chatPlaceholder",
-              "fill": "#9FB3CC",
-              "textGrowth": "fixed-width",
-              "width": "fill_container",
-              "content": "Say something…",
-              "fontFamily": "Ubuntu Condensed",
-              "fontSize": 14,
-              "fontWeight": "700"
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "5rdYe",
-          "name": "rightGroup",
-          "width": "fill_container",
-          "height": "fill_container",
-          "justifyContent": "end",
-          "alignItems": "center",
-          "children": [
-            {
-              "type": "frame",
-              "id": "ptKjM",
-              "name": "phoneBtn",
-              "width": 40,
-              "height": 40,
-              "fill": {
-                "type": "gradient",
-                "gradientType": "linear",
-                "enabled": true,
-                "rotation": 180,
-                "size": {
-                  "height": 1
-                },
-                "colors": [
-                  {
-                    "color": "#5E7FA3",
-                    "position": 0
-                  },
-                  {
-                    "color": "#5E7FA3",
-                    "position": 0.5
-                  },
-                  {
-                    "color": "#2B3A54",
-                    "position": 0.5
-                  },
-                  {
-                    "color": "#2B3A54",
-                    "position": 1
-                  }
-                ]
-              },
-              "cornerRadius": 3,
-              "stroke": {
-                "align": "outside",
-                "thickness": 2,
-                "fill": "#0A1424"
-              },
-              "effect": {
-                "type": "shadow",
-                "shadowType": "outer",
-                "color": "#9AB4D3",
-                "offset": {
-                  "x": 0,
-                  "y": 1
-                }
-              },
-              "justifyContent": "center",
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "icon_font",
-                  "id": "jPpCG",
-                  "name": "phoneIcon",
-                  "width": 20,
-                  "height": 20,
-                  "iconFontName": "smartphone",
-                  "iconFontFamily": "lucide",
-                  "fill": "#FFFFFF"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "type": "frame",
       "id": "qkSYj",
-      "x": 297,
-      "y": 280,
-      "name": "Toolbar HUD (grouped)",
+      "x": 0,
+      "y": 500,
+      "name": "Toolbar HUD",
       "width": 800,
       "height": 60,
       "fill": "#00000000",
@@ -2250,19 +1859,19 @@
             },
             "colors": [
               {
-                "color": "#1A2436",
+                "color": "#D9DFE6",
                 "position": 0
               },
               {
-                "color": "#1A2436",
+                "color": "#D9DFE6",
                 "position": 0.5
               },
               {
-                "color": "#2B3A54",
+                "color": "#FFFFFF",
                 "position": 0.5
               },
               {
-                "color": "#2B3A54",
+                "color": "#FFFFFF",
                 "position": 1
               }
             ]
@@ -2276,7 +1885,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#9AB4D3",
+            "color": "#FFFFFF",
             "offset": {
               "x": 0,
               "y": -1
@@ -2297,13 +1906,13 @@
               "height": 16,
               "iconFontName": "messages-square",
               "iconFontFamily": "lucide",
-              "fill": "#7A95B8"
+              "fill": "#3E4E6E"
             },
             {
               "type": "text",
               "id": "ljLRP",
               "name": "chatPlaceholder2",
-              "fill": "#9FB3CC",
+              "fill": "#6B7A8F",
               "textGrowth": "fixed-width",
               "width": "fill_container",
               "content": "Say something…",
@@ -2439,8 +2048,8 @@
     {
       "type": "rectangle",
       "id": "jw713",
-      "x": -2027,
-      "y": 0,
+      "x": 1600,
+      "y": 180,
       "fill": {
         "type": "image",
         "enabled": true,
@@ -2454,7 +2063,7 @@
       "type": "frame",
       "id": "I2LwC",
       "x": 0,
-      "y": 380,
+      "y": 620,
       "name": "Commands List",
       "width": 560,
       "fill": "#3E4E6E",
