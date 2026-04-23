@@ -16,7 +16,7 @@
 
 CREATE TABLE IF NOT EXISTS `rp_functional_furniture` (
     `id`              INT UNSIGNED  NOT NULL AUTO_INCREMENT,
-    `item_base_id`    INT           NOT NULL,
+    `item_base_id`    INT UNSIGNED  NOT NULL,
     `trigger_type`    ENUM('walk_on','click') NOT NULL DEFAULT 'walk_on',
     `action_type`     VARCHAR(64)   NOT NULL,
     `action_payload`  VARCHAR(255)  NOT NULL DEFAULT '',
