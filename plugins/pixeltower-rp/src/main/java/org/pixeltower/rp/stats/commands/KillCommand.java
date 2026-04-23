@@ -66,8 +66,7 @@ public class KillCommand extends Command {
         }
 
         RpChat.staffEmote(staff, "*" + staff.getHabboInfo().getUsername()
-                + " performs a spell summoning a bolt of lightning, killing "
-                + resolved.username + " instantly*");
+                + " casts a spell, killing " + resolved.username + " with a lightning bolt*");
         return true;
     }
 }

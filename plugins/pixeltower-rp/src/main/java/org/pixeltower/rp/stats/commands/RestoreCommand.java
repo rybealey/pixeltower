@@ -66,7 +66,7 @@ public class RestoreCommand extends Command {
         }
 
         RpChat.staffEmote(staff, "*" + staff.getHabboInfo().getUsername()
-                + " restores " + resolved.username + "'s energy and health.*");
+                + " casts a spell, restoring " + resolved.username + "'s energy and health*");
 
         if (resolved.isOnline()) {
             resolved.online.whisper("Your energy and health have been restored.",
