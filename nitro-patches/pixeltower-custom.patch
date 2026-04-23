@@ -36,13 +36,14 @@ new file mode 100644
 index 0000000..a3db6f9
 --- /dev/null
 +++ b/src/api/pixeltower/PixeltowerSoundMessages.ts
-@@ -0,0 +1,245 @@
+@@ -0,0 +1,290 @@
 +import { IMessageComposer, IMessageConfiguration, IMessageDataWrapper, IMessageEvent, IMessageParser, MessageEvent } from '@nitrots/nitro-renderer';
 +import { GetConnection } from '../nitro/GetConnection';
 +
 +const PIXELTOWER_PLAY_SOUND = 6500;
 +const PIXELTOWER_UPDATE_PLAYER_STATS = 6501;
 +const PIXELTOWER_UPDATE_TARGET_STATS = 6502;
++const PIXELTOWER_OPEN_CLIENT_LINK = 6503;
 +const PIXELTOWER_SET_TARGET = 6550;
 +
 +// ──────────── PlaySound (header 6500) ────────────
@@ -237,6 +238,49 @@ index 0000000..a3db6f9
 +    }
 +}
 +
++// ──────────── OpenClientLink (header 6503) ────────────
++//
++// Generic "open Nitro UI X" composer. Body is a single string consumed by
++// PixeltowerLinkListener via CreateLinkEvent(uri). Sent server-side from the
++// rp_functional furniture dispatcher; allow-listed by prefix on the client
++// to keep misconfigured DB rows from opening arbitrary surfaces.
++
++export class OpenClientLinkParser implements IMessageParser
++{
++    private _uri: string;
++
++    public flush(): boolean
++    {
++        this._uri = null;
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++        this._uri = wrapper.readString();
++        return true;
++    }
++
++    public get uri(): string
++    {
++        return this._uri;
++    }
++}
++
++export class OpenClientLinkEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, OpenClientLinkParser);
++    }
++
++    public getParser(): OpenClientLinkParser
++    {
++        return this.parser as OpenClientLinkParser;
++    }
++}
++
 +// ──────────── SetTarget (header 6550, client→server) ────────────
 +//
 +// Emitted from the room InfoStand whenever the local player selects
@@ -271,7 +315,8 @@ index 0000000..a3db6f9
 +    public events: Map<number, Function> = new Map<number, Function>([
 +        [ PIXELTOWER_PLAY_SOUND, NitroPlaySoundEvent ],
 +        [ PIXELTOWER_UPDATE_PLAYER_STATS, UpdatePlayerStatsEvent ],
-+        [ PIXELTOWER_UPDATE_TARGET_STATS, UpdateTargetStatsEvent ]
++        [ PIXELTOWER_UPDATE_TARGET_STATS, UpdateTargetStatsEvent ],
++        [ PIXELTOWER_OPEN_CLIENT_LINK, OpenClientLinkEvent ]
 +    ]);
 +    public composers: Map<number, Function> = new Map<number, Function>([
 +        [ PIXELTOWER_SET_TARGET, PixeltowerSetTargetComposer ]
@@ -353,7 +398,7 @@ index da7003d..ca3029d 100644
  import { AvatarEditorView } from '../avatar-editor/AvatarEditorView';
  import { CameraWidgetView } from '../camera/CameraWidgetView';
  import { CampaignView } from '../campaign/CampaignView';
-@@ -16,14 +15,18 @@ import { GroupsView } from '../groups/GroupsView';
+@@ -16,14 +15,19 @@ import { GroupsView } from '../groups/GroupsView';
  import { GuideToolView } from '../guide-tool/GuideToolView';
  import { HcCenterView } from '../hc-center/HcCenterView';
  import { HelpView } from '../help/HelpView';
@@ -363,6 +408,7 @@ index da7003d..ca3029d 100644
  import { NavigatorView } from '../navigator/NavigatorView';
 +import { CommandsListView } from '../pixeltower/CommandsListView';
 +import { DrawerHUD } from '../pixeltower/DrawerHUD';
++import { PixeltowerLinkListener } from '../pixeltower/PixeltowerLinkListener';
 +import { StatsHUD } from '../pixeltower/StatsHUD';
 +import { StatusHUD } from '../pixeltower/StatusHUD';
 +import { TargetHUD } from '../pixeltower/TargetHUD';
@@ -374,7 +420,7 @@ index da7003d..ca3029d 100644
  import { UserProfileView } from '../user-profile/UserProfileView';
  import { UserSettingsView } from '../user-settings/UserSettingsView';
  import { WiredView } from '../wired/WiredView';
-@@ -81,16 +84,23 @@ export const MainView: FC<{}> = props =>
+@@ -81,16 +84,24 @@ export const MainView: FC<{}> = props =>
  
      return (
          <Base fit>
@@ -387,6 +433,7 @@ index da7003d..ca3029d 100644
 +            { /* Upstream ToolbarView replaced by the pixeltower chat+phone HUD
 +                 (.designs/client_ui.pen frame Y6gyQ). ToolbarView.tsx is left on
 +                 disk for reference; it is no longer rendered. */ }
++            <PixeltowerLinkListener />
 +            <ToolbarHUD />
 +            <StatsHUD />
 +            <StatusHUD />
@@ -968,6 +1015,50 @@ index 0000000..7a6d30c
 +        </div>
 +    );
 +}
+diff --git a/src/components/pixeltower/PixeltowerLinkListener.tsx b/src/components/pixeltower/PixeltowerLinkListener.tsx
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/components/pixeltower/PixeltowerLinkListener.tsx
+@@ -0,0 +1,38 @@
++import { FC } from 'react';
++import { CreateLinkEvent } from '../../api';
++import { OpenClientLinkEvent } from '../../api/pixeltower/PixeltowerSoundMessages';
++import { useMessageEvent } from '../../hooks';
++
++// Allow-list of Nitro link prefixes the rp_functional dispatcher (server
++// header 6503, OpenClientLinkComposer) is permitted to fire via
++// CreateLinkEvent. Defense-in-depth: the source is our own server, but a
++// misconfigured DB row should not be able to open arbitrary surfaces
++// (mod-tools, room-info, etc.). Add new prefixes only after pairing them
++// with a server-side action_type case in FunctionalActionDispatcher.
++const ALLOWED_LINK_PREFIXES = [
++    'avatar-editor/',
++    'navigator/',
++    'catalog/',
++    'wardrobe/',
++    'floor-editor/'
++];
++
++// Headless component — registers a useMessageEvent on mount and renders
++// nothing. Mounted once at the top of MainView so the listener lives for
++// the entire authenticated session.
++export const PixeltowerLinkListener: FC<{}> = () =>
++{
++    useMessageEvent<OpenClientLinkEvent>(OpenClientLinkEvent, event =>
++    {
++        const uri = event.getParser().uri;
++        if(!uri) return;
++        if(!ALLOWED_LINK_PREFIXES.some(prefix => uri.startsWith(prefix)))
++        {
++            console.warn('[PixeltowerRP] OpenClientLink rejected, uri=', uri);
++            return;
++        }
++        CreateLinkEvent(uri);
++    });
++
++    return null;
++};
 diff --git a/src/components/pixeltower/StatsHUD.scss b/src/components/pixeltower/StatsHUD.scss
 new file mode 100644
 index 0000000..0103fb3

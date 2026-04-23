@@ -2,6 +2,7 @@ package org.pixeltower.rp;
 
 import com.eu.habbo.Emulator;
 import com.eu.habbo.habbohotel.commands.CommandHandler;
+import com.eu.habbo.habbohotel.items.ItemInteraction;
 import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.plugin.EventHandler;
 import com.eu.habbo.plugin.EventListener;
@@ -11,6 +12,7 @@ import com.eu.habbo.habbohotel.rooms.RoomTile;
 import com.eu.habbo.habbohotel.rooms.RoomUnit;
 import com.eu.habbo.habbohotel.rooms.RoomUserRotation;
 import com.eu.habbo.messages.outgoing.rooms.users.RoomUserStatusComposer;
+import com.eu.habbo.plugin.events.emulator.EmulatorLoadItemsManagerEvent;
 import com.eu.habbo.plugin.events.emulator.EmulatorLoadedEvent;
 import com.eu.habbo.plugin.events.users.UserDisconnectEvent;
 import com.eu.habbo.plugin.events.users.UserEnterRoomEvent;
@@ -38,6 +40,8 @@ import org.pixeltower.rp.economy.commands.OpenAccountCommand;
 import org.pixeltower.rp.economy.commands.TransferCommand;
 import org.pixeltower.rp.economy.commands.WithdrawCommand;
 import org.pixeltower.rp.economy.tasks.BankInterestTask;
+import org.pixeltower.rp.functional.FunctionalFurnitureService;
+import org.pixeltower.rp.functional.InteractionRpFunctional;
 import org.pixeltower.rp.stats.PlayerStats;
 import org.pixeltower.rp.stats.StatsManager;
 import org.pixeltower.rp.stats.commands.KillCommand;
@@ -68,6 +72,7 @@ import java.util.concurrent.TimeUnit;
 public class PixeltowerRP extends HabboPlugin implements EventListener {
 
     public static final String VERSION = "0.1.0";
+    public static final String FUNCTIONAL_INTERACTION_KEY = "rp_functional";
     private static final Logger LOGGER = LoggerFactory.getLogger(PixeltowerRP.class);
 
     /**
@@ -95,9 +100,39 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         LOGGER.info("Pixeltower RP v{} — onEnable", VERSION);
 
         // If the emulator is already fully loaded when this plugin enables
-        // (e.g. hot-swap via reload), kick the post-load hook manually.
+        // (e.g. hot-swap via reload), kick the post-load hook manually. Also
+        // try to register the rp_functional interaction class — at hot-reload
+        // time EmulatorLoadItemsManagerEvent has long since fired, so the
+        // event-handler path won't be taken. Existing Item rows keep their
+        // bound class until full restart, but newly-loaded items will pick up
+        // InteractionRpFunctional.
         if (Emulator.isReady && !Emulator.isShuttingDown) {
+            registerFunctionalInteraction();
             this.onEmulatorLoadedEvent(null);
+        }
+    }
+
+    /**
+     * Cold-boot path. Fires before {@code ItemManager.loadItems()} binds each
+     * items_base row to its interaction class, which is the only window in
+     * which we can introduce a new {@code interaction_type} string and have
+     * existing rows pick it up without a restart.
+     */
+    @EventHandler
+    public void onEmulatorLoadItemsManager(EmulatorLoadItemsManagerEvent event) {
+        registerFunctionalInteraction();
+    }
+
+    private static void registerFunctionalInteraction() {
+        try {
+            Emulator.getGameEnvironment().getItemManager().addItemInteraction(
+                    new ItemInteraction(FUNCTIONAL_INTERACTION_KEY, InteractionRpFunctional.class));
+            LOGGER.info("Registered rp_functional interaction → InteractionRpFunctional");
+        } catch (RuntimeException dup) {
+            // addItemInteraction throws on duplicate name OR class — safe to
+            // swallow on hot-reload, where we're re-asserting an existing
+            // registration the previous load already made.
+            LOGGER.debug("rp_functional interaction already registered ({})", dup.getMessage());
         }
     }
 
@@ -140,6 +175,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         Emulator.getConfig().register("rp.spawn.default_room_id",     "58");
 
         CorporationManager.init();
+        FunctionalFurnitureService.loadAll();
         registerCommands();
         scheduleBankInterest();
         schedulePaycheck();
