@@ -25,6 +25,7 @@ import com.eu.habbo.plugin.events.users.UserSavedLookEvent;
 import com.eu.habbo.plugin.events.users.UserTalkEvent;
 import com.eu.habbo.plugin.events.users.UserTargetSelectedEvent;
 import org.pixeltower.rp.core.HomePositionStore;
+import org.pixeltower.rp.core.StaffGate;
 import org.pixeltower.rp.core.TargetService;
 import org.pixeltower.rp.core.TargetTracker;
 import org.pixeltower.rp.core.commands.TargetCommand;
@@ -273,6 +274,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         if (event.habbo == null || event.chatMessage == null) return;
         if (event.chatMessage.isCommand) return;
         if (event.chatType == RoomChatType.WHISPER) return;
+        if (StaffGate.isStaff(event.habbo)) return;
         if (!DeathState.isDead(event.habbo.getHabboInfo().getId())) return;
         event.setCancelled(true);
         event.habbo.whisper("You can only whisper while downed.",
@@ -289,6 +291,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
     @EventHandler
     public void onUserExecuteCommand(UserExecuteCommandEvent event) {
         if (event.habbo == null || event.command == null) return;
+        if (StaffGate.isStaff(event.habbo)) return;
         String[] keys = event.command.keys;
         if (keys == null) return;
         boolean isPosture = false;
