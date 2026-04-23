@@ -1,0 +1,34 @@
+diff --git a/src/main/java/com/eu/habbo/messages/incoming/navigator/RequestDeleteRoomEvent.java b/src/main/java/com/eu/habbo/messages/incoming/navigator/RequestDeleteRoomEvent.java
+--- a/src/main/java/com/eu/habbo/messages/incoming/navigator/RequestDeleteRoomEvent.java
++++ b/src/main/java/com/eu/habbo/messages/incoming/navigator/RequestDeleteRoomEvent.java
+@@ -36,14 +36,27 @@
+
+         if (room != null) {
+             if (room.isOwner(this.client.getHabbo())) {
+-                if (room.getId() == this.client.getHabbo().getHabboInfo().getHomeRoom()) {
+-                    return;
+-                }
++                // pixeltower: the PixeltowerRP plugin auto-pins home_room
++                // to the room the user most recently entered, so the
++                // upstream "can't delete your home room" guard would always
++                // fire for the staff deleting the room. Removed — the
++                // teleport-out block below ensures ejected users land in a
++                // real room.
+
+                 if (Emulator.getPluginManager().fireEvent(new NavigatorRoomDeletedEvent(this.client.getHabbo(), room)).isCancelled()) {
+                     return;
+                 }
+
++                // pixeltower: teleport every user currently in the room
++                // into the fallback spawn (room 57) before Arcturus
++                // disposes the room. Without this, `room.dispose()` drops
++                // them into hotel-view limbo — the pixeltower Nitro build
++                // has HotelView unmounted entirely.
++                List<Habbo> inRoom = new ArrayList<>(room.getHabbos());
++                for (Habbo h : inRoom) {
++                    Emulator.getGameEnvironment().getRoomManager().enterRoom(h, 57, "");
++                }
++
+                 room.ejectAll();
+                 room.ejectUserFurni(room.getOwnerId());
+

@@ -252,6 +252,23 @@ index 0000000..53fffee
 +{
 +    GetConnection()?.registerMessages(new PixeltowerMessages());
 +}
+diff --git a/src/assets/styles/bootstrap/_variables.scss b/src/assets/styles/bootstrap/_variables.scss
+--- a/src/assets/styles/bootstrap/_variables.scss
++++ b/src/assets/styles/bootstrap/_variables.scss
+@@ -70,8 +70,11 @@ $colors: (
+ // scss-docs-end colors-map
+
+ // scss-docs-start theme-color-variables
+-$primary:       #1E7295 !default;
+-$secondary:     #185D79 !default;
++// pixeltower: retune Bootstrap's teal $primary/$secondary to HUD slate so
++// every downstream Bootstrap consumer (.btn-primary, .bg-secondary,
++// .nitro-card-tabs, --bs-primary custom props, etc.) matches the HUD palette.
++$primary:       #3E4E6E !default;   // HUD panel fill (opaque of $pt-panel-fill)
++$secondary:     #2B3A54 !default;   // HUD chip-bottom ($pt-chip-bottom)
+ $tertiary:      #2DABC2 !default;
+ $quaternary:    #2B91A7 !default;
+ $mirage:        #131e25 !default;
 diff --git a/src/common/draggable-window/DraggableWindow.tsx b/src/common/draggable-window/DraggableWindow.tsx
 index 286d51d..8fbd840 100644
 --- a/src/common/draggable-window/DraggableWindow.tsx
@@ -325,7 +342,7 @@ index da7003d..708c943 100644
  import { UserSettingsView } from '../user-settings/UserSettingsView';
  import { WiredView } from '../wired/WiredView';
 @@ -81,16 +83,22 @@ export const MainView: FC<{}> = props =>
- 
+
      return (
          <Base fit>
 -            <TransitionAnimation type={ TransitionAnimationTypes.FADE_IN } inProp={ landingViewVisible } timeout={ 300 }>
@@ -540,10 +557,10 @@ index 0000000..7a6d30c
 +}
 diff --git a/src/components/pixeltower/StatsHUD.scss b/src/components/pixeltower/StatsHUD.scss
 new file mode 100644
-index 0000000..145802e
+index 0000000..53dd312
 --- /dev/null
 +++ b/src/components/pixeltower/StatsHUD.scss
-@@ -0,0 +1,211 @@
+@@ -0,0 +1,230 @@
 +@use './tokens' as *;
 +
 +// Player HUD + Target HUD styles.
@@ -559,7 +576,10 @@ index 0000000..145802e
 +    // Above Nitro's global `canvas { z-index: 1000 }`.
 +    z-index: 1100;
 +
-+    @include pt-panel;
++    // Container is transparent per .designs/client_ui.pen frames HzOI4
++    // (Player) and 1hvgH (Target) — no background, border, or blur. The
++    // inner avatar frame and bars carry their own chrome.
++    background: transparent;
 +    width: 280px;
 +    padding: 6px;
 +
@@ -567,6 +587,17 @@ index 0000000..145802e
 +    font-family: $pt-font-family;
 +    pointer-events: none;
 +    user-select: none;
++
++    // Wanted-flag gradient sprite. The <svg> is 0×0 but absolute so
++    // it doesn't reserve an inline line-box at the top of the HUD
++    // (which would otherwise shift the avatar/bars row down ~20px).
++    &__defs {
++        position: absolute;
++        width: 0;
++        height: 0;
++        overflow: hidden;
++        pointer-events: none;
++    }
 +
 +    &__row {
 +        display: flex;
@@ -577,15 +608,17 @@ index 0000000..145802e
 +
 +    // ──────────── avatar frame ────────────
 +
++    // Avatar wrap — .pen frame HzOI4 > wKu20 specifies a flat dark-navy
++    // fill + matching 2px outside stroke. Earlier gold frame (VIP-like
++    // yellow) was dropped in the updated design.
 +    &__avatar {
 +        flex-shrink: 0;
 +        width: 72px;
 +        height: 72px;
 +        padding: 2px;
 +        border-radius: 5px;
-+        background: $pt-avatar-frame;
++        background: $pt-panel-stroke;
 +        border: 2px solid $pt-panel-stroke;
-+        filter: drop-shadow(0 1px 0 rgba(255, 244, 176, 0.85));
 +    }
 +
 +    &__avatar-inner {
@@ -729,16 +762,19 @@ index 0000000..145802e
 +        padding: 0 2px;
 +    }
 +
++    // Custom SVG crest (see WantedFlag in StatsHUD.tsx). Fill comes
++    // from the shared gradient defs; this rule just controls render
++    // size + a subtle halo drop-shadow for contrast against rooms.
 +    &__wanted-flag {
 +        width: 14px;
 +        height: 14px;
-+        color: $pt-wanted-inactive;
-+        filter: drop-shadow(0 0 1px $pt-panel-stroke);
 +        flex-shrink: 0;
++        display: block;
++        overflow: visible;
++        filter: drop-shadow(0 0 1px $pt-panel-stroke);
 +    }
 +
 +    &__wanted-flag--active {
-+        color: $pt-wanted-active;
 +        filter: drop-shadow(0 0 2px rgba(255, 244, 176, 0.65));
 +    }
 +
@@ -757,17 +793,38 @@ index 0000000..145802e
 +}
 diff --git a/src/components/pixeltower/StatsHUD.tsx b/src/components/pixeltower/StatsHUD.tsx
 new file mode 100644
-index 0000000..f297835
+index 0000000..97e3ffc
 --- /dev/null
 +++ b/src/components/pixeltower/StatsHUD.tsx
-@@ -0,0 +1,69 @@
+@@ -0,0 +1,111 @@
 +import { FC } from 'react';
-+import { LuFlag, LuHeart, LuZap } from 'react-icons/lu';
++import { LuHeart, LuZap } from 'react-icons/lu';
 +import { GetSessionDataManager } from '../../api';
 +import { LayoutAvatarImageView } from '../../common';
 +import { useSessionInfo, useStats } from '../../hooks';
 +
 +const WANTED_SLOT_COUNT = 5;
++
++// Crime-level indicator — custom crest shape from .designs/client_ui.pen
++// frame HzOI4 > VFQ5Z (w1..w5). Authored at 32×32, scaled to 14×14
++// in-game via SVG viewBox. vectorEffect keeps the 2px stroke crisp
++// at the render scale. Fills reference the shared gradient sprite
++// defined once at the top of StatsHUD.
++const WANTED_FLAG_PATH = 'M16 32l-14-14q-2-2-2-5l0-9q0-4 4-4l24 0q4 0 4 4l0 9q0 3-2 5z';
++
++const WantedFlag: FC<{ active?: boolean }> = ({ active = false }) => (
++    <svg
++        viewBox="0 0 32 32"
++        className={ 'pixeltower-stats-hud__wanted-flag' + (active ? ' pixeltower-stats-hud__wanted-flag--active' : '') }
++        aria-hidden="true">
++        <path
++            d={ WANTED_FLAG_PATH }
++            fill={ `url(#pt-wanted-flag-${ active ? 'active' : 'inactive' })` }
++            stroke="#0A1424"
++            strokeWidth={ 2 }
++            vectorEffect="non-scaling-stroke" />
++    </svg>
++);
 +
 +/**
 + * Persistent top-left Player HUD. Matches the canonical design at
@@ -794,6 +851,29 @@ index 0000000..f297835
 +
 +    return (
 +        <div className="pixeltower-stats-hud">
++            { /* Zero-sized SVG sprite carrying the hard-bevel gradient
++                 defs for the wanted flags. Declared once at the root so
++                 all five flag instances share the same two gradients. */ }
++            <svg
++                width={ 0 }
++                height={ 0 }
++                className="pixeltower-stats-hud__defs"
++                aria-hidden="true">
++                <defs>
++                    <linearGradient id="pt-wanted-flag-inactive" x1="0" y1="0" x2="0" y2="1">
++                        <stop offset="0%" stopColor="#4A5568" />
++                        <stop offset="50%" stopColor="#4A5568" />
++                        <stop offset="50%" stopColor="#1F2833" />
++                        <stop offset="100%" stopColor="#1F2833" />
++                    </linearGradient>
++                    <linearGradient id="pt-wanted-flag-active" x1="0" y1="0" x2="0" y2="1">
++                        <stop offset="0%" stopColor="#FFE066" />
++                        <stop offset="50%" stopColor="#FFE066" />
++                        <stop offset="50%" stopColor="#D99A00" />
++                        <stop offset="100%" stopColor="#D99A00" />
++                    </linearGradient>
++                </defs>
++            </svg>
 +            <div className="pixeltower-stats-hud__row">
 +                <div className="pixeltower-stats-hud__avatar">
 +                    <div className="pixeltower-stats-hud__avatar-inner">
@@ -820,9 +900,7 @@ index 0000000..f297835
 +                    </div>
 +                    <div className="pixeltower-stats-hud__wanted">
 +                        { Array.from({ length: WANTED_SLOT_COUNT }).map((_, i) => (
-+                            <LuFlag
-+                                key={ i }
-+                                className={ 'pixeltower-stats-hud__wanted-flag' + (i < wantedLevel ? ' pixeltower-stats-hud__wanted-flag--active' : '') } />
++                            <WantedFlag key={ i } active={ i < wantedLevel } />
 +                        )) }
 +                    </div>
 +                </div>
@@ -835,14 +913,21 @@ new file mode 100644
 index 0000000..d0c6d5b
 --- /dev/null
 +++ b/src/components/pixeltower/StatusHUD.scss
-@@ -0,0 +1,125 @@
+@@ -0,0 +1,123 @@
 +@use './tokens' as *;
 +
 +// Top-right Status HUD — matches .designs/client_ui.pen frame KVhc5.
-+// Chip bevel gradient on every interactive surface, 2px near-navy outline,
-+// and the shared panel mixin on the outer shell so the three HUDs read
-+// as a set. Chip/row dimensions bumped ~20% over the first pass for
-+// in-game legibility.
++// The HUD absorbs the former InfoPillsHUD (room / time / online pills)
++// into its top rows; chat-history + user-settings buttons moved to
++// the ToolbarHUD. The outer container is transparent per the updated
++// design — each pill/row carries its own chrome.
++
++// Green VIP row palette — unique to this HUD, kept inline since no
++// other component references these shades.
++$pt-vip-row-top:    #2F8A4C;
++$pt-vip-row-bottom: #0F4422;
++$pt-vip-row-stroke: #051C0E;
++$pt-vip-row-glow:   #6FBF88;
 +
 +.pixeltower-status-hud {
 +    position: absolute;
@@ -851,139 +936,187 @@ index 0000000..d0c6d5b
 +    // Above Nitro's global `canvas { z-index: 1000 }`.
 +    z-index: 1100;
 +
-+    @include pt-panel;
-+    width: fit-content;
-+    padding: 7px;
++    // Full-scale layout reads as too heavy in the top-right corner;
++    // scale the whole HUD down 25% from its anchor so it sits as an
++    // accent next to the StatsHUD rather than dominating the screen.
++    transform: scale(0.75);
++    transform-origin: top right;
 +
 +    display: flex;
 +    flex-direction: column;
-+    gap: 4px;
++    align-items: flex-end;
++    width: fit-content;
++    gap: 8px;
 +
++    background: transparent;
 +    color: $pt-text;
 +    font-family: $pt-font-family;
-+    user-select: none;
 +    pointer-events: auto;
++    user-select: none;
 +
-+    &__top-row {
++    // ──────────── info pills (room / time / online) ────────────
++
++    &__room-pill {
++        @include pt-panel;
++        border-radius: 3px;
++        padding: 6px 12px;
++        gap: 6px;
 +        display: flex;
 +        flex-direction: row;
 +        align-items: center;
-+        gap: 4px;
++        align-self: stretch;
++        white-space: nowrap;
 +    }
 +
-+    // ──────────── VIP chip ────────────
-+
-+    &__vip-chip {
-+        @include pt-chip;
-+        width: 56px;
-+        height: 56px;
-+        padding: 7px 9px;
++    &__info-row {
 +        display: flex;
-+        flex-direction: column;
-+        align-items: center;
-+        justify-content: center;
-+        gap: 5px;
-+        box-sizing: border-box;
-+        cursor: pointer;
-+        color: $pt-text;
-+        font-family: inherit;
-+        transition: filter 150ms ease;
-+
-+        &:hover { filter: brightness(1.12); }
++        flex-direction: row;
++        gap: 8px;
 +    }
 +
-+    &__vip-badge {
-+        padding: 3px 6px;
++    &__info-pill {
++        @include pt-panel;
 +        border-radius: 3px;
-+        background: linear-gradient(180deg,
-+            $pt-vip-top 0%, $pt-vip-top 50%,
-+            $pt-vip-bottom 50%, $pt-vip-bottom 100%);
-+        color: $pt-vip-text;
-+        border: 2px solid $pt-panel-stroke;
-+        box-shadow: 0 1px 0 $pt-vip-glow;
-+        font-size: 10px;
-+        font-weight: 900;
-+        letter-spacing: 0.5px;
-+        line-height: 1;
-+    }
-+
-+    &__vip-days {
-+        font-size: 12px;
-+        font-weight: 900;
-+        line-height: 1;
-+    }
-+
-+    // ──────────── icon buttons (chat, settings) ────────────
-+
-+    &__button {
-+        @include pt-chip;
-+        width: 56px;
-+        height: 56px;
-+        padding: 0;
++        padding: 6px 12px;
++        gap: 6px;
 +        display: flex;
++        flex-direction: row;
 +        align-items: center;
-+        justify-content: center;
-+        color: $pt-text;
-+        cursor: pointer;
-+        transition: filter 150ms ease;
-+
-+        svg {
-+            width: 22px;
-+            height: 22px;
-+        }
-+
-+        &:hover { filter: brightness(1.12); }
++        white-space: nowrap;
 +    }
 +
-+    // ──────────── currency rows (coins, diamonds) ────────────
++    &__pill-icon {
++        width: 16px;
++        height: 16px;
++        flex-shrink: 0;
++        color: $pt-text;
++    }
++
++    &__pill-text {
++        font-size: 15px;
++        font-weight: 700;
++        line-height: 1;
++        font-variant-numeric: tabular-nums;
++    }
++
++    // ──────────── currency + VIP rows ────────────
 +
 +    &__row {
 +        @include pt-chip;
 +        display: flex;
 +        flex-direction: row;
 +        align-items: center;
-+        gap: 7px;
-+        padding: 0 10px;
++        gap: 10px;
++        padding: 6px 10px;
 +        box-sizing: border-box;
-+        height: 26px;
++        align-self: stretch;
 +    }
 +
 +    &__row-icon {
-+        width: 14px;
-+        height: 14px;
++        width: 18px;
++        height: 18px;
 +        flex-shrink: 0;
 +        color: $pt-text;
 +    }
 +
 +    &__row-value {
-+        font-size: 13px;
++        font-size: 16px;
 +        font-weight: 900;
++        line-height: 1;
 +        font-variant-numeric: tabular-nums;
++    }
++
++    // Green-gradient variant for the VIP row at the bottom of the stack.
++    &__row--vip {
++        background: linear-gradient(180deg,
++            $pt-vip-row-top 0%, $pt-vip-row-top 50%,
++            $pt-vip-row-bottom 50%, $pt-vip-row-bottom 100%);
++        border-color: $pt-vip-row-stroke;
++        box-shadow: 0 1px 0 $pt-vip-row-glow;
++
++        .pixeltower-status-hud__row-value { font-weight: 700; }
 +    }
 +}
 diff --git a/src/components/pixeltower/StatusHUD.tsx b/src/components/pixeltower/StatusHUD.tsx
 new file mode 100644
-index 0000000..799f628
+index 0000000..e5bc5fc
 --- /dev/null
 +++ b/src/components/pixeltower/StatusHUD.tsx
-@@ -0,0 +1,61 @@
-+import { FC } from 'react';
-+import { LuDollarSign, LuGem, LuMessageSquare, LuSettings } from 'react-icons/lu';
-+import { CreateLinkEvent } from '../../api';
-+import { usePurse } from '../../hooks';
+@@ -0,0 +1,112 @@
++import { GetGuestRoomResultEvent } from '@nitrots/nitro-renderer';
++import { FC, useEffect, useState } from 'react';
++import { LuAlarmClock, LuCrown, LuGem, LuMapPin, LuUsers, LuWallet } from 'react-icons/lu';
++import { useMessageEvent, usePurse, useRoom } from '../../hooks';
 +
 +const DIAMOND_CURRENCY_TYPE = 5;
 +
-+/**
-+ * Top-right Status HUD — replaces the legacy PurseView. Matches the
-+ * client_ui.pen frame KVhc5: a VIP chip showing remaining HC days, a
-+ * chat-history button, a settings button, plus coin and diamond rows.
-+ * All data sourced from the existing usePurse hook, so HC days / coins
-+ * / diamonds stay live on every credits / currency / subscription event.
-+ */
++const formatTime = (date: Date): string =>
++    date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
++
++// Top-right Status HUD — matches .designs/client_ui.pen frame KVhc5.
++//
++// Rows, top → bottom:
++//   1. Room pill       (LuMapPin + current room name)
++//   2. Info row        (time pill, online-users pill)
++//   3. Coin row        (LuWallet + credits, slate chip)
++//   4. Diamond row     (LuGem + activity points, slate chip)
++//   5. VIP row         (LuCrown + remaining HC days, green chip)
++//
++// Data sources:
++//   - purse   → usePurse (credits, activity points, HC days)
++//   - room    → GetGuestRoomResultEvent (same pattern as RoomToolsWidgetView)
++//   - time    → local clock, ticked every 30s so a minute rollover is
++//               never more than 30s stale
++//   - online  → AtomCMS /api/online-count, polled every 60s (nginx
++//               routes /api to Laravel)
++
 +export const StatusHUD: FC<{}> = () =>
 +{
 +    const { purse = null } = usePurse();
++    const { roomSession = null } = useRoom();
++    const [ roomName, setRoomName ] = useState<string>('');
++    const [ time, setTime ] = useState<string>(() => formatTime(new Date()));
++    const [ onlineCount, setOnlineCount ] = useState<number | null>(null);
++
++    useMessageEvent<GetGuestRoomResultEvent>(GetGuestRoomResultEvent, event =>
++    {
++        const parser = event.getParser();
++
++        if(!parser.roomEnter) return;
++        if(roomSession && parser.data.roomId !== roomSession.roomId) return;
++        if(roomName !== parser.data.roomName) setRoomName(parser.data.roomName);
++    });
++
++    useEffect(() =>
++    {
++        const id = window.setInterval(() => setTime(formatTime(new Date())), 30_000);
++        return () => window.clearInterval(id);
++    }, []);
++
++    useEffect(() =>
++    {
++        let cancelled = false;
++
++        const fetchCount = async () =>
++        {
++            try
++            {
++                const res = await fetch('/api/online-count', { headers: { Accept: 'application/json' } });
++                if(!res.ok) return;
++                const json = await res.json();
++                // Laravel's JsonResource wraps the payload in a `data` envelope.
++                if(!cancelled && typeof json?.data?.onlineCount === 'number') setOnlineCount(json.data.onlineCount);
++            }
++            catch
++            {
++                // Network blip — keep last-known value.
++            }
++        };
++
++        fetchCount();
++        const id = window.setInterval(fetchCount, 60_000);
++        return () => { cancelled = true; window.clearInterval(id); };
++    }, []);
 +
 +    if(!purse) return null;
 +
@@ -993,37 +1126,31 @@ index 0000000..799f628
 +
 +    return (
 +        <div className="pixeltower-status-hud">
-+            <div className="pixeltower-status-hud__top-row">
-+                <button
-+                    type="button"
-+                    className="pixeltower-status-hud__vip-chip"
-+                    onClick={ () => CreateLinkEvent('habboUI/open/hccenter') }
-+                    title="Habbo Club">
-+                    <span className="pixeltower-status-hud__vip-badge">VIP</span>
-+                    <span className="pixeltower-status-hud__vip-days">{ totalClubDays } d.</span>
-+                </button>
-+                <button
-+                    type="button"
-+                    className="pixeltower-status-hud__button"
-+                    onClick={ () => CreateLinkEvent('chat-history/toggle') }
-+                    title="Chat history">
-+                    <LuMessageSquare />
-+                </button>
-+                <button
-+                    type="button"
-+                    className="pixeltower-status-hud__button"
-+                    onClick={ () => CreateLinkEvent('user-settings/toggle') }
-+                    title="Settings">
-+                    <LuSettings />
-+                </button>
++            <div className="pixeltower-status-hud__room-pill">
++                <LuMapPin className="pixeltower-status-hud__pill-icon" />
++                <span className="pixeltower-status-hud__pill-text">{ roomName || '—' }</span>
++            </div>
++            <div className="pixeltower-status-hud__info-row">
++                <div className="pixeltower-status-hud__info-pill">
++                    <LuAlarmClock className="pixeltower-status-hud__pill-icon" />
++                    <span className="pixeltower-status-hud__pill-text">{ time }</span>
++                </div>
++                <div className="pixeltower-status-hud__info-pill">
++                    <LuUsers className="pixeltower-status-hud__pill-icon" />
++                    <span className="pixeltower-status-hud__pill-text">{ onlineCount !== null ? `${ onlineCount } online` : '— online' }</span>
++                </div>
 +            </div>
 +            <div className="pixeltower-status-hud__row">
-+                <LuDollarSign className="pixeltower-status-hud__row-icon pixeltower-status-hud__row-icon--coin" />
++                <LuWallet className="pixeltower-status-hud__row-icon" />
 +                <span className="pixeltower-status-hud__row-value">{ coins }</span>
 +            </div>
 +            <div className="pixeltower-status-hud__row">
-+                <LuGem className="pixeltower-status-hud__row-icon pixeltower-status-hud__row-icon--diamond" />
++                <LuGem className="pixeltower-status-hud__row-icon" />
 +                <span className="pixeltower-status-hud__row-value">{ diamonds }</span>
++            </div>
++            <div className="pixeltower-status-hud__row pixeltower-status-hud__row--vip">
++                <LuCrown className="pixeltower-status-hud__row-icon" />
++                <span className="pixeltower-status-hud__row-value">VIP · { totalClubDays } d.</span>
 +            </div>
 +        </div>
 +    );
@@ -1094,7 +1221,7 @@ new file mode 100644
 index 0000000..d6e75ad
 --- /dev/null
 +++ b/src/components/pixeltower/ToolbarHUD.scss
-@@ -0,0 +1,187 @@
+@@ -0,0 +1,224 @@
 +@use './tokens' as *;
 +
 +// Bottom-center toolbar — matches .designs/client_ui.pen frame Y6gyQ.
@@ -1110,8 +1237,8 @@ index 0000000..d6e75ad
 +.pixeltower-toolbar-hud {
 +    position: fixed;
 +    bottom: 12px;
-+    left: 50%;
-+    transform: translateX(-50%);
++    left: 12px;
++    right: 12px;
 +    // Above Nitro's global `canvas { z-index: 1000 }` so the HUD isn't
 +    // occluded the moment RoomView un-hides. All pixeltower HUDs share
 +    // this tier.
@@ -1121,24 +1248,24 @@ index 0000000..d6e75ad
 +    flex-direction: row;
 +    align-items: center;
 +    gap: 8px;
-+    width: 800px;
-+    max-width: calc(100vw - 24px);
 +    height: 60px;
 +    padding: 8px 12px;
 +
-+    @include pt-panel;
-+    border-radius: 3px;                              // design spec: tighter than default 7px
++    // The toolbar root is transparent per .designs/client_ui.pen frame
++    // Y6gyQ — no background, border, blur, or rim shadow. The buttons
++    // and chat field carry their own chrome; the container is layout only.
++    background: transparent;
 +
 +    &__left-group {
-+        // Staff-only buttons (Navigator, Mod Tools) live here; non-staff
-+        // render nothing. The group still flexes to fill remaining space
-+        // and right-aligns its contents so buttons sit immediately before
-+        // the chatfield (mirrors `.pen` Y6gyQ > W0BVS justifyContent:end).
-+        flex: 1 1 auto;
++        // Staff-only buttons (Navigator, Shop, Mod Tools) live here;
++        // non-staff render nothing. The group flexes to fill the space
++        // between the toolbar's left edge and the chatfield and
++        // left-aligns its contents (default justify-content), matching
++        // `.pen` Y6gyQ > W0BVS where the buttons sit at the far left.
++        flex: 1 1 0;
 +        display: flex;
 +        flex-direction: row;
 +        align-items: center;
-+        justify-content: flex-end;
 +        gap: 8px;
 +        align-self: stretch;
 +    }
@@ -1158,18 +1285,11 @@ index 0000000..d6e75ad
 +        background: linear-gradient(180deg,
 +            $pt-toolbar-chat-top 0%, $pt-toolbar-chat-top 50%,
 +            $pt-toolbar-chat-bottom 50%, $pt-toolbar-chat-bottom 100%);
-+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
-+
-+        > svg {
-+            width: 16px;
-+            height: 16px;
-+            flex: 0 0 auto;
-+            color: $pt-toolbar-chat-icon;
-+        }
++        box-shadow: 0 -1px 0 #9AB4D3;                // periwinkle top-edge highlight per .pen qkSYj > hKnXO
 +    }
 +
 +    &__chat-input-slot {
-+        flex: 1 1 auto;
++        flex: 1 1 0;
 +        min-width: 0;
 +        display: flex;
 +        align-items: center;
@@ -1247,39 +1367,83 @@ index 0000000..d6e75ad
 +    &__right-group {
 +        // Mirrors the `&__left-group` so the 420px chatfield sits
 +        // horizontally centred in the 800px toolbar. The phone button
-+        // is left-aligned inside this group, landing immediately after
-+        // the chatfield (with the root `gap: 8px`).
-+        flex: 1 1 auto;
++        // is right-aligned inside this group, landing at the far right
++        // of the toolbar (matches `.pen` Y6gyQ > 5rdYe justifyContent:end).
++        flex: 1 1 0;
 +        display: flex;
 +        align-items: center;
++        justify-content: flex-end;
 +        height: 100%;
 +    }
 +
-+    // Shared styling for every toolbar icon button (Navigator, Mod Tools,
-+    // Phone) — all three share the same 40×40 raised 2D-bevel per
-+    // .pen frame Y6gyQ (n6sgA/PneIt/ptKjM).
-+    &__icon-btn {
-+        @include pt-chip;                           // raised 50/50 bevel from tokens
++    // Grouped button panels — matches .designs/client_ui.pen frame qkSYj.
++    // Staff icons (nav/shop/mod) and device icons (phone/settings) live
++    // inside shared chip panels with vertical dividers between slots.
++    &__group {
++        @include pt-chip;                            // chip gradient + 2px stroke + radius 3
++        display: flex;
++        height: 40px;
++        box-shadow: 0 1px 0 #9AB4D3;                 // periwinkle underglow per design
++        overflow: hidden;                            // clip slot hover fills to the chip's rounded corners
++    }
++
++    &__slot {
 +        width: 40px;
 +        height: 40px;
 +        padding: 0;
++        background: transparent;
++        border: 0;
 +        display: flex;
 +        align-items: center;
 +        justify-content: center;
 +        color: $pt-text;
 +        cursor: pointer;
-+        box-shadow: 0 1px 0 $pt-panel-shadow-rim;    // periwinkle underglow
++        transition: background-color 120ms ease, filter 120ms ease;
 +        font-family: inherit;
-+        transition: filter 150ms ease, transform 80ms ease, box-shadow 80ms ease;
 +
 +        svg { width: 20px; height: 20px; }
 +
-+        &:hover { filter: brightness(1.12); }
++        // Translucent white overlay reads as a visible hover affordance
++        // against the chip gradient; the `__group`'s overflow:hidden
++        // clips it to the chip's rounded corners on edge slots.
++        &:hover {
++            background: rgba(255, 255, 255, 0.12);
++            filter: brightness(1.08);
++        }
 +
 +        &:active {
-+            transform: translateY(1px);
-+            box-shadow: none;
++            background: rgba(0, 0, 0, 0.18);
++            filter: none;
 +        }
++    }
++
++    &__divider {
++        width: 2px;
++        height: 40px;
++        background: $pt-panel-stroke;
++        flex-shrink: 0;
++        align-self: stretch;
++    }
++
++    // Clickable chat-bubble icon inside the chat field — opens chat history.
++    &__chat-history-btn {
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        padding: 0;
++        background: transparent;
++        border: 0;
++        color: $pt-toolbar-chat-icon;
++        cursor: pointer;
++        transition: filter 120ms ease;
++
++        svg {
++            width: 16px;
++            height: 16px;
++            flex: 0 0 auto;
++        }
++
++        &:hover { filter: brightness(1.3); }
 +    }
 +}
 diff --git a/src/components/pixeltower/ToolbarHUD.tsx b/src/components/pixeltower/ToolbarHUD.tsx
@@ -1287,22 +1451,25 @@ new file mode 100644
 index 0000000..29f102f
 --- /dev/null
 +++ b/src/components/pixeltower/ToolbarHUD.tsx
-@@ -0,0 +1,72 @@
+@@ -0,0 +1,109 @@
 +import { FC } from 'react';
-+import { LuCompass, LuMessageSquare, LuShieldAlert, LuSmartphone } from 'react-icons/lu';
++import { LuCompass, LuMessagesSquare, LuPackage, LuSettings, LuShieldAlert, LuShoppingBag, LuSmartphone } from 'react-icons/lu';
 +import { CreateLinkEvent, GetSessionDataManager } from '../../api';
 +
 +// Bottom-center toolbar replacing upstream ToolbarView. Matches
-+// .designs/client_ui.pen frame Y6gyQ:
-+//   left-group (staff only)  — Navigator + Mod Tools
-+//   chatField                — hosts the #toolbar-chat-input-container
-+//                              portal target used by ChatInputView
-+//   right-group              — phone button, toggles the friends list
++// .designs/client_ui.pen frame qkSYj (Toolbar HUD "grouped" variant):
++//   leftGroup  — staffGroup chip holding Navigator + Shop + Inventory +
++//                Mod Tools (staff only) with vertical dividers between slots
++//   chatField  — hosts the #toolbar-chat-input-container portal used
++//                by ChatInputView; the chat-bubble icon on the left of
++//                the field is a button that toggles the chat log
++//   rightGroup — deviceGroup chip holding Phone (friends list) +
++//                Settings with a vertical divider between them
 +//
 +// Staff gate mirrors upstream ToolbarView: GetSessionDataManager().
 +// isModerator is populated from the server's SecureLoginOK payload, so
-+// it's stable for the session. Non-staff render an empty left-group,
-+// which still occupies the flex slot so the chatfield stays centred.
++// it's stable for the session. Non-staff render nothing in the left
++// group; its flex slot still fills so the chatfield stays centred.
 +//
 +// Also carries a hidden #toolbar-friend-bar-container portal target —
 +// FriendsView portals FriendBarView into it unconditionally, so the
@@ -1310,9 +1477,6 @@ index 0000000..29f102f
 +// doesn't surface the online-friends pill. Removing it triggers
 +// React error #200 ("Target container is not a DOM element") the
 +// first time FriendsView renders, which unmounts MainView.
-+//
-+// Shop and inventory will be re-introduced as bespoke pixeltower UI
-+// in a later pass — intentionally absent here.
 +
 +export const ToolbarHUD: FC<{}> = () =>
 +{
@@ -1322,39 +1486,76 @@ index 0000000..29f102f
 +        <div className="pixeltower-toolbar-hud">
 +            <div className="pixeltower-toolbar-hud__left-group">
 +                { isMod && (
-+                    <button
-+                        type="button"
-+                        className="pixeltower-toolbar-hud__icon-btn"
-+                        aria-label="Navigator"
-+                        title="Navigator"
-+                        onClick={ () => CreateLinkEvent('navigator/toggle') }>
-+                        <LuCompass />
-+                    </button>
-+                ) }
-+                { isMod && (
-+                    <button
-+                        type="button"
-+                        className="pixeltower-toolbar-hud__icon-btn"
-+                        aria-label="Mod tools"
-+                        title="Mod tools"
-+                        onClick={ () => CreateLinkEvent('mod-tools/toggle') }>
-+                        <LuShieldAlert />
-+                    </button>
++                    <div className="pixeltower-toolbar-hud__group">
++                        <button
++                            type="button"
++                            className="pixeltower-toolbar-hud__slot"
++                            aria-label="Navigator"
++                            title="Navigator"
++                            onClick={ () => CreateLinkEvent('navigator/toggle') }>
++                            <LuCompass />
++                        </button>
++                        <div className="pixeltower-toolbar-hud__divider" />
++                        <button
++                            type="button"
++                            className="pixeltower-toolbar-hud__slot"
++                            aria-label="Shop"
++                            title="Shop"
++                            onClick={ () => CreateLinkEvent('catalog/open') }>
++                            <LuShoppingBag />
++                        </button>
++                        <div className="pixeltower-toolbar-hud__divider" />
++                        <button
++                            type="button"
++                            className="pixeltower-toolbar-hud__slot"
++                            aria-label="Inventory"
++                            title="Inventory"
++                            onClick={ () => CreateLinkEvent('inventory/toggle') }>
++                            <LuPackage />
++                        </button>
++                        <div className="pixeltower-toolbar-hud__divider" />
++                        <button
++                            type="button"
++                            className="pixeltower-toolbar-hud__slot"
++                            aria-label="Mod tools"
++                            title="Mod tools"
++                            onClick={ () => CreateLinkEvent('mod-tools/toggle') }>
++                            <LuShieldAlert />
++                        </button>
++                    </div>
 +                ) }
 +            </div>
 +            <div className="pixeltower-toolbar-hud__chat-field">
-+                <LuMessageSquare />
++                <button
++                    type="button"
++                    className="pixeltower-toolbar-hud__chat-history-btn"
++                    aria-label="Chat history"
++                    title="Chat history"
++                    onClick={ () => CreateLinkEvent('chat-history/toggle') }>
++                    <LuMessagesSquare />
++                </button>
 +                <div id="toolbar-chat-input-container" className="pixeltower-toolbar-hud__chat-input-slot" />
 +            </div>
 +            <div className="pixeltower-toolbar-hud__right-group">
-+                <button
-+                    type="button"
-+                    className="pixeltower-toolbar-hud__icon-btn"
-+                    aria-label="Friends list"
-+                    title="Friends"
-+                    onClick={ () => CreateLinkEvent('friends/toggle') }>
-+                    <LuSmartphone />
-+                </button>
++                <div className="pixeltower-toolbar-hud__group">
++                    <button
++                        type="button"
++                        className="pixeltower-toolbar-hud__slot"
++                        aria-label="Friends list"
++                        title="Friends"
++                        onClick={ () => CreateLinkEvent('friends/toggle') }>
++                        <LuSmartphone />
++                    </button>
++                    <div className="pixeltower-toolbar-hud__divider" />
++                    <button
++                        type="button"
++                        className="pixeltower-toolbar-hud__slot"
++                        aria-label="Settings"
++                        title="Settings"
++                        onClick={ () => CreateLinkEvent('user-settings/toggle') }>
++                        <LuSettings />
++                    </button>
++                </div>
 +            </div>
 +            <div id="toolbar-friend-bar-container" style={ { display: 'none' } } />
 +        </div>
@@ -1365,7 +1566,7 @@ new file mode 100644
 index 0000000..1133e31
 --- /dev/null
 +++ b/src/components/pixeltower/_app-overrides.scss
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,61 @@
 +@use './tokens' as *;
 +
 +// Nitro's Bootstrap fork sets $body-bg: $black (see
@@ -1391,6 +1592,41 @@ index 0000000..1133e31
 +// room-swap fallback.
 +.nitro-loading {
 +    background: transparent;
++}
++
++// Standard Nitro card windows (Friends, Navigator, alert popups, etc.)
++// ship with a flat $primary teal header (#1E7295) for theme-primary and
++// a tertiary/quaternary teal gradient for theme-primary-slim — both
++// clash with the pixeltower HUD's slate-blue chip language. Restyle
++// both header variants with the same hard 50/50 bevel + panel stroke
++// every HUD chip uses so dialog windows read as the same family as the
++// toolbar. Close button stays upstream red on purpose.
++.nitro-card.theme-primary .nitro-card-header,
++.nitro-card.theme-primary-slim .nitro-card-header {
++    background: linear-gradient(180deg,
++        $pt-chip-top 0%, $pt-chip-top 50%,
++        $pt-chip-bottom 50%, $pt-chip-bottom 100%);
++    border-bottom: 2px solid $pt-panel-stroke;
++}
++
++// Drop the slim variant's white underline (box-shadow) and inner-top
++// white highlight (:before) — both are baked bevels that fight the
++// flat 2D chip gradient.
++.nitro-card.theme-primary-slim .nitro-card-header {
++    box-shadow: none;
++}
++
++.nitro-card.theme-primary-slim .nitro-card-header:before {
++    display: none;
++}
++
++// Hide the floating name-tag pill above avatars (own user, friends,
++// anyone else) — AvatarInfoWidgetNameView always applies `.name-only`
++// on the ContextMenuView, so this selector catches every variant.
++// The click-to-open avatar info card is a different rendering path
++// and stays untouched.
++.nitro-context-menu.name-only {
++    display: none;
 +}
 diff --git a/src/components/pixeltower/_tokens.scss b/src/components/pixeltower/_tokens.scss
 new file mode 100644
@@ -1520,6 +1756,26 @@ index 92e8129..89a74b4 100644
                  <GroupRoomInformationView />
                  <MysteryBoxExtensionView />
                  <OfferView/>
+diff --git a/src/components/room/widgets/RoomWidgetsView.tsx b/src/components/room/widgets/RoomWidgetsView.tsx
+--- a/src/components/room/widgets/RoomWidgetsView.tsx
++++ b/src/components/room/widgets/RoomWidgetsView.tsx
+@@ -13,7 +13,6 @@ import { PetPackageWidgetView } from './pet-package/PetPackageWidgetView';
+ import { PetPackageWidgetView } from './pet-package/PetPackageWidgetView';
+ import { RoomFilterWordsWidgetView } from './room-filter-words/RoomFilterWordsWidgetView';
+ import { RoomThumbnailWidgetView } from './room-thumbnail/RoomThumbnailWidgetView';
+-import { RoomToolsWidgetView } from './room-tools/RoomToolsWidgetView';
+ import { WordQuizWidgetView } from './word-quiz/WordQuizWidgetView';
+
+ export const RoomWidgetsView: FC<{}> = props =>
+@@ -159,7 +158,7 @@ export const RoomWidgetsView: FC<{}> = props =>
+             <ChatInputView />
+             <DoorbellWidgetView />
+             <FurnitureWidgetsView />
+-            <RoomToolsWidgetView />
++            { /* RoomToolsWidgetView unmounted — pixeltower removes the bottom-left gear/zoom/chat-history sidebar. */ }
+             <RoomFilterWordsWidgetView />
+             <RoomThumbnailWidgetView />
+             <FurniChooserWidgetView />
 diff --git a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx b/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx
 index c72e269..f5e66cf 100644
 --- a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetOwnAvatarView.tsx
@@ -1754,6 +2010,30 @@ index 6bb5a54..d91dc5a 100644
      useMessageEvent<UserSubscriptionEvent>(UserSubscriptionEvent, event =>
      {
          const parser = event.getParser();
+diff --git a/src/hooks/rooms/widgets/useChatInputWidget.ts b/src/hooks/rooms/widgets/useChatInputWidget.ts
+--- a/src/hooks/rooms/widgets/useChatInputWidget.ts
++++ b/src/hooks/rooms/widgets/useChatInputWidget.ts
+@@ -171,6 +171,20 @@
+                     }
+
+                     return null;
++                case ':roomsettings':
++                    if(GetSessionDataManager().isModerator)
++                    {
++                        SendMessageComposer(new RoomSettingsComposer(roomSession.roomId));
++                    }
++
++                    return null;
++                case ':floorplan':
++                    if(GetSessionDataManager().isModerator)
++                    {
++                        CreateLinkEvent('floor-editor/toggle');
++                    }
++
++                    return null;
+             }
+         }
+
 diff --git a/vite.config.js b/vite.config.js
 index 1c4696c..e05278a 100644
 --- a/vite.config.js

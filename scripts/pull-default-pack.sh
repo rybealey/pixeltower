@@ -77,6 +77,11 @@ print(f'  [+] gamedata/gamedata/ExternalTexts.json ({len(d)} keys)')
 "
 fi
 
+# Apply pixeltower branding + UI key overrides to the freshly-extracted
+# texts (Habbo→Pixel rename, people.search.title→Finder, etc.). Idempotent
+# — safe to re-run against already-substituted files.
+python3 scripts/apply-text-overrides.py
+
 echo "[pack] extracting Catalog SQLs"
 mkdir -p emulator/catalog-sqls
 rsync -a "$TMP/pack/Catalog-SQLS/" emulator/catalog-sqls/ 2>/dev/null || \

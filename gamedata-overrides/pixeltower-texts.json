@@ -1,0 +1,11 @@
+{
+  "_comment": "Rebranding + key overrides applied to gamedata/gamedata/ExternalTexts.json and UITexts.json by scripts/apply-text-overrides.py. Substitutions run in order (longer match first), then overrides are upserted.",
+  "substitutions": [
+    ["Habbo Hotel", "PixelRP"],
+    ["Habbo", "Pixel"]
+  ],
+  "overrides": {
+    "people.search.title": "Finder",
+    "generic.confirm": "Confirm"
+  }
+}
