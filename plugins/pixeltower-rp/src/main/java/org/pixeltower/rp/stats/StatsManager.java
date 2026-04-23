@@ -101,6 +101,20 @@ public final class StatsManager {
         return true;
     }
 
+    /**
+     * Staff-invoked instant KO: drop {@code habboId}'s HP to 0 without
+     * touching energy or max_hp. Offline users get the DB row updated;
+     * online users also get a cache write-through. Returns {@code false}
+     * iff the user has no stats row at all.
+     */
+    public static boolean killPlayer(int habboId) {
+        PlayerStats cached = CACHE.get(habboId);
+        if (cached == null && fetch(habboId) == null) return false;
+        if (!persistHp(habboId, 0)) return false;
+        if (cached != null) cached.setHp(0);
+        return true;
+    }
+
     // ──────────── SQL ────────────
 
     private static PlayerStats fetch(int habboId) {
@@ -127,6 +141,19 @@ public final class StatsManager {
             }
         } catch (SQLException e) {
             LOGGER.error("fetch stats failed habbo={}", habboId, e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static boolean persistHp(int habboId, int hp) {
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "UPDATE rp_player_stats SET hp = ? WHERE habbo_id = ?")) {
+            ps.setInt(1, hp);
+            ps.setInt(2, habboId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            LOGGER.error("persist hp failed habbo={}", habboId, e);
             throw new RuntimeException(e);
         }
     }

@@ -7,6 +7,7 @@ import com.eu.habbo.habbohotel.users.Habbo;
 import org.pixeltower.rp.core.NoSuchUserException;
 import org.pixeltower.rp.core.TargetResolver;
 import org.pixeltower.rp.core.TargetResolver.ResolvedTarget;
+import org.pixeltower.rp.core.TargetService;
 import org.pixeltower.rp.core.TargetTracker;
 
 import java.util.Optional;
@@ -21,10 +22,12 @@ import java.util.Optional;
  *   {@code :t <user>}          — alias
  *   {@code :untarget}          — clear current target
  *
- * Click-based targeting (opening a profile card) is the primary path and
- * is always-on when the Arcturus {@code UserProfileCardViewedEvent} patch
- * is present. This command is for the case where a player wants to target
- * someone offline, or target without reading their profile.
+ * Click-based targeting (selecting another user's avatar) is the primary
+ * path; the Nitro InfoStand widget emits the pixeltower "set target"
+ * packet on every sprite click, handled server-side by
+ * {@code PixeltowerRP.onUserTargetSelected}. This command covers the
+ * out-of-room cases: targeting someone who isn't currently in the room,
+ * or setting an offline user as target.
  */
 public class TargetCommand extends Command {
 
@@ -81,7 +84,7 @@ public class TargetCommand extends Command {
             caller.whisper("You can't target yourself.", RoomChatMessageBubbles.ALERT);
             return true;
         }
-        TargetTracker.set(caller.getHabboInfo().getId(), resolved.habboId);
+        TargetService.setAndPush(caller, resolved.habboId);
         caller.whisper("Now targeting " + resolved.username + ".", RoomChatMessageBubbles.ALERT);
         return true;
     }

@@ -17,8 +17,9 @@ import com.eu.habbo.plugin.events.users.UserEnterRoomEvent;
 import com.eu.habbo.plugin.events.users.UserExitRoomEvent;
 import com.eu.habbo.plugin.events.users.UserIdleEvent;
 import com.eu.habbo.plugin.events.users.UserLoginEvent;
-import com.eu.habbo.plugin.events.users.UserProfileCardViewedEvent;
+import com.eu.habbo.plugin.events.users.UserTargetSelectedEvent;
 import org.pixeltower.rp.core.HomePositionStore;
+import org.pixeltower.rp.core.TargetService;
 import org.pixeltower.rp.core.TargetTracker;
 import org.pixeltower.rp.core.commands.TargetCommand;
 import org.pixeltower.rp.corp.CorporationManager;
@@ -39,10 +40,10 @@ import org.pixeltower.rp.economy.commands.WithdrawCommand;
 import org.pixeltower.rp.economy.tasks.BankInterestTask;
 import org.pixeltower.rp.stats.PlayerStats;
 import org.pixeltower.rp.stats.StatsManager;
+import org.pixeltower.rp.stats.commands.KillCommand;
 import org.pixeltower.rp.stats.commands.RestoreCommand;
 import org.pixeltower.rp.stats.commands.StatsCommand;
 import org.pixeltower.rp.stats.outgoing.UpdatePlayerStatsComposer;
-import org.pixeltower.rp.stats.outgoing.UpdateTargetStatsComposer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -162,25 +163,20 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         CommandHandler.addCommand(new StopWorkCommand());
         CommandHandler.addCommand(new StatsCommand());
         CommandHandler.addCommand(new RestoreCommand());
+        CommandHandler.addCommand(new KillCommand());
     }
 
+    /**
+     * Avatar-click targeting. Fired from our Arcturus patch whenever the
+     * Nitro client sends the pixeltower "set target" packet (header 6550),
+     * which the patched InfoStand widget emits on every user-sprite click.
+     * Profile opening is intentionally not wired here — TargetHUD follows
+     * the last avatar the player clicked, never the last profile opened.
+     */
     @EventHandler
-    public void onUserProfileCardViewed(UserProfileCardViewedEvent event) {
-        if (event.habbo == null || event.target == null) return;
-        int callerId = event.habbo.getHabboInfo().getId();
-        int targetId = event.target.getHabboInfo().getId();
-        TargetTracker.set(callerId, targetId);
-
-        // Never pipe the caller's own info into the target slot.
-        if (callerId == targetId) return;
-        if (event.habbo.getClient() == null) return;
-
-        StatsManager.getOrFetch(targetId).ifPresent(stats ->
-                event.habbo.getClient().sendResponse(new UpdateTargetStatsComposer(
-                        targetId,
-                        event.target.getHabboInfo().getLook(),
-                        event.target.getHabboInfo().getUsername(),
-                        stats)));
+    public void onUserTargetSelected(UserTargetSelectedEvent event) {
+        if (event.habbo == null) return;
+        TargetService.setAndPush(event.habbo, event.targetHabboId);
     }
 
     @EventHandler

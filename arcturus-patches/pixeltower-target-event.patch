@@ -1,0 +1,80 @@
+diff --git a/src/main/java/com/eu/habbo/messages/PacketManager.java b/src/main/java/com/eu/habbo/messages/PacketManager.java
+index ee0c896..3c43c28 100644
+--- a/src/main/java/com/eu/habbo/messages/PacketManager.java
++++ b/src/main/java/com/eu/habbo/messages/PacketManager.java
+@@ -320,6 +320,7 @@ public class PacketManager {
+         this.registerHandler(Incoming.ConfirmChangeNameEvent, ConfirmChangeNameEvent.class);
+         this.registerHandler(Incoming.ChangeChatBubbleEvent, ChangeChatBubbleEvent.class);
+         this.registerHandler(Incoming.UpdateUIFlagsEvent, UpdateUIFlagsEvent.class);
++        this.registerHandler(Incoming.PixeltowerSetTargetEvent, PixeltowerSetTargetEvent.class);
+     }
+ 
+     private void registerNavigator() throws Exception {
+diff --git a/src/main/java/com/eu/habbo/messages/incoming/Incoming.java b/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
+index 75223e4..a87c8bc 100644
+--- a/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
++++ b/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
+@@ -401,4 +401,8 @@ public class Incoming {
+     public static final int UNKNOWN_SNOWSTORM_6024 = 6024;
+     public static final int UNKNOWN_SNOWSTORM_6025 = 6025;
+     public static final int SnowStormUserPickSnowballEvent = 6026;
++
++    // pixeltower: avatar-sprite click sets the TargetHUD target. Emitted by
++    // the patched Nitro InfoStand widget; handled by PixeltowerSetTargetEvent.
++    public static final int PixeltowerSetTargetEvent = 6550;
+ }
+diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerSetTargetEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerSetTargetEvent.java
+new file mode 100644
+index 0000000..2c0a2b2
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerSetTargetEvent.java
+@@ -0,0 +1,23 @@
++package com.eu.habbo.messages.incoming.users;
++
++import com.eu.habbo.Emulator;
++import com.eu.habbo.messages.incoming.MessageHandler;
++import com.eu.habbo.plugin.events.users.UserTargetSelectedEvent;
++
++/**
++ * Pixeltower-custom incoming packet (header 6550). The patched Nitro
++ * InfoStand widget emits this whenever the local player clicks another
++ * user's avatar sprite. The handler is a thin bridge — it just fires
++ * {@link UserTargetSelectedEvent} for the PixeltowerRP plugin to pick up
++ * and run the set-target / push-stats logic, keeping Arcturus core free
++ * of pixeltower game rules.
++ */
++public class PixeltowerSetTargetEvent extends MessageHandler {
++    @Override
++    public void handle() throws Exception {
++        if (this.client == null || this.client.getHabbo() == null) return;
++        int targetHabboId = this.packet.readInt();
++        Emulator.getPluginManager().fireEvent(
++                new UserTargetSelectedEvent(this.client.getHabbo(), targetHabboId));
++    }
++}
+diff --git a/src/main/java/com/eu/habbo/plugin/events/users/UserTargetSelectedEvent.java b/src/main/java/com/eu/habbo/plugin/events/users/UserTargetSelectedEvent.java
+new file mode 100644
+index 0000000..2209eac
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/plugin/events/users/UserTargetSelectedEvent.java
+@@ -0,0 +1,20 @@
++package com.eu.habbo.plugin.events.users;
++
++import com.eu.habbo.habbohotel.users.Habbo;
++
++/**
++ * Fired when a Habbo selects another user as their current Pixeltower target
++ * — emitted by the {@code PixeltowerSetTargetEvent} incoming handler which
++ * the patched Nitro InfoStand widget triggers on every avatar-sprite click.
++ * The {@code habbo} field on the super-class is the viewer; {@code targetHabboId}
++ * is the target's Habbo id (may reference an offline user).
++ */
++public class UserTargetSelectedEvent extends UserEvent {
++
++    public final int targetHabboId;
++
++    public UserTargetSelectedEvent(Habbo viewer, int targetHabboId) {
++        super(viewer);
++        this.targetHabboId = targetHabboId;
++    }
++}
