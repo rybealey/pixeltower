@@ -45,6 +45,16 @@ public final class TargetService {
      * No-op when nobody is watching.
      */
     public static void broadcastStatsUpdate(int targetHabboId) {
+        broadcastStatsUpdate(targetHabboId, null);
+    }
+
+    /**
+     * Same as {@link #broadcastStatsUpdate(int)} but uses {@code figureOverride}
+     * instead of the value cached on HabboInfo. Used by the figure-saved hook,
+     * which fires on the incoming-packet thread BEFORE HabboInfo.setLook() has
+     * committed — reading from HabboInfo there returns the stale figure.
+     */
+    public static void broadcastStatsUpdate(int targetHabboId, String figureOverride) {
         Set<Integer> viewers = TargetTracker.viewersOf(targetHabboId);
         if (viewers.isEmpty()) return;
 
@@ -54,11 +64,15 @@ public final class TargetService {
             if (viewer == null) continue;
             GameClient client = viewer.getClient();
             if (client == null) continue;
-            sendSnapshot(client, targetHabboId);
+            sendSnapshot(client, targetHabboId, figureOverride);
         }
     }
 
     private static void sendSnapshot(GameClient client, int targetHabboId) {
+        sendSnapshot(client, targetHabboId, null);
+    }
+
+    private static void sendSnapshot(GameClient client, int targetHabboId, String figureOverride) {
         String figure;
         String username;
         Habbo online = Emulator.getGameEnvironment().getHabboManager().getHabbo(targetHabboId);
@@ -71,7 +85,7 @@ public final class TargetService {
             figure = offline.getLook();
             username = offline.getUsername();
         }
-        final String figureF = figure;
+        final String figureF = figureOverride != null ? figureOverride : figure;
         final String usernameF = username;
         StatsManager.getOrFetch(targetHabboId).ifPresent(stats ->
                 client.sendResponse(new UpdateTargetStatsComposer(

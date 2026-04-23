@@ -86,11 +86,16 @@ public final class FunctionalFurnitureService {
      * Returns true and stamps now if the cooldown has elapsed (or there's no
      * prior fire); returns false otherwise. Cooldown ≤ 0 means no gating —
      * always fires.
+     *
+     * Keyed by (habbo, placed-furni, trigger) so walk-on / walk-off / click
+     * have independent clocks — a dressing room's walk-off "close" must not
+     * be blocked by the walk-on "open" that fired a moment earlier.
      */
-    public static boolean tryFire(int habboId, int placedFurniId, int cooldownMs) {
+    public static boolean tryFire(int habboId, int placedFurniId,
+                                  TriggerType trigger, int cooldownMs) {
         if (cooldownMs <= 0) return true;
         long now = System.currentTimeMillis();
-        String key = habboId + ":" + placedFurniId;
+        String key = habboId + ":" + placedFurniId + ":" + trigger.name();
         synchronized (COOLDOWNS) {
             Long last = COOLDOWNS.get(key);
             if (last != null && (now - last) < cooldownMs) return false;

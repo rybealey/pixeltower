@@ -19,6 +19,7 @@ import com.eu.habbo.plugin.events.users.UserEnterRoomEvent;
 import com.eu.habbo.plugin.events.users.UserExitRoomEvent;
 import com.eu.habbo.plugin.events.users.UserIdleEvent;
 import com.eu.habbo.plugin.events.users.UserLoginEvent;
+import com.eu.habbo.plugin.events.users.UserSavedLookEvent;
 import com.eu.habbo.plugin.events.users.UserTargetSelectedEvent;
 import org.pixeltower.rp.core.HomePositionStore;
 import org.pixeltower.rp.core.TargetService;
@@ -213,6 +214,22 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
     public void onUserTargetSelected(UserTargetSelectedEvent event) {
         if (event.habbo == null) return;
         TargetService.setAndPush(event.habbo, event.targetHabboId);
+    }
+
+    /**
+     * When a user saves a new figure (Change Looks), push a fresh
+     * UpdateTargetStatsComposer to every viewer currently targeting them so
+     * their TargetHUD avatar swaps in realtime instead of only on re-click.
+     *
+     * UserSavedLookEvent fires BEFORE Arcturus commits the new look to
+     * HabboInfo, so we pass {@code event.newLook} explicitly — reading from
+     * HabboInfo here would broadcast the stale figure.
+     */
+    @EventHandler
+    public void onUserSavedLook(UserSavedLookEvent event) {
+        if (event.habbo == null || event.isCancelled()) return;
+        TargetService.broadcastStatsUpdate(
+                event.habbo.getHabboInfo().getId(), event.newLook);
     }
 
     @EventHandler

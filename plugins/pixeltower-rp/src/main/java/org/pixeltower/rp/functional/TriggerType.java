@@ -8,12 +8,14 @@ package org.pixeltower.rp.functional;
  */
 public enum TriggerType {
     WALK_ON,
+    WALK_OFF,
     CLICK;
 
     public static TriggerType fromDb(String value) {
         if (value == null) return WALK_ON;
         return switch (value.toLowerCase()) {
             case "click" -> CLICK;
+            case "walk_off" -> WALK_OFF;
             default -> WALK_ON;
         };
     }

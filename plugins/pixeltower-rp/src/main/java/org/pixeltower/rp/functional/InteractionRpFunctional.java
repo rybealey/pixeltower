@@ -46,6 +46,12 @@ public class InteractionRpFunctional extends InteractionDefault {
     }
 
     @Override
+    public void onWalkOff(RoomUnit roomUnit, Room room, Object[] objects) throws Exception {
+        super.onWalkOff(roomUnit, room, objects);
+        fireFor(roomUnit, room, TriggerType.WALK_OFF);
+    }
+
+    @Override
     public void onClick(GameClient client, Room room, Object[] objects) throws Exception {
         super.onClick(client, room, objects);
         if (client == null) return;
@@ -54,7 +60,8 @@ public class InteractionRpFunctional extends InteractionDefault {
         FunctionalFurnitureService.lookup(this.getBaseItem().getId(), TriggerType.CLICK)
                 .ifPresent(action -> {
                     if (FunctionalFurnitureService.tryFire(
-                            habbo.getHabboInfo().getId(), this.getId(), action.cooldownMs())) {
+                            habbo.getHabboInfo().getId(), this.getId(),
+                            TriggerType.CLICK, action.cooldownMs())) {
                         FunctionalActionDispatcher.dispatch(habbo, action);
                     }
                 });
@@ -68,7 +75,8 @@ public class InteractionRpFunctional extends InteractionDefault {
         FunctionalFurnitureService.lookup(this.getBaseItem().getId(), trigger)
                 .ifPresent(action -> {
                     if (FunctionalFurnitureService.tryFire(
-                            habbo.getHabboInfo().getId(), this.getId(), action.cooldownMs())) {
+                            habbo.getHabboInfo().getId(), this.getId(),
+                            trigger, action.cooldownMs())) {
                         FunctionalActionDispatcher.dispatch(habbo, action);
                     }
                 });
