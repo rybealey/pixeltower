@@ -104,10 +104,10 @@ fi
 # newly-published badges, so running every deploy keeps the album fresh
 # without re-downloading the whole pack. Fresh prod boxes that skipped the
 # manual bootstrap land here with an empty album; this is what hydrates it.
-echo "[deploy] probing habboassets.com reachability"
-curl -sS -o /dev/null -w "[deploy] habboassets: http=%{http_code} time=%{time_total}s size=%{size_download}\n" \
-  "https://www.habboassets.com/api/v1/badges?limit=1&offset=0" 2>&1 || \
-  echo "[deploy] habboassets: curl error (probably egress blocked)"
+echo "[deploy] probing habboassets.com reachability (limit=1000)"
+curl -sS -w "[deploy] habboassets: http=%{http_code} time=%{time_total}s size=%{size_download} type=%{content_type}\n" \
+  "https://www.habboassets.com/api/v1/badges?limit=1000&offset=0" 2>&1 | head -c 400
+echo
 ./scripts/pull-badges.sh || echo "[deploy] WARN: pull-badges.sh failed"
 
 echo "[deploy] up -d --remove-orphans (recreates containers for any rebuilt images)"
