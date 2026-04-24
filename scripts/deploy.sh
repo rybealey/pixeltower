@@ -100,6 +100,17 @@ else
   echo "[deploy] WARN: python3 not on host PATH — skipping gamedata overrides"
 fi
 
+# TEMP DIAGNOSTIC: dump the room_switcher2 items_base row + last 80 lines
+# of emulator logs so we can see whether the rp_teleport_walkon binding
+# actually landed and whether InteractionWalkOnTeleport registered cleanly.
+echo "[deploy] DEBUG items_base row for room_switcher2:"
+docker compose --env-file "$ENV_FILE" exec -T db sh -c \
+  'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e \
+   "SELECT id, item_name, interaction_type FROM items_base WHERE item_name='\''room_switcher2'\'' OR id=99001;"' \
+   2>&1 | sed 's/^/  /' || echo "  [warn] query failed"
+echo "[deploy] DEBUG emulator logs (last 40 lines after restart):"
+docker compose --env-file "$ENV_FILE" logs --tail=40 emulator 2>&1 | grep -iE "rp_teleport|InteractionWalkOn|Registered|ERROR|Exception|Caused by" | head -25 | sed 's/^/  /' || true
+
 # Populate gamedata/c_images/album1584/ with badge .gifs from habboassets.com.
 # pull-badges.sh is idempotent — after the first catch-up run it only fetches
 # newly-published badges, so running every deploy keeps the album fresh
