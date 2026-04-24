@@ -19,20 +19,21 @@ echo "[badges] building manifest via $API"
 : > "$MANIFEST.tmp"
 offset=0
 while :; do
-  page=$(curl -fsSL --retry 3 --max-time 60 "$API?limit=$PAGE_LIMIT&offset=$offset")
-  # Python prints `__COUNT__ N` as the first stdout line, then one tab-
-  # separated manifest row per badge. Real errors stay on stderr and
-  # surface in the deploy log instead of being swallowed by a redirect.
-  result=$(python3 -c "
+  # Pipe curl → python directly. Passing the ~350KB JSON as argv blew past
+  # the kernel's ARG_MAX on the prod VPS ("Argument list too long"). Python
+  # prints `__COUNT__ N` as the first stdout line, then one tab-separated
+  # manifest row per badge. pipefail (set above) propagates curl failures.
+  result=$(curl -fsSL --retry 3 --max-time 60 "$API?limit=$PAGE_LIMIT&offset=$offset" | \
+    python3 -c "
 import json, sys
-d = json.loads(sys.argv[1])
+d = json.load(sys.stdin)
 print(f'__COUNT__ {len(d[\"badges\"])}')
 for b in d['badges']:
     code = b.get('code') or ''
     url = b.get('url_habboassets') or ''
     if code and url:
         print(f'{code}\t{url}')
-" "$page")
+")
   last=$(printf '%s\n' "$result" | head -n1 | awk '{print $2}')
   printf '%s\n' "$result" | tail -n +2 >> "$MANIFEST.tmp"
   echo "  offset=$offset fetched=$last"
