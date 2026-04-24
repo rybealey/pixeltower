@@ -116,18 +116,6 @@ fi
 echo "[deploy] up -d --remove-orphans (recreates containers for any rebuilt images)"
 docker compose --env-file "$ENV_FILE" up -d --remove-orphans
 
-# TEMP DIAGNOSTIC: full items_base + catalog_items row + a stock teleport for
-# comparison, so we can see if sprite_id or anything else diverges.
-echo "[deploy] DEBUG items_base rows (ours + stock teleport_door):"
-docker compose --env-file "$ENV_FILE" exec -T db sh -c \
-  'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e \
-   "SELECT id, sprite_id, item_name, type, interaction_type, allow_walk FROM items_base WHERE id=99001 OR item_name='\''teleport_door'\'';"' \
-   2>&1 | sed 's/^/  /' || true
-echo "[deploy] DEBUG catalog_items row for room_switcher2:"
-docker compose --env-file "$ENV_FILE" exec -T db sh -c \
-  'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e \
-   "SELECT id, item_ids, page_id, catalog_name, cost_credits, extradata FROM catalog_items WHERE id=99001 OR catalog_name='\''room_switcher2'\'';"' \
-   2>&1 | sed 's/^/  /' || true
 
 
 # Apply DB changes once containers are up.
