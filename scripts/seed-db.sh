@@ -92,6 +92,16 @@ else
   echo "[seed] no catalog SQLs found (skipping) — run pull-default-pack.sh if needed"
 fi
 
+# emulator/catalog-sqls/catalog_pages.sql DROP+CREATEs catalog_pages on
+# every deploy from the Morningstar pack, wiping any custom row inserted
+# by a plugin V*.sql migration. Apply our tracked custom pages file now,
+# after the upstream import — same "post-catalog fixup" pattern as the
+# items_base re-bind below.
+if [ -f emulator/pixeltower-custom-catalog.sql ]; then
+  echo "[seed] applying pixeltower custom catalog pages"
+  mariadb_exec < emulator/pixeltower-custom-catalog.sql
+fi
+
 # emulator/catalog-sqls/items_base.sql DROPs + recreates the table, clobbering
 # any custom interaction_type values. Re-bind every items_base row referenced
 # by rp_functional_furniture back to 'rp_functional' so walk-on / click
