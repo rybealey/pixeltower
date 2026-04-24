@@ -666,7 +666,7 @@ index 0000000..023b264
 +}
 diff --git a/src/components/pixeltower/CommandsListView.tsx b/src/components/pixeltower/CommandsListView.tsx
 new file mode 100644
-index 0000000..2c0e3f0
+index 0000000..f690d50
 --- /dev/null
 +++ b/src/components/pixeltower/CommandsListView.tsx
 @@ -0,0 +1,195 @@
@@ -712,7 +712,7 @@ index 0000000..2c0e3f0
 +    { name: 'respawn',      description: 'Leave the downed state and return to the hospital',                                                             category: 'general' },
 +    { name: 'commands',     description: 'Open this reference window',                                                                                    category: 'general' },
 +    // Banking — lifecycle order: open → inspect → move → peer-to-peer
-+    { name: 'open-account', description: 'Open a personal bank account',                                                                                  category: 'banking' },
++    { name: 'openaccount',  description: 'Open a personal bank account',                                                                                  category: 'banking' },
 +    { name: 'bal',          description: 'Check your bank balance',                                                                                       category: 'banking' },
 +    { name: 'deposit',      params: '%amount%',                 paramsPlaceholder: true, description: 'Deposit coins at an ATM',                          category: 'banking' },
 +    { name: 'withdraw',     params: '%amount%',                 paramsPlaceholder: true, description: 'Withdraw coins at an ATM',                         category: 'banking' },
