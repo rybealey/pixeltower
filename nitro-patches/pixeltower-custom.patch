@@ -12,7 +12,7 @@ index dd4538b..d3b5e43 100644
          "forward.type": (new URLSearchParams(window.location.search).get('room') ? 2 : -1),
          "forward.id": (new URLSearchParams(window.location.search).get('room') || 0),
 diff --git a/src/App.tsx b/src/App.tsx
-index 072b05d..fd5b79f 100644
+index 072b05d..630e269 100644
 --- a/src/App.tsx
 +++ b/src/App.tsx
 @@ -1,6 +1,7 @@
@@ -23,7 +23,20 @@ index 072b05d..fd5b79f 100644
  import { Base, TransitionAnimation, TransitionAnimationTypes } from './common';
  import { LoadingView } from './components/loading/LoadingView';
  import { MainView } from './components/main/MainView';
-@@ -87,6 +88,7 @@ export const App: FC<{}> = props =>
+@@ -22,6 +23,12 @@ export const App: FC<{}> = props =>
+         if(!NitroConfig) throw new Error('NitroConfig is not defined!');
+ 
+         Nitro.bootstrap();
++
++        // Match the loading-screen slate-blue on the PIXI canvas so the room
++        // backdrop outside the iso art reads as the same color. $pt-panel-stroke
++        // top of the body gradient in components/pixeltower/_app-overrides.scss.
++        const renderer = GetNitroInstance()?.application?.renderer;
++        if(renderer) renderer.backgroundColor = 0x1A2436;
+     }
+ 
+     const handler = useCallback(async (event: NitroEvent) =>
+@@ -87,6 +94,7 @@ export const App: FC<{}> = props =>
                  if(status)
                  {
                      GetCommunication().init();
