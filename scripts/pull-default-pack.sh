@@ -82,6 +82,10 @@ fi
 # — safe to re-run against already-substituted files.
 python3 scripts/apply-text-overrides.py
 
+# Restrict the avatar editor to the canonical Habbo wardrobe: hide custom
+# clothing and flatten HC gates on standard items. Idempotent.
+python3 scripts/apply-figuredata-filter.py
+
 echo "[pack] extracting Catalog SQLs"
 mkdir -p emulator/catalog-sqls
 rsync -a "$TMP/pack/Catalog-SQLS/" emulator/catalog-sqls/ 2>/dev/null || \
