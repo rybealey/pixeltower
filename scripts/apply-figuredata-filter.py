@@ -24,7 +24,9 @@ Usage:
 """
 
 import json
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -75,8 +77,22 @@ def main() -> int:
                 color["club"] = 0
                 colors_flattened += 1
 
-    with FIGUREDATA_PATH.open("w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False)
+    # Write via tempfile + atomic rename so we don't need write permission on
+    # the target file itself — only on its parent directory. The existing
+    # FigureData.json may be owned by root (produced by a container) while
+    # the deploy user only has directory-write access.
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=".figuredata-", suffix=".json.tmp", dir=str(FIGUREDATA_PATH.parent)
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+        os.chmod(tmp_path, 0o644)
+        os.replace(tmp_path, FIGUREDATA_PATH)
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise
 
     print(
         f"[figure] {FIGUREDATA_PATH.relative_to(ROOT)}: "
