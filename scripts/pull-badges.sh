@@ -22,7 +22,12 @@ while :; do
   # Pipe curl → python directly. Passing the ~350KB JSON as argv blew past
   # the kernel's ARG_MAX on the prod VPS ("Argument list too long"). Python
   # prints `__COUNT__ N` as the first stdout line, then one tab-separated
-  # manifest row per badge. pipefail (set above) propagates curl failures.
+  # manifest row per badge.
+  #
+  # Tolerate a per-page failure instead of letting set -e kill the whole
+  # run — partial manifests are still useful (downloads only touch listed
+  # codes, and re-running the script picks up the missing pages).
+  set +e
   result=$(curl -fsSL --retry 3 --max-time 60 "$API?limit=$PAGE_LIMIT&offset=$offset" | \
     python3 -c "
 import json, sys
@@ -33,7 +38,14 @@ for b in d['badges']:
     url = b.get('url_habboassets') or ''
     if code and url:
         print(f'{code}\t{url}')
-")
+" 2>&1)
+  rc=$?
+  set -e
+  if [ "$rc" -ne 0 ]; then
+    echo "  [warn] page offset=$offset failed (rc=$rc) — stopping manifest build" >&2
+    printf '%s\n' "$result" | sed 's/^/    /' >&2
+    break
+  fi
   last=$(printf '%s\n' "$result" | head -n1 | awk '{print $2}')
   printf '%s\n' "$result" | tail -n +2 >> "$MANIFEST.tmp"
   echo "  offset=$offset fetched=$last"
