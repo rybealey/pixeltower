@@ -73,6 +73,18 @@ if [ "$need_emu" = 1 ]; then
   docker compose --env-file "$ENV_FILE" build emulator
 fi
 
+# Re-apply gamedata overrides every deploy — the scripts are idempotent and
+# the whitelist/substitution configs live under gamedata-overrides/, which
+# isn't covered by any rebuild-classifier above. Cheap enough to run
+# unconditionally so the live FigureData.json / text files can't drift from
+# the tracked override config.
+if command -v python3 >/dev/null 2>&1; then
+  python3 scripts/apply-text-overrides.py || echo "[deploy] WARN: apply-text-overrides.py failed"
+  python3 scripts/apply-figuredata-filter.py || echo "[deploy] WARN: apply-figuredata-filter.py failed"
+else
+  echo "[deploy] WARN: python3 not on host PATH — skipping gamedata overrides"
+fi
+
 echo "[deploy] up -d --remove-orphans (recreates containers for any rebuilt images)"
 docker compose --env-file "$ENV_FILE" up -d --remove-orphans
 
