@@ -23,3 +23,35 @@ VALUES
    '', '', '',
    '', '', '', '',
    0, '');
+
+-- Items. sprite_id must match the classname's FurnitureData.json id (see
+-- custom-furni/<classname>/metadata.json). Using explicit high IDs (99001+)
+-- to avoid collisions with upstream items_base.sql's AUTO_INCREMENT=50554.
+INSERT IGNORE INTO `items_base`
+  (`id`, `sprite_id`, `public_name`, `item_name`, `type`,
+   `width`, `length`, `stack_height`,
+   `allow_stack`, `allow_sit`, `allow_lay`, `allow_walk`,
+   `allow_gift`, `allow_trade`, `allow_recycle`, `allow_marketplace_sell`,
+   `allow_inventory_stack`,
+   `interaction_type`, `interaction_modes_count`,
+   `vending_ids`, `multiheight`, `customparams`,
+   `effect_id_male`, `effect_id_female`, `clothing_on_walk`)
+VALUES
+  (99001, 99001, 'PixelRP Room Switcher', 'room_switcher2', 's',
+   1, 1, 0.00,
+   0, 0, 0, 1,
+   1, 0, 0, 0,
+   1,
+   'teleport', 6,
+   '0', '0', '',
+   0, 0, '');
+
+-- Catalog items — links items_base row to the PixelRP page (9001).
+INSERT IGNORE INTO `catalog_items`
+  (`id`, `item_ids`, `page_id`, `catalog_name`, `cost_credits`, `cost_points`,
+   `points_type`, `amount`, `limited_stack`, `limited_sells`, `order_number`,
+   `offer_id`, `song_id`, `extradata`, `have_offer`, `club_only`)
+VALUES
+  (99001, '99001', 9001, 'room_switcher2', 0, 0,
+   0, 1, 0, 0, 1,
+   -1, 0, '', '1', '0');

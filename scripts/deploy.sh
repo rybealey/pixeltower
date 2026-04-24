@@ -95,6 +95,7 @@ fi
 if command -v python3 >/dev/null 2>&1; then
   python3 scripts/apply-text-overrides.py || echo "[deploy] WARN: apply-text-overrides.py failed"
   python3 scripts/apply-figuredata-filter.py || echo "[deploy] WARN: apply-figuredata-filter.py failed"
+  python3 scripts/apply-custom-furni.py || echo "[deploy] WARN: apply-custom-furni.py failed"
 else
   echo "[deploy] WARN: python3 not on host PATH — skipping gamedata overrides"
 fi

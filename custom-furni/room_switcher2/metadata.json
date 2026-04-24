@@ -1,0 +1,29 @@
+{
+  "id": 99001,
+  "classname": "room_switcher2",
+  "revision": 99001,
+  "category": "teleport",
+  "defaultdir": 0,
+  "xdim": 1,
+  "ydim": 1,
+  "partcolors": {
+    "color": []
+  },
+  "name": "PixelRP Room Switcher",
+  "description": "Step on to be transported.",
+  "adurl": "",
+  "offerid": 99001,
+  "buyout": true,
+  "rentofferid": -1,
+  "rentbuyout": false,
+  "bc": false,
+  "excludeddynamic": false,
+  "customparams": "",
+  "specialtype": 1,
+  "canstandon": true,
+  "cansiton": false,
+  "canlayon": false,
+  "furniline": "pixeltower_custom",
+  "environment": "",
+  "rare": false
+}
