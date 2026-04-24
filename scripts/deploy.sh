@@ -125,19 +125,24 @@ if [ "$need_sql" = 1 ]; then
   docker compose --env-file "$ENV_FILE" restart emulator
 fi
 
-# TEMP DIAGNOSTIC: dump the chat prefix + permissions state so we can see
-# what's actually on prod after V014. Will be removed once root cause is
-# confirmed.
-echo "[deploy] DEBUG emulator_settings chat/prefix keys:"
+# TEMP DIAGNOSTIC: run the prefix-clear UPDATE inline and report rows
+# affected. V014 migration appeared to run but didn't change the value;
+# rule out statement-level issues vs. something overwriting after.
+echo "[deploy] DEBUG pre-UPDATE room.chat.prefix.format:"
 docker compose --env-file "$ENV_FILE" exec -T db sh -c \
   'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e \
-   "SELECT \`key\`, \`value\` FROM emulator_settings WHERE \`key\` LIKE '\''%prefix%'\'' OR \`key\` LIKE '\''%chat%'\'';"' \
-   2>&1 | sed 's/^/  /' || echo "  [warn] query failed"
-echo "[deploy] DEBUG permissions prefix columns (ranks >= 5):"
+   "SELECT CONCAT('\''>>> '\'', \`value\`, '\''<<<'\'') FROM emulator_settings WHERE \`key\` = '\''room.chat.prefix.format'\'';"' \
+   2>&1 | sed 's/^/  /'
+echo "[deploy] DEBUG running UPDATE inline:"
+docker compose --env-file "$ENV_FILE" exec -T db sh -c \
+  'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -v -e \
+   "UPDATE emulator_settings SET \`value\` = '\'''\'' WHERE \`key\` = '\''room.chat.prefix.format'\'';"' \
+   2>&1 | sed 's/^/  /'
+echo "[deploy] DEBUG post-UPDATE room.chat.prefix.format:"
 docker compose --env-file "$ENV_FILE" exec -T db sh -c \
   'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e \
-   "SELECT id, rank_name, badge, prefix, prefix_color FROM permissions WHERE id >= 5;"' \
-   2>&1 | sed 's/^/  /' || echo "  [warn] query failed"
+   "SELECT CONCAT('\''>>> '\'', \`value\`, '\''<<<'\'') FROM emulator_settings WHERE \`key\` = '\''room.chat.prefix.format'\'';"' \
+   2>&1 | sed 's/^/  /'
 echo "[deploy] Laravel migrate"
 docker compose --env-file "$ENV_FILE" exec -T php php artisan migrate --force
 
