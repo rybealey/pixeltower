@@ -99,6 +99,13 @@ else
   echo "[deploy] WARN: python3 not on host PATH — skipping gamedata overrides"
 fi
 
+# Populate gamedata/c_images/album1584/ with badge .gifs from habboassets.com.
+# pull-badges.sh is idempotent — after the first catch-up run it only fetches
+# newly-published badges, so running every deploy keeps the album fresh
+# without re-downloading the whole pack. Fresh prod boxes that skipped the
+# manual bootstrap land here with an empty album; this is what hydrates it.
+./scripts/pull-badges.sh || echo "[deploy] WARN: pull-badges.sh failed"
+
 echo "[deploy] up -d --remove-orphans (recreates containers for any rebuilt images)"
 docker compose --env-file "$ENV_FILE" up -d --remove-orphans
 
