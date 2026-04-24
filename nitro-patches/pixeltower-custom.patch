@@ -12,7 +12,7 @@ index dd4538b..d3b5e43 100644
          "forward.type": (new URLSearchParams(window.location.search).get('room') ? 2 : -1),
          "forward.id": (new URLSearchParams(window.location.search).get('room') || 0),
 diff --git a/src/App.tsx b/src/App.tsx
-index 072b05d..630e269 100644
+index 072b05d..fd5b79f 100644
 --- a/src/App.tsx
 +++ b/src/App.tsx
 @@ -1,6 +1,7 @@
@@ -23,20 +23,7 @@ index 072b05d..630e269 100644
  import { Base, TransitionAnimation, TransitionAnimationTypes } from './common';
  import { LoadingView } from './components/loading/LoadingView';
  import { MainView } from './components/main/MainView';
-@@ -22,6 +23,12 @@ export const App: FC<{}> = props =>
-         if(!NitroConfig) throw new Error('NitroConfig is not defined!');
- 
-         Nitro.bootstrap();
-+
-+        // Match the loading-screen slate-blue on the PIXI canvas so the room
-+        // backdrop outside the iso art reads as the same color. $pt-panel-stroke
-+        // top of the body gradient in components/pixeltower/_app-overrides.scss.
-+        const renderer = GetNitroInstance()?.application?.renderer;
-+        if(renderer) renderer.backgroundColor = 0x1A2436;
-     }
- 
-     const handler = useCallback(async (event: NitroEvent) =>
-@@ -87,6 +94,7 @@ export const App: FC<{}> = props =>
+@@ -87,6 +88,7 @@ export const App: FC<{}> = props =>
                  if(status)
                  {
                      GetCommunication().init();
@@ -2570,6 +2557,75 @@ index 6bb5a54..d91dc5a 100644
      useMessageEvent<UserSubscriptionEvent>(UserSubscriptionEvent, event =>
      {
          const parser = event.getParser();
+diff --git a/src/hooks/rooms/useRoom.ts b/src/hooks/rooms/useRoom.ts
+index af1c12a..a1a1fc8 100644
+--- a/src/hooks/rooms/useRoom.ts
++++ b/src/hooks/rooms/useRoom.ts
+@@ -4,12 +4,40 @@ import { useBetween } from 'use-between';
+ import { CanManipulateFurniture, DispatchUiEvent, GetNitroInstance, GetRoomEngine, GetRoomSession, InitializeRoomInstanceRenderingCanvas, IsFurnitureSelectionDisabled, ProcessRoomObjectOperation, RoomWidgetUpdateBackgroundColorPreviewEvent, RoomWidgetUpdateRoomObjectEvent, SetActiveRoomId, StartRoomSession } from '../../api';
+ import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../events';
+ 
++// Pixeltower: slate-blue vertical gradient (#1A2436 → #0A1424) for the canvas
++// backdrop around the iso room, so it matches the loading-screen body gradient
++// in components/pixeltower/_app-overrides.scss. Built once and reused across
++// every room init. 2048px tall so stretching to a 1080-ish viewport stays
++// smooth under the default NEAREST scale mode Nitro sets for pixel art.
++let slateBackgroundTexture: NitroTexture = null;
++const getSlateBackgroundTexture = (): NitroTexture =>
++{
++    if(slateBackgroundTexture) return slateBackgroundTexture;
++
++    const canvas = document.createElement('canvas');
++    canvas.width = 1;
++    canvas.height = 2048;
++
++    const ctx = canvas.getContext('2d');
++    const gradient = ctx.createLinearGradient(0, 0, 0, 2048);
++    gradient.addColorStop(0, '#1A2436');
++    gradient.addColorStop(1, '#0A1424');
++    ctx.fillStyle = gradient;
++    ctx.fillRect(0, 0, 1, 2048);
++
++    slateBackgroundTexture = NitroTexture.from(canvas);
++    return slateBackgroundTexture;
++};
++
+ const useRoomState = () =>
+ {
+     const [ roomSession, setRoomSession ] = useState<IRoomSession>(null);
+     const [ roomBackground, setRoomBackground ] = useState<NitroSprite>(null);
+     const [ roomFilter, setRoomFilter ] = useState<AdjustmentFilter>(null);
+-    const [ originalRoomBackgroundColor, setOriginalRoomBackgroundColor ] = useState(0);
++    // Default tint of 0xFFFFFF (white / identity) leaves the slate gradient
++    // texture showing. Upstream defaulted to 0 (black) which used the WHITE
++    // texture + black tint to paint pure black behind the iso room.
++    const [ originalRoomBackgroundColor, setOriginalRoomBackgroundColor ] = useState(0xFFFFFF);
+ 
+     const updateRoomBackgroundColor = (hue: number, saturation: number, lightness: number, original: boolean = false) =>
+     {
+@@ -21,7 +49,8 @@ const useRoomState = () =>
+ 
+         if(!hue && !saturation && !lightness)
+         {
+-            roomBackground.tint = 0;
++            // No HSL set → neutral tint, slate gradient texture shows through.
++            roomBackground.tint = 0xFFFFFF;
+         }
+         else
+         {
+@@ -218,11 +247,10 @@ const useRoomState = () =>
+ 
+         if(!displayObject || !canvas) return;
+ 
+-        const background = new NitroSprite(NitroTexture.WHITE);
++        const background = new NitroSprite(getSlateBackgroundTexture());
+         const filter = new AdjustmentFilter();
+         const master = (canvas.master as NitroContainer);
+ 
+-        background.tint = 0;
+         background.width = width;
+         background.height = height;
+ 
 diff --git a/src/hooks/rooms/widgets/useAvatarInfoWidget.ts b/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
 index 9545362..1fd4489 100644
 --- a/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
