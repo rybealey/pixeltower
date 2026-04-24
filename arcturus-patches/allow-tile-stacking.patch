@@ -34,8 +34,8 @@ diff --git a/src/main/java/com/eu/habbo/habbohotel/rooms/pathfinding/impl/TileVa
          && context.getDoorTile().distance(currentAdj) > DISTANCE_DOOR_THRESHOLD && (
 -        !context.isWalkthroughRetry() || !context.isAllowWalkthrough() || currentAdj.equals(
 -            context.getGoalLocation()));
-+        !context.isWalkthroughRetry() || !context.isAllowWalkthrough() || (currentAdj.equals(
-+            context.getGoalLocation()) && !stackingEnabled()));
++        !context.isWalkthroughRetry() || !context.isAllowWalkthrough() || currentAdj.equals(
++            context.getGoalLocation())) && !stackingEnabled();
    }
  
    public static boolean hasBlockingUnits(Room room, RoomTile tile, RoomUnit exception) {
