@@ -116,6 +116,13 @@ fi
 echo "[deploy] up -d --remove-orphans (recreates containers for any rebuilt images)"
 docker compose --env-file "$ENV_FILE" up -d --remove-orphans
 
+# TEMP DIAGNOSTIC: verify the items_base row flags that gate onWalkOn dispatch
+echo "[deploy] DEBUG items_base flags for room_switcher2:"
+docker compose --env-file "$ENV_FILE" exec -T db sh -c \
+  'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e \
+   "SELECT id, item_name, interaction_type, allow_walk, allow_sit, width, length FROM items_base WHERE id=99001;"' \
+   2>&1 | sed 's/^/  /' || true
+
 # Apply DB changes once containers are up.
 if [ "$need_sql" = 1 ]; then
   echo "[deploy] applying plugin SQL migrations"
