@@ -1,66 +1,39 @@
 diff --git a/src/main/java/com/eu/habbo/habbohotel/rooms/pathfinding/impl/TileValidator.java b/src/main/java/com/eu/habbo/habbohotel/rooms/pathfinding/impl/TileValidator.java
 --- a/src/main/java/com/eu/habbo/habbohotel/rooms/pathfinding/impl/TileValidator.java
 +++ b/src/main/java/com/eu/habbo/habbohotel/rooms/pathfinding/impl/TileValidator.java
-@@ -1,19 +1,26 @@
- package com.eu.habbo.habbohotel.rooms.pathfinding.impl;
- 
- import static com.eu.habbo.habbohotel.rooms.pathfinding.impl.PathfinderConstants.DISTANCE_DOOR_THRESHOLD;
- 
-+import com.eu.habbo.Emulator;
- import com.eu.habbo.habbohotel.rooms.Room;
- import com.eu.habbo.habbohotel.rooms.RoomLayout;
- import com.eu.habbo.habbohotel.rooms.RoomTile;
- import com.eu.habbo.habbohotel.rooms.RoomUnit;
- import com.eu.habbo.habbohotel.rooms.RoomUnitType;
- import com.eu.habbo.habbohotel.users.Habbo;
- import java.util.Collection;
- import java.util.PriorityQueue;
- import java.util.Set;
- 
- public class TileValidator {
- 
-+  // pixeltower: hotel-wide tile stacking. Read fresh (no static-final) so
-+  // we can't race class-init against ConfigurationManager.loadFromDatabase.
-+  private static boolean stackingEnabled() {
-+    return Emulator.getConfig().getBoolean("custom.stacking.enabled", false);
-+  }
-+
-   private TileValidator() {
-     throw new IllegalStateException("Utility class");
+@@ -50,12 +50,15 @@ public class TileValidator {
+     openList.remove(currentAdj);
    }
-@@ -53,8 +60,8 @@ public class TileValidator {
+ 
++  // pixeltower: hotel-wide tile stacking — the goal-tile exclusion and
++  // walkthrough gating are disabled; the pathfinder treats occupied tiles
++  // exactly like the near-door zone already does (multi-occupant allowed).
++  // We intentionally avoid a config-backed toggle: emulator_settings keys
++  // are round-tripped through saveToDatabase() on shutdown, which clobbers
++  // any externally-written value when the old process dies during restart.
+   private static boolean isTileWalkable(Room room, PathfinderContext context, RoomTile currentAdj,
        RoomUnit exception) {
-     return TileValidator.hasBlockingUnits(room, currentAdj, exception)
-         && context.getDoorTile().distance(currentAdj) > DISTANCE_DOOR_THRESHOLD && (
+-    return TileValidator.hasBlockingUnits(room, currentAdj, exception)
+-        && context.getDoorTile().distance(currentAdj) > DISTANCE_DOOR_THRESHOLD && (
 -        !context.isWalkthroughRetry() || !context.isAllowWalkthrough() || currentAdj.equals(
 -            context.getGoalLocation()));
-+        !context.isWalkthroughRetry() || !context.isAllowWalkthrough() || currentAdj.equals(
-+            context.getGoalLocation())) && !stackingEnabled();
++    return false;
    }
  
    public static boolean hasBlockingUnits(Room room, RoomTile tile, RoomUnit exception) {
 diff --git a/src/main/java/com/eu/habbo/habbohotel/rooms/RoomUnit.java b/src/main/java/com/eu/habbo/habbohotel/rooms/RoomUnit.java
 --- a/src/main/java/com/eu/habbo/habbohotel/rooms/RoomUnit.java
 +++ b/src/main/java/com/eu/habbo/habbohotel/rooms/RoomUnit.java
-@@ -40,6 +40,12 @@ public class RoomUnit {
- 
-   private static final Logger LOGGER = LoggerFactory.getLogger(RoomUnit.class);
- 
-+  // pixeltower: hotel-wide tile stacking. Mirrors the helper in TileValidator;
-+  // read fresh so a DB flip → emulator restart always wins class-load order.
-+  private static boolean stackingEnabled() {
-+    return Emulator.getConfig().getBoolean("custom.stacking.enabled", false);
-+  }
-+
-   public boolean isWiredTeleporting = false;
-   public boolean isLeavingTeleporter = false;
-   private final ConcurrentHashMap<RoomUnitStatus, String> status;
-@@ -196,7 +202,7 @@ public class RoomUnit {
+@@ -196,9 +196,9 @@ public class RoomUnit {
        if (this.path.isEmpty()) {
          this.sitUpdate = true;
  
 -        if (next != null && next.hasUnits() && !overrideChecks) {
-+        if (next != null && next.hasUnits() && !overrideChecks && !stackingEnabled()) {
-           return false;
-         }
+-          return false;
+-        }
++        // pixeltower: hotel-wide tile stacking — final-step gate removed.
++        // See arcturus-patches/allow-tile-stacking.patch for the paired
++        // TileValidator change.
        }
+ 
+       if (canfastwalk && this.fastWalk && this.path.size() > 1) {
