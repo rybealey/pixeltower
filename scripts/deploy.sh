@@ -85,9 +85,9 @@ fi
 # so it can rewrite ownership on host-bind-mounted files) brings everything
 # back under the deploy user so the host-side python scripts can rewrite
 # the files in place.
-if [ -d gamedata/gamedata ] && command -v docker >/dev/null 2>&1; then
+if [ -d gamedata ] && command -v docker >/dev/null 2>&1; then
   docker run --rm --user 0:0 \
-    -v "$PWD/gamedata/gamedata:/gd" alpine:3 \
+    -v "$PWD/gamedata:/gd" alpine:3 \
     sh -c "chown -R $(id -u):$(id -g) /gd && chmod -R u+rwX /gd" \
     >/dev/null 2>&1 || echo "[deploy] WARN: gamedata chown skipped"
 fi
