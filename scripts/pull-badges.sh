@@ -4,8 +4,6 @@
 # manifest of <code> <url> pairs, then downloads in parallel. Idempotent —
 # skips files that already exist, so reruns only fetch newly-published badges.
 set -euo pipefail
-# Self-trace (temporarily) so deploy logs show the failing command verbatim.
-set -x
 
 cd "$(dirname "$0")/.."
 
@@ -20,37 +18,36 @@ mkdir -p "$DEST"
 echo "[badges] building manifest via $API"
 : > "$MANIFEST.tmp"
 offset=0
+# Stream each page through curl | python → MANIFEST.tmp (stdout) and a
+# small stderr tempfile (for the `__COUNT__ N` sentinel + any traceback).
+# Holding the full 350KB page in a bash variable tripped some prod-specific
+# limit; file streaming sidesteps that and also dodges ARG_MAX when curl's
+# payload is handed to python.
+stderr_file=$(mktemp)
+trap 'rm -f "$stderr_file"' EXIT
 while :; do
-  # Pipe curl → python directly. Passing the ~350KB JSON as argv blew past
-  # the kernel's ARG_MAX on the prod VPS ("Argument list too long"). Python
-  # prints `__COUNT__ N` as the first stdout line, then one tab-separated
-  # manifest row per badge.
-  #
-  # Tolerate a per-page failure instead of letting set -e kill the whole
-  # run — partial manifests are still useful (downloads only touch listed
-  # codes, and re-running the script picks up the missing pages).
+  : > "$stderr_file"
   set +e
-  result=$(curl -fsSL --retry 3 --max-time 60 "$API?limit=$PAGE_LIMIT&offset=$offset" | \
+  curl -fsSL --retry 3 --max-time 60 "$API?limit=$PAGE_LIMIT&offset=$offset" | \
     python3 -c "
 import json, sys
 d = json.load(sys.stdin)
-print(f'__COUNT__ {len(d[\"badges\"])}')
+print(f'__COUNT__ {len(d[\"badges\"])}', file=sys.stderr)
 for b in d['badges']:
     code = b.get('code') or ''
     url = b.get('url_habboassets') or ''
     if code and url:
         print(f'{code}\t{url}')
-" 2>&1)
+" >> "$MANIFEST.tmp" 2> "$stderr_file"
   rc=$?
   set -e
   if [ "$rc" -ne 0 ]; then
     echo "  [warn] page offset=$offset failed (rc=$rc) — stopping manifest build" >&2
-    printf '%s\n' "$result" | sed 's/^/    /' >&2
+    sed 's/^/    /' "$stderr_file" >&2
     break
   fi
-  last=$(printf '%s\n' "$result" | head -n1 | awk '{print $2}')
-  printf '%s\n' "$result" | tail -n +2 >> "$MANIFEST.tmp"
-  echo "  offset=$offset fetched=$last"
+  last=$(awk '/^__COUNT__/ {print $2}' "$stderr_file")
+  echo "  offset=$offset fetched=${last:-0}"
   [ "${last:-0}" -lt "$PAGE_LIMIT" ] && break
   offset=$((offset + PAGE_LIMIT))
 done
