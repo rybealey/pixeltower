@@ -4,6 +4,8 @@
 # manifest of <code> <url> pairs, then downloads in parallel. Idempotent —
 # skips files that already exist, so reruns only fetch newly-published badges.
 set -euo pipefail
+# Self-trace (temporarily) so deploy logs show the failing command verbatim.
+set -x
 
 cd "$(dirname "$0")/.."
 
