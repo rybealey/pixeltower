@@ -78,6 +78,20 @@ fi
 # isn't covered by any rebuild-classifier above. Cheap enough to run
 # unconditionally so the live FigureData.json / text files can't drift from
 # the tracked override config.
+#
+# First normalize ownership of gamedata/gamedata/ — the converter container
+# writes files as root, leaving the deploy user unable to open them for
+# writing. A one-shot docker-run chown (docker defaults to running as root,
+# so it can rewrite ownership on host-bind-mounted files) brings everything
+# back under the deploy user so the host-side python scripts can rewrite
+# the files in place.
+if [ -d gamedata/gamedata ] && command -v docker >/dev/null 2>&1; then
+  docker run --rm --user 0:0 \
+    -v "$PWD/gamedata/gamedata:/gd" alpine:3 \
+    sh -c "chown -R $(id -u):$(id -g) /gd && chmod -R u+rwX /gd" \
+    >/dev/null 2>&1 || echo "[deploy] WARN: gamedata chown skipped"
+fi
+
 if command -v python3 >/dev/null 2>&1; then
   python3 scripts/apply-text-overrides.py || echo "[deploy] WARN: apply-text-overrides.py failed"
   python3 scripts/apply-figuredata-filter.py || echo "[deploy] WARN: apply-figuredata-filter.py failed"
