@@ -666,10 +666,10 @@ index 0000000..023b264
 +}
 diff --git a/src/components/pixeltower/CommandsListView.tsx b/src/components/pixeltower/CommandsListView.tsx
 new file mode 100644
-index 0000000..9f6fd9e
+index 0000000..2c0e3f0
 --- /dev/null
 +++ b/src/components/pixeltower/CommandsListView.tsx
-@@ -0,0 +1,180 @@
+@@ -0,0 +1,195 @@
 +import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 +import { FC, useEffect, useMemo, useState } from 'react';
 +import { LuSearch } from 'react-icons/lu';
@@ -681,16 +681,19 @@ index 0000000..9f6fd9e
 +// Opens via `:commands` (see useChatInputWidget.ts).
 +//
 +// Tabs + their contents are gated per the viewer's status:
-+//   - General → visible to everyone
++//   - General → visible to everyone (stats/target/combat basics)
++//   - Banking → visible to everyone (distinct cluster — 6 commands)
 +//   - Job     → only employed users (useEmployment — server signal TBD,
-+//               stub currently returns isEmployed:false)
++//               stub currently returns isEmployed:false). Corp-management
++//               commands live here too; they require corp-rank perms
++//               server-side, but you're always employed if you have them.
 +//   - VIP     → only users with active HC (usePurse → totalClubDays > 0)
 +//   - Staff   → only moderators (GetSessionDataManager().isModerator)
 +//
 +// Hidden tabs aren't rendered at all, so a regular player never sees
 +// evidence of commands they can't run.
 +
-+type Category = 'general' | 'job' | 'vip' | 'staff';
++type Category = 'general' | 'banking' | 'job' | 'vip' | 'staff';
 +
 +interface CommandDef {
 +    name: string;
@@ -702,28 +705,40 @@ index 0000000..9f6fd9e
 +}
 +
 +const COMMANDS: CommandDef[] = [
-+    { name: 'bal',          description: 'Check your bank balance',                  category: 'general' },
-+    { name: 'target',       params: '%user%',           paramsPlaceholder: true, description: 'Target a player to view their stats',       category: 'general' },
-+    { name: 'open-account', description: 'Open a corp bank account',                 category: 'general' },
-+    { name: 'deposit',      params: '%amount%',         paramsPlaceholder: true, description: 'Deposit credits into your account',        category: 'general' },
-+    { name: 'withdraw',     params: '%amount%',         paramsPlaceholder: true, description: 'Withdraw credits from your account',       category: 'general' },
-+    { name: 'transfer',     params: '%user% %amount%',  paramsPlaceholder: true, description: 'Send credits to another user',             category: 'general' },
-+    { name: 'stats',        description: 'Show your stats',                          category: 'general' },
-+    { name: 'restore',      description: 'Restore your HP and energy',               category: 'general' },
-+    { name: 'commands',     description: 'Open this reference window',               category: 'general' },
-+    { name: 'startwork',    description: 'Start a shift at your corp',               category: 'job' },
-+    { name: 'stopwork',     description: 'End your current shift',                   category: 'job' },
-+    { name: 'give',         params: '%user% %amount%',  paramsPlaceholder: true, description: 'Grant credits to a user',                  category: 'staff' },
-+    { name: 'award',        params: '%user% %amount%',  paramsPlaceholder: true, description: 'Award currency to a user',                 category: 'staff' },
-+    { name: 'hire',         params: '%user% %corp%',    paramsPlaceholder: true, description: 'Hire a user into a corp',                  category: 'staff' },
-+    { name: 'fire',         params: '%user%',           paramsPlaceholder: true, description: 'Remove a user from their corp',            category: 'staff' },
-+    { name: 'promote',      params: '%user%',           paramsPlaceholder: true, description: "Promote a user's corp rank",               category: 'staff' },
-+    { name: 'roomsettings', description: 'Open room settings for the current room',  category: 'staff' },
-+    { name: 'floorplan',    description: 'Open the floor plan editor',               category: 'staff' }
++    // General — action + info for any walking player
++    { name: 'target',       params: '%user%',                   paramsPlaceholder: true, description: 'Target a player to view their stats',              category: 'general' },
++    { name: 'stats',        description: 'Show your own stats',                                                                                           category: 'general' },
++    { name: 'hit',          params: '%user%',                   paramsPlaceholder: true, description: 'Swing at a player (combat rules apply)',           category: 'general' },
++    { name: 'respawn',      description: 'Leave the downed state and return to the hospital',                                                             category: 'general' },
++    { name: 'commands',     description: 'Open this reference window',                                                                                    category: 'general' },
++    // Banking — lifecycle order: open → inspect → move → peer-to-peer
++    { name: 'open-account', description: 'Open a personal bank account',                                                                                  category: 'banking' },
++    { name: 'bal',          description: 'Check your bank balance',                                                                                       category: 'banking' },
++    { name: 'deposit',      params: '%amount%',                 paramsPlaceholder: true, description: 'Deposit coins at an ATM',                          category: 'banking' },
++    { name: 'withdraw',     params: '%amount%',                 paramsPlaceholder: true, description: 'Withdraw coins at an ATM',                         category: 'banking' },
++    { name: 'transfer',     params: '%user% %amount%',          paramsPlaceholder: true, description: 'Wire coins from your bank to another player',      category: 'banking' },
++    { name: 'give',         params: '%user% %amount%',          paramsPlaceholder: true, description: 'Hand coins to a player in the same room',          category: 'banking' },
++    // Job — self-shift first, then corp management (requires corp-rank perms)
++    { name: 'startwork',    description: 'Start a shift at your corp',                                                                                    category: 'job' },
++    { name: 'stopwork',     description: 'End your current shift',                                                                                        category: 'job' },
++    { name: 'hire',         params: '%user% %rank%',            paramsPlaceholder: true, description: 'Add a player to your corp (requires CAN_HIRE)',    category: 'job' },
++    { name: 'fire',         params: '%user%',                   paramsPlaceholder: true, description: 'Remove a player from your corp (requires CAN_FIRE)', category: 'job' },
++    { name: 'promote',      params: '%user% %rank%',            paramsPlaceholder: true, description: "Change a corp member's rank (requires CAN_PROMOTE)", category: 'job' },
++    // Staff — economy → stats → combat → rooms
++    { name: 'award',        params: '%user% %currency% %amount%', paramsPlaceholder: true, description: "Credit or debit a player's coins or bank",      category: 'staff' },
++    { name: 'revive',       params: '%user%',                   paramsPlaceholder: true, description: "Restore a player's HP and energy to max",          category: 'staff' },
++    { name: 'sethealth',    params: '%user% %value%',           paramsPlaceholder: true, description: "Set a player's HP",                                category: 'staff' },
++    { name: 'setenergy',    params: '%user% %value%',           paramsPlaceholder: true, description: "Set a player's energy",                            category: 'staff' },
++    { name: 'kill',         params: '%user%',                   paramsPlaceholder: true, description: 'Instantly KO a player',                            category: 'staff' },
++    { name: 'setzone',      params: '%mode%',                   paramsPlaceholder: true, description: 'Toggle PvP for the current room (safe | unsafe)',  category: 'staff' },
++    { name: 'fighttest',    params: '%user% %damage%',          paramsPlaceholder: true, description: 'Drive the damage pipeline (dev)',                  category: 'staff' },
++    { name: 'roomsettings', description: 'Open room settings for the current room',                                                                       category: 'staff' },
++    { name: 'floorplan',    description: 'Open the floor plan editor',                                                                                    category: 'staff' }
 +];
 +
 +const TAB_LABEL: Record<Category, string> = {
 +    general: 'General',
++    banking: 'Banking',
 +    job:     'Job',
 +    vip:     'VIP',
 +    staff:   'Staff'
@@ -743,7 +758,7 @@ index 0000000..9f6fd9e
 +
 +    const visibleTabs = useMemo<Category[]>(() =>
 +    {
-+        const tabs: Category[] = [ 'general' ];
++        const tabs: Category[] = [ 'general', 'banking' ];
 +        if(isEmployed) tabs.push('job');
 +        if(isVip) tabs.push('vip');
 +        if(isModerator) tabs.push('staff');

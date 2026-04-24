@@ -83,7 +83,7 @@ Everything in this section is **live** in the current server build.
 | `:promote <user\|x> <rank>` | Corp owner | Change an employee's rank |
 | `:startwork` / `:stopwork` | Employees | Clock in / clock out (auto-clockout on idle) |
 | `:award <user\|x> <currency> <amount>` | Staff (rank 5+) | Audited coin/bank adjustment |
-| `:restore <user\|x>` | Staff (rank 5+) | Full HP + energy refill |
+| `:revive <user\|x>` | Staff (rank 5+) | Full HP + energy refill |
 | `:roomsettings` | Staff | Opens the room settings window for the current room |
 | `:floorplan` | Staff | Opens the floor-plan editor for the current room |
 | `:commands` | Everyone | Opens a searchable reference of every command you can use |
@@ -107,7 +107,7 @@ Everything in this section is **live** in the current server build.
 - `:award` broadcasts a public STAFF-bubble RP emote so every adjustment is visible to
   the room. Recipient also gets a discreet info-bubble confirmation. All adjustments
   write to an audit ledger.
-- `:restore` pushes the target's HP + energy back to max, broadcasts a STAFF emote, and
+- `:revive` pushes the target's HP + energy back to max, broadcasts a STAFF emote, and
   shows the target a private info-bubble.
 
 ---

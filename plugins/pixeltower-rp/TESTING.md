@@ -67,7 +67,7 @@ Covers `V009__tier2_fight.sql`, `V010__tier2_room_flags.sql`,
       <current room>`, `respawn_at ≈ now + 180s`.
 - [ ] Staff tries `:lay`, `:sit`, `:stand` while HP=0 → ALERT whisper
       "You are dead." (pre-existing behavior, verify still works).
-- [ ] Staff runs `:restore x` on the downed target → target HP back to
+- [ ] Staff runs `:revive x` on the downed target → target HP back to
       max, `DeathState.exit` fires (gets up), `rp_downed_players` row
       deleted.
 - [ ] Staff runs `:fighttest x 10` again on the restored target → HP
@@ -193,7 +193,7 @@ Covers `FightRange`, `RoomFlags`, `FightRules.canEngage`, `Engagement`,
 
 **Restore clears state end-to-end**
 
-- [ ] `S: :restore B` after a KO → B back to full HP, `rp_downed_players`
+- [ ] `S: :revive B` after a KO → B back to full HP, `rp_downed_players`
       row gone, `DeathState.exit` fires. New `A: :hit B` starts a
       fresh engagement row.
 
@@ -234,7 +234,7 @@ Covers `DeathState.isDead`, the new `UserTalkEvent` listener in
 
 **Revive clears the lock**
 
-- [ ] `S: :restore D` → `D` is back to full HP, `DeathState.exit` fires,
+- [ ] `S: :revive D` → `D` is back to full HP, `DeathState.exit` fires,
       `rp_downed_players` row cleared. `D: hello world` now broadcasts
       normally — the `isDead` check returns false.
 
@@ -309,7 +309,7 @@ Covers `RespawnScheduler`, `RespawnTask`, `RespawnCommand`, the
 
 **Revive cancels the scheduler**
 
-- [ ] `S: :kill D`, then `S: :restore D` within the timeout window →
+- [ ] `S: :kill D`, then `S: :revive D` within the timeout window →
       `D` back to max HP immediately, `rp_downed_players` row gone,
       `RespawnScheduler` entry cleared. Wait out the original timer
       window → no teleport happens (cancelled future), no ledger

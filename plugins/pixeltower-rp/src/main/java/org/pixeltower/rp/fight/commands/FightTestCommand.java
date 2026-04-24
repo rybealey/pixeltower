@@ -21,7 +21,7 @@ import org.pixeltower.rp.stats.outgoing.UpdatePlayerStatsComposer;
  * registry are wired.
  *
  * Gated by {@code rp.admin.min_rank}, matching the rest of the staff
- * tools ({@code :kill}, {@code :restore}, {@code :award}).
+ * tools ({@code :kill}, {@code :revive}, {@code :award}).
  */
 public class FightTestCommand extends Command {
 

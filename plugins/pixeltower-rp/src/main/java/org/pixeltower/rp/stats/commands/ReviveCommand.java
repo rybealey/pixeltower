@@ -14,7 +14,7 @@ import org.pixeltower.rp.stats.StatsManager;
 import org.pixeltower.rp.stats.outgoing.UpdatePlayerStatsComposer;
 
 /**
- * {@code :restore <user|x>} — staff full HP + energy refill.
+ * {@code :revive <user|x>} — staff full HP + energy refill.
  *
  * Writes {@code hp := max_hp} and {@code energy := max_energy} through
  * {@link StatsManager#restoreStats(int)} (cache + DB), then pushes an
@@ -25,10 +25,10 @@ import org.pixeltower.rp.stats.outgoing.UpdatePlayerStatsComposer;
  * Gated by {@code rp.admin.min_rank} (default 5), matching {@link
  * org.pixeltower.rp.economy.commands.AwardCommand}.
  */
-public class RestoreCommand extends Command {
+public class ReviveCommand extends Command {
 
-    public RestoreCommand() {
-        super(null, new String[] {"restore"});
+    public ReviveCommand() {
+        super(null, new String[] {"revive"});
     }
 
     @Override
@@ -37,12 +37,12 @@ public class RestoreCommand extends Command {
 
         int minRank = Emulator.getConfig().getInt("rp.admin.min_rank", 5);
         if (staff.getHabboInfo().getRank().getId() < minRank) {
-            staff.whisper("You don't have permission to run :restore.", RoomChatMessageBubbles.ALERT);
+            staff.whisper("You don't have permission to run :revive.", RoomChatMessageBubbles.ALERT);
             return true;
         }
 
         if (params.length < 2) {
-            staff.whisper("Usage: :restore <user|x>", RoomChatMessageBubbles.ALERT);
+            staff.whisper("Usage: :revive <user|x>", RoomChatMessageBubbles.ALERT);
             return true;
         }
 
@@ -66,10 +66,10 @@ public class RestoreCommand extends Command {
         }
 
         RpChat.staffEmote(staff, "*" + staff.getHabboInfo().getUsername()
-                + " casts a spell, restoring " + resolved.username + "'s energy and health*");
+                + " casts a spell, reviving " + resolved.username + " to full strength*");
 
         if (resolved.isOnline()) {
-            resolved.online.whisper("Your energy and health have been restored.",
+            resolved.online.whisper("You've been revived — energy and health restored.",
                     RoomChatMessageBubbles.FRANK);
         }
         return true;
