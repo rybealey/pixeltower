@@ -125,24 +125,6 @@ if [ "$need_sql" = 1 ]; then
   docker compose --env-file "$ENV_FILE" restart emulator
 fi
 
-# TEMP DIAGNOSTIC: run the prefix-clear UPDATE inline and report rows
-# affected. V014 migration appeared to run but didn't change the value;
-# rule out statement-level issues vs. something overwriting after.
-echo "[deploy] DEBUG pre-UPDATE room.chat.prefix.format:"
-docker compose --env-file "$ENV_FILE" exec -T db sh -c \
-  'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e \
-   "SELECT CONCAT('\''>>> '\'', \`value\`, '\''<<<'\'') FROM emulator_settings WHERE \`key\` = '\''room.chat.prefix.format'\'';"' \
-   2>&1 | sed 's/^/  /'
-echo "[deploy] DEBUG running UPDATE inline:"
-docker compose --env-file "$ENV_FILE" exec -T db sh -c \
-  'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -v -e \
-   "UPDATE emulator_settings SET \`value\` = '\'''\'' WHERE \`key\` = '\''room.chat.prefix.format'\'';"' \
-   2>&1 | sed 's/^/  /'
-echo "[deploy] DEBUG post-UPDATE room.chat.prefix.format:"
-docker compose --env-file "$ENV_FILE" exec -T db sh -c \
-  'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e \
-   "SELECT CONCAT('\''>>> '\'', \`value\`, '\''<<<'\'') FROM emulator_settings WHERE \`key\` = '\''room.chat.prefix.format'\'';"' \
-   2>&1 | sed 's/^/  /'
 echo "[deploy] Laravel migrate"
 docker compose --env-file "$ENV_FILE" exec -T php php artisan migrate --force
 
