@@ -19,23 +19,26 @@ echo "[badges] building manifest via $API"
 : > "$MANIFEST.tmp"
 offset=0
 while :; do
-  page=$(curl -fsSL --retry 3 "$API?limit=$PAGE_LIMIT&offset=$offset")
-  count=$(python3 -c "
+  page=$(curl -fsSL --retry 3 --max-time 60 "$API?limit=$PAGE_LIMIT&offset=$offset")
+  # Python prints `__COUNT__ N` as the first stdout line, then one tab-
+  # separated manifest row per badge. Real errors stay on stderr and
+  # surface in the deploy log instead of being swallowed by a redirect.
+  result=$(python3 -c "
 import json, sys
 d = json.loads(sys.argv[1])
+print(f'__COUNT__ {len(d[\"badges\"])}')
 for b in d['badges']:
     code = b.get('code') or ''
     url = b.get('url_habboassets') or ''
     if code and url:
         print(f'{code}\t{url}')
-print('__COUNT__', len(d['badges']), file=sys.stderr)
-" "$page" 2>>"$MANIFEST.count" >> "$MANIFEST.tmp")
-  last=$(tail -n1 "$MANIFEST.count" | awk '{print $2}')
+" "$page")
+  last=$(printf '%s\n' "$result" | head -n1 | awk '{print $2}')
+  printf '%s\n' "$result" | tail -n +2 >> "$MANIFEST.tmp"
   echo "  offset=$offset fetched=$last"
   [ "${last:-0}" -lt "$PAGE_LIMIT" ] && break
   offset=$((offset + PAGE_LIMIT))
 done
-rm -f "$MANIFEST.count"
 # Dedupe on code (first occurrence wins — API returns newest first).
 awk -F'\t' '!seen[$1]++' "$MANIFEST.tmp" > "$MANIFEST"
 rm -f "$MANIFEST.tmp"
