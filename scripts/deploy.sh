@@ -104,7 +104,12 @@ fi
 # newly-published badges, so running every deploy keeps the album fresh
 # without re-downloading the whole pack. Fresh prod boxes that skipped the
 # manual bootstrap land here with an empty album; this is what hydrates it.
-./scripts/pull-badges.sh || echo "[deploy] WARN: pull-badges.sh failed"
+# Run the badge pull with the deploy-lock fd closed (fd 9) and stdin
+# detached. First-ever hydration is ~10–15 min — if SSH drops mid-pull,
+# xargs children would inherit the lock fd and block every subsequent
+# deploy until they finish. Closing fd 9 in the child lets future
+# deploys proceed even if this pull is still running.
+./scripts/pull-badges.sh 9<&- < /dev/null || echo "[deploy] WARN: pull-badges.sh failed"
 
 echo "[deploy] up -d --remove-orphans (recreates containers for any rebuilt images)"
 docker compose --env-file "$ENV_FILE" up -d --remove-orphans
