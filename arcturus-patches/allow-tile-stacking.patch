@@ -1,0 +1,64 @@
+diff --git a/src/main/java/com/eu/habbo/habbohotel/rooms/pathfinding/impl/TileValidator.java b/src/main/java/com/eu/habbo/habbohotel/rooms/pathfinding/impl/TileValidator.java
+--- a/src/main/java/com/eu/habbo/habbohotel/rooms/pathfinding/impl/TileValidator.java
++++ b/src/main/java/com/eu/habbo/habbohotel/rooms/pathfinding/impl/TileValidator.java
+@@ -1,19 +1,25 @@
+ package com.eu.habbo.habbohotel.rooms.pathfinding.impl;
+ 
+ import static com.eu.habbo.habbohotel.rooms.pathfinding.impl.PathfinderConstants.DISTANCE_DOOR_THRESHOLD;
+ 
++import com.eu.habbo.Emulator;
+ import com.eu.habbo.habbohotel.rooms.Room;
+ import com.eu.habbo.habbohotel.rooms.RoomLayout;
+ import com.eu.habbo.habbohotel.rooms.RoomTile;
+ import com.eu.habbo.habbohotel.rooms.RoomUnit;
+ import com.eu.habbo.habbohotel.rooms.RoomUnitType;
+ import com.eu.habbo.habbohotel.users.Habbo;
+ import java.util.Collection;
+ import java.util.PriorityQueue;
+ import java.util.Set;
+ 
+ public class TileValidator {
+ 
++  // pixeltower: hotel-wide tile stacking. Turns the goal-tile exclusion
++  // in isTileWalkable into a no-op when custom.stacking.enabled=1.
++  private static final boolean CACHED_STACKING_ENABLED =
++      Emulator.getConfig().getBoolean("custom.stacking.enabled", false);
++
+   private TileValidator() {
+     throw new IllegalStateException("Utility class");
+   }
+@@ -53,8 +59,8 @@ public class TileValidator {
+       RoomUnit exception) {
+     return TileValidator.hasBlockingUnits(room, currentAdj, exception)
+         && context.getDoorTile().distance(currentAdj) > DISTANCE_DOOR_THRESHOLD && (
+-        !context.isWalkthroughRetry() || !context.isAllowWalkthrough() || currentAdj.equals(
+-            context.getGoalLocation()));
++        !context.isWalkthroughRetry() || !context.isAllowWalkthrough() || (currentAdj.equals(
++            context.getGoalLocation()) && !CACHED_STACKING_ENABLED));
+   }
+ 
+   public static boolean hasBlockingUnits(Room room, RoomTile tile, RoomUnit exception) {
+diff --git a/src/main/java/com/eu/habbo/habbohotel/rooms/RoomUnit.java b/src/main/java/com/eu/habbo/habbohotel/rooms/RoomUnit.java
+--- a/src/main/java/com/eu/habbo/habbohotel/rooms/RoomUnit.java
++++ b/src/main/java/com/eu/habbo/habbohotel/rooms/RoomUnit.java
+@@ -40,6 +40,11 @@ public class RoomUnit {
+ 
+   private static final Logger LOGGER = LoggerFactory.getLogger(RoomUnit.class);
+ 
++  // pixeltower: hotel-wide tile stacking. Mirrors the flag read in
++  // TileValidator; bypasses the final-step gate below when set.
++  private static final boolean CACHED_STACKING_ENABLED =
++      Emulator.getConfig().getBoolean("custom.stacking.enabled", false);
++
+   public boolean isWiredTeleporting = false;
+   public boolean isLeavingTeleporter = false;
+   private final ConcurrentHashMap<RoomUnitStatus, String> status;
+@@ -196,7 +201,7 @@ public class RoomUnit {
+       if (this.path.isEmpty()) {
+         this.sitUpdate = true;
+ 
+-        if (next != null && next.hasUnits() && !overrideChecks) {
++        if (next != null && next.hasUnits() && !overrideChecks && !CACHED_STACKING_ENABLED) {
+           return false;
+         }
+       }
