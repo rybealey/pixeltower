@@ -51,20 +51,21 @@ def main() -> int:
         data = json.load(f)
 
     kept = 0
-    unhid = 0
     hidden = 0
     hc_flattened = 0
     for settype in data.get("setTypes", []):
         allowed = whitelist.get(settype.get("type"), set())
         for s in settype.get("sets", []):
             if s["id"] in allowed:
-                kept += 1
-                if not s.get("selectable", False):
-                    s["selectable"] = True
-                    unhid += 1
-                if s.get("club", 0) != 0:
-                    s["club"] = 0
-                    hc_flattened += 1
+                # Trust the local pack's selectable flag — if upstream hid a
+                # whitelisted set it's because the backing sprite isn't in
+                # the bundle, and force-enabling it would leave a blank tile
+                # in the editor grid. Only flatten the HC gate.
+                if s.get("selectable", False):
+                    kept += 1
+                    if s.get("club", 0) != 0:
+                        s["club"] = 0
+                        hc_flattened += 1
             else:
                 if s.get("selectable", False):
                     s["selectable"] = False
@@ -97,7 +98,7 @@ def main() -> int:
     print(
         f"[figure] {FIGUREDATA_PATH.relative_to(ROOT)}: "
         f"{kept} whitelisted, {hidden} hidden, "
-        f"{hc_flattened} HC flattened, {unhid} unhidden, "
+        f"{hc_flattened} HC flattened, "
         f"{colors_flattened} colors flattened"
     )
     return 0
