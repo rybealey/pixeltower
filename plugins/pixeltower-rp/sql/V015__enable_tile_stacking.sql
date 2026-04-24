@@ -4,11 +4,13 @@
 -- Lifts the Arcturus one-occupant-per-tile rule hotel-wide. The flag is
 -- consumed by arcturus-patches/allow-tile-stacking.patch at two gates:
 --   1. TileValidator.isTileWalkable — pathfinder's goal-tile exclusion
---   2. RoomUnit.cycle            — the final-step stacking reject
--- The key is already seeded with value '0' by emulator/base-database.sql;
--- this migration flips it to '1'. Requires an emulator restart to take
--- effect (the value is cached `static final` at class-load in both patched
--- classes — intentional, both sites run on the hot pathfinding/cycle path).
+--   2. RoomUnit.cycle               — the final-step stacking reject
+--
+-- Upsert rather than plain UPDATE: upstream base-database.sql seeds this
+-- key with value '0' on fresh installs, but prod was seeded from an older
+-- snapshot that predates the key, so a plain UPDATE would affect zero rows
+-- and leave the flag undefined (getBoolean default = false).
 
-UPDATE `emulator_settings` SET `value` = '1'
- WHERE `key` = 'custom.stacking.enabled';
+INSERT INTO `emulator_settings` (`key`, `value`)
+VALUES ('custom.stacking.enabled', '1')
+ON DUPLICATE KEY UPDATE `value` = '1';
