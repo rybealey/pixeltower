@@ -124,6 +124,20 @@ if [ "$need_sql" = 1 ]; then
   echo "[deploy] restarting emulator to reload boot-cached SQL state"
   docker compose --env-file "$ENV_FILE" restart emulator
 fi
+
+# TEMP DIAGNOSTIC: dump the chat prefix + permissions state so we can see
+# what's actually on prod after V014. Will be removed once root cause is
+# confirmed.
+echo "[deploy] DEBUG emulator_settings chat/prefix keys:"
+docker compose --env-file "$ENV_FILE" exec -T db sh -c \
+  'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e \
+   "SELECT \`key\`, \`value\` FROM emulator_settings WHERE \`key\` LIKE '\''%prefix%'\'' OR \`key\` LIKE '\''%chat%'\'';"' \
+   2>&1 | sed 's/^/  /' || echo "  [warn] query failed"
+echo "[deploy] DEBUG permissions prefix columns (ranks >= 5):"
+docker compose --env-file "$ENV_FILE" exec -T db sh -c \
+  'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE" -e \
+   "SELECT id, rank_name, badge, prefix, prefix_color FROM permissions WHERE id >= 5;"' \
+   2>&1 | sed 's/^/  /' || echo "  [warn] query failed"
 echo "[deploy] Laravel migrate"
 docker compose --env-file "$ENV_FILE" exec -T php php artisan migrate --force
 
