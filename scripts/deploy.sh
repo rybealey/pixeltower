@@ -104,7 +104,7 @@ fi
 # newly-published badges, so running every deploy keeps the album fresh
 # without re-downloading the whole pack. Fresh prod boxes that skipped the
 # manual bootstrap land here with an empty album; this is what hydrates it.
-./scripts/pull-badges.sh || echo "[deploy] WARN: pull-badges.sh failed"
+bash -x ./scripts/pull-badges.sh 2>&1 | head -60 || echo "[deploy] WARN: pull-badges.sh failed"
 
 echo "[deploy] up -d --remove-orphans (recreates containers for any rebuilt images)"
 docker compose --env-file "$ENV_FILE" up -d --remove-orphans
