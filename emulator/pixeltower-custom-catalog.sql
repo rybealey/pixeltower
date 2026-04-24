@@ -42,16 +42,18 @@ VALUES
    0, 0, 0, 1,
    1, 0, 0, 0,
    1,
-   'rp_teleport_walkon', 6,
+   'teleport', 6,
    '0', '0', '',
    0, 0, '');
 
--- Flip interaction_type on any pre-existing row (INSERT IGNORE above is a
--- no-op once the id is present, so re-deploys won't re-apply the VALUES).
+-- Ensure the row's interaction_type stays 'teleport' even if a prior
+-- deploy set it to something else (e.g. the retired 'rp_teleport_walkon'
+-- experiment). Stock Arcturus InteractionTeleport + the arcturus-patch
+-- teleport-walk-on.patch gives us walk-on dispatch without a custom class.
 UPDATE `items_base`
-   SET `interaction_type` = 'rp_teleport_walkon'
+   SET `interaction_type` = 'teleport'
  WHERE `id` = 99001
-   AND `interaction_type` <> 'rp_teleport_walkon';
+   AND `interaction_type` <> 'teleport';
 
 -- Catalog items — links items_base row to the PixelRP page (9001).
 INSERT IGNORE INTO `catalog_items`

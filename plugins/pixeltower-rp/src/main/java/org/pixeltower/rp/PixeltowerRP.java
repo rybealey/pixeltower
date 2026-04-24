@@ -89,7 +89,6 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
 
     public static final String VERSION = "0.1.0";
     public static final String FUNCTIONAL_INTERACTION_KEY = "rp_functional";
-    public static final String TELEPORT_WALKON_INTERACTION_KEY = "rp_teleport_walkon";
     private static final Logger LOGGER = LoggerFactory.getLogger(PixeltowerRP.class);
 
     /**
@@ -150,14 +149,6 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
             // swallow on hot-reload, where we're re-asserting an existing
             // registration the previous load already made.
             LOGGER.debug("rp_functional interaction already registered ({})", dup.getMessage());
-        }
-        try {
-            Emulator.getGameEnvironment().getItemManager().addItemInteraction(
-                    new ItemInteraction(TELEPORT_WALKON_INTERACTION_KEY,
-                            org.pixeltower.rp.functional.InteractionWalkOnTeleport.class));
-            LOGGER.info("Registered rp_teleport_walkon interaction → InteractionWalkOnTeleport");
-        } catch (RuntimeException dup) {
-            LOGGER.debug("rp_teleport_walkon interaction already registered ({})", dup.getMessage());
         }
     }
 

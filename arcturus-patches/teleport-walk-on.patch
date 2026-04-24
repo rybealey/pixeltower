@@ -1,0 +1,28 @@
+diff --git a/src/main/java/com/eu/habbo/habbohotel/items/interactions/InteractionTeleport.java b/src/main/java/com/eu/habbo/habbohotel/items/interactions/InteractionTeleport.java
+index b5c0c01..2068c6a 100644
+--- a/src/main/java/com/eu/habbo/habbohotel/items/interactions/InteractionTeleport.java
++++ b/src/main/java/com/eu/habbo/habbohotel/items/interactions/InteractionTeleport.java
+@@ -144,6 +144,23 @@ public class InteractionTeleport extends HabboItem {
+         }
+     }
+ 
++    @Override
++    public void onWalkOn(RoomUnit roomUnit, Room room, Object[] objects) throws Exception {
++        // pixeltower: trigger the paired teleport as soon as a user steps on
++        // the tile, not only on click. Unpaired teleports stay inert on walk
++        // so admins still get the standard click → pair-dialog flow.
++        if (this.getTargetId() <= 0) return;
++        Habbo habbo = room.getHabbo(roomUnit);
++        if (habbo == null) return;
++        this.roomUnitID = roomUnit.getId();
++        this.startTeleport(room, habbo);
++        walkable = true;
++        try {
++            super.onClick(habbo.getClient(), room, new Object[]{"TOGGLE_OVERRIDE"});
++        } catch (Exception ignored) {
++        }
++    }
++
+     @Override
+     public void onWalk(RoomUnit roomUnit, Room room, Object[] objects) throws Exception {
+     }
