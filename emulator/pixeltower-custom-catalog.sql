@@ -42,18 +42,20 @@ VALUES
    0, 0, 0, 1,
    1, 0, 0, 0,
    1,
-   'teleport', 6,
+   'teleporttile', 6,
    '0', '0', '',
    0, 0, '');
 
--- Ensure the row's interaction_type stays 'teleport' even if a prior
--- deploy set it to something else (e.g. the retired 'rp_teleport_walkon'
--- experiment). Stock Arcturus InteractionTeleport + the arcturus-patch
--- teleport-walk-on.patch gives us walk-on dispatch without a custom class.
+-- Force interaction_type=teleporttile on any pre-existing row. Stock Arcturus
+-- InteractionTeleportTile (bound to 'teleporttile') already has walk-on
+-- semantics AND a fast-emerge animation (500ms stages collapsed to 0ms for
+-- InteractionTeleportTile instances), so we get instant walk-on teleport
+-- without a custom interaction class. arcturus-patches/teleporttile-snap.patch
+-- additionally trims the single remaining 1000ms startup delay.
 UPDATE `items_base`
-   SET `interaction_type` = 'teleport'
+   SET `interaction_type` = 'teleporttile'
  WHERE `id` = 99001
-   AND `interaction_type` <> 'teleport';
+   AND `interaction_type` <> 'teleporttile';
 
 -- Catalog items — links items_base row to the PixelRP page (9001).
 INSERT IGNORE INTO `catalog_items`

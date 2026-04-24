@@ -1,0 +1,16 @@
+diff --git a/src/main/java/com/eu/habbo/habbohotel/items/interactions/InteractionTeleportTile.java b/src/main/java/com/eu/habbo/habbohotel/items/interactions/InteractionTeleportTile.java
+index fc8e7b5..628f925 100644
+--- a/src/main/java/com/eu/habbo/habbohotel/items/interactions/InteractionTeleportTile.java
++++ b/src/main/java/com/eu/habbo/habbohotel/items/interactions/InteractionTeleportTile.java
+@@ -38,7 +38,10 @@ public class InteractionTeleportTile extends InteractionTeleport {
+ 
+                 if (!habbo.getRoomUnit().isTeleporting) {
+                     habbo.getRoomUnit().setGoalLocation(habbo.getRoomUnit().getCurrentLocation());
+-                    this.startTeleport(room, habbo, 1000);
++                    // pixeltower: trim the walk-on initial delay from 1000ms → 100ms so the
++                    // emerge feels instant. The rest of the TeleportActionOne→Two→Four chain
++                    // already runs at 0ms for InteractionTeleportTile instances.
++                    this.startTeleport(room, habbo, 100);
+                 }
+             }
+         }
