@@ -6,6 +6,11 @@
   ],
   "overrides": {
     "people.search.title": "Finder",
-    "generic.confirm": "Confirm"
+    "generic.confirm": "Confirm",
+    "navigator.flatcategory.global.GENERAL": "General",
+    "navigator.flatcategory.global.SERVICES": "Services",
+    "navigator.flatcategory.global.COMMERCE": "Commerce",
+    "navigator.flatcategory.global.RESIDENTIAL": "Residential",
+    "navigator.flatcategory.global.STAFF": "Staff"
   }
 }

@@ -118,6 +118,11 @@ docker compose --env-file "$ENV_FILE" up -d --remove-orphans
 if [ "$need_sql" = 1 ]; then
   echo "[deploy] applying plugin SQL migrations"
   ENV_FILE="$ENV_FILE" ./scripts/seed-db.sh
+  # Arcturus caches boot-time tables like navigator_flatcats in memory, so
+  # plugin SQL changes aren't visible until the emulator reboots. Narrow
+  # restart (~5–10s) keeps the cache in sync with whatever V*.sql just ran.
+  echo "[deploy] restarting emulator to reload boot-cached SQL state"
+  docker compose --env-file "$ENV_FILE" restart emulator
 fi
 echo "[deploy] Laravel migrate"
 docker compose --env-file "$ENV_FILE" exec -T php php artisan migrate --force
