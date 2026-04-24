@@ -42,9 +42,16 @@ VALUES
    0, 0, 0, 1,
    1, 0, 0, 0,
    1,
-   'teleport', 6,
+   'rp_teleport_walkon', 6,
    '0', '0', '',
    0, 0, '');
+
+-- Flip interaction_type on any pre-existing row (INSERT IGNORE above is a
+-- no-op once the id is present, so re-deploys won't re-apply the VALUES).
+UPDATE `items_base`
+   SET `interaction_type` = 'rp_teleport_walkon'
+ WHERE `id` = 99001
+   AND `interaction_type` <> 'rp_teleport_walkon';
 
 -- Catalog items — links items_base row to the PixelRP page (9001).
 INSERT IGNORE INTO `catalog_items`

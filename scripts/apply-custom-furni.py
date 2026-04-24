@@ -34,7 +34,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CUSTOM_DIR = ROOT / "custom-furni"
 BUNDLES_DIR = ROOT / "gamedata" / "bundled" / "furniture"
-ICONS_DIR = ROOT / "gamedata" / "c_images" / "catalogue"
+# Catalog + inventory icons are loaded from hof_furni/icons/ per
+# renderer-config.json's `furni.asset.icon.url` template.
+ICONS_DIR = ROOT / "gamedata" / "dcr" / "hof_furni" / "icons"
 FURNIDATA = ROOT / "gamedata" / "gamedata" / "FurnitureData.json"
 
 
