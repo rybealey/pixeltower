@@ -549,7 +549,7 @@ new file mode 100644
 index 0000000..22f6f6a
 --- /dev/null
 +++ b/src/components/pixeltower/CommandsListView.scss
-@@ -0,0 +1,194 @@
+@@ -0,0 +1,201 @@
 +@use './tokens' as *;
 +
 +// Commands List window — .designs/client_ui.pen frame I2LwC. The outer
@@ -579,6 +579,13 @@ index 0000000..22f6f6a
 +    max-width: calc(100vw - 24px);
 +    color: $pt-text;
 +    font-family: $pt-font-family;
++
++    // Opt this window into the slate body — native Habbo dialogs keep
++    // their default $light .content-area background; the pixeltower
++    // commands list reads as part of the HUD/toolbar slate family.
++    .content-area {
++        background: #3E4E6E;
++    }
 +
 +    &__body {
 +        display: flex;
@@ -1799,7 +1806,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/src/components/pixeltower/DiamondsWindow.scss
-@@ -0,0 +1,199 @@
+@@ -0,0 +1,207 @@
 +@use './tokens' as *;
 +
 +// Diamonds Window — matches .designs/client_ui.pen frame 9Ax4A.
@@ -1814,6 +1821,14 @@ index 0000000..0000000
 +    max-width: calc(100vw - 24px);
 +    color: $pt-text;
 +    font-family: $pt-font-family;
++
++    // NitroCardContentView paints `.content-area` $light by default. Native
++    // Habbo dialogs (Friends, Navigator, alerts) keep that gray; this window
++    // opts in to the slate body specified by .pen frame 9Ax4A so the inner
++    // dark uses-list / cost panel / footer all sit on the right base color.
++    .content-area {
++        background: #3E4E6E;
++    }
 +
 +    &__body {
 +        display: flex;
@@ -2555,7 +2570,7 @@ new file mode 100644
 index 0000000..2c6ae63
 --- /dev/null
 +++ b/src/components/pixeltower/_app-overrides.scss
-@@ -0,0 +1,72 @@
+@@ -0,0 +1,61 @@
 +@use './tokens' as *;
 +
 +// Nitro's Bootstrap fork sets $body-bg: $black (see
@@ -2607,17 +2622,6 @@ index 0000000..2c6ae63
 +
 +.nitro-card.theme-primary-slim .nitro-card-header:before {
 +    display: none;
-+}
-+
-+// NitroCardContentView renders `.content-area` (see common/card/
-+// NitroCardContentView.tsx) and NitroCardView.scss paints it $light
-+// (#DFDFDF) by default — that's the gray every primary dialog body
-+// shows. Repaint it slate so every pixeltower dialog (Diamonds,
-+// Commands List, future windows) reads as the same family as the
-+// toolbar/HUD chrome instead of a stock Bootstrap card.
-+.nitro-card.theme-primary .content-area,
-+.nitro-card.theme-primary-slim .content-area {
-+    background: #3E4E6E;
 +}
 +
 +// Hide the floating name-tag pill above avatars (own user, friends,
