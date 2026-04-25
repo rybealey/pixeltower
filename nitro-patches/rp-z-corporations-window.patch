@@ -518,7 +518,7 @@ new file mode 100644
 +    // corps (e.g. The Armory with 0 employees). The right pane scrolls
 +    // when employees exceed the available space. Capped on short viewports
 +    // so it never escapes the visible area.
-+    height: 600px;
++    height: 420px;
 +    max-height: calc(100vh - 80px);
 +
 +    &__content {
