@@ -11,6 +11,51 @@ index dd4538b..d3b5e43 100644
          "sso.ticket": (new URLSearchParams(window.location.search).get('sso') || null),
          "forward.type": (new URLSearchParams(window.location.search).get('room') ? 2 : -1),
          "forward.id": (new URLSearchParams(window.location.search).get('room') || 0),
+diff --git a/package.json b/package.json
+index 057bdea..f79fde4 100644
+--- a/package.json
++++ b/package.json
+@@ -7,6 +7,7 @@
+     "start": "vite",
+     "build": "vite build",
+     "build:prod": "npx browserslist@latest --update-db && yarn build",
++    "postinstall": "patch-package",
+     "eslint": "eslint src --ext .ts,.tsx"
+   },
+   "dependencies": {
+@@ -34,6 +35,7 @@
+     "eslint-plugin-jsx-a11y": "^6.6.0",
+     "eslint-plugin-react": "^7.30.1",
+     "eslint-plugin-react-hooks": "^4.6.0",
++    "patch-package": "^8.0.0",
+     "sass": "^1.56.2",
+     "vite": "^4.4.5"
+   }
+diff --git a/patches/@nitrots+nitro-renderer+1.6.6.patch b/patches/@nitrots+nitro-renderer+1.6.6.patch
+new file mode 100644
+index 0000000..279ac75
+--- /dev/null
++++ b/patches/@nitrots+nitro-renderer+1.6.6.patch
+@@ -0,0 +1,19 @@
++diff --git a/node_modules/@nitrots/nitro-renderer/src/nitro/room/RoomObjectEventHandler.ts b/node_modules/@nitrots/nitro-renderer/src/nitro/room/RoomObjectEventHandler.ts
++index 0000000..0000001 100644
++--- a/node_modules/@nitrots/nitro-renderer/src/nitro/room/RoomObjectEventHandler.ts
+++++ b/node_modules/@nitrots/nitro-renderer/src/nitro/room/RoomObjectEventHandler.ts
++@@ -2091,7 +2091,13 @@
++
++                 const location = _local_5.getLocation();
++
++-                if(location) this._roomEngine.connection.send(new RoomUnitLookComposer(~~(location.x), ~~(location.y)));
+++                // pixeltower: `:ct` toggle in Nitro suppresses the look-at packet so
+++                // clicking another avatar doesn't rotate you. Read the localStorage
+++                // flag inline to avoid threading state through the renderer.
+++                let _pixeltowerSuppressLook = false;
+++                try { _pixeltowerSuppressLook = (typeof window !== 'undefined') && (window.localStorage.getItem('disableUserInfoPopup') === 'true'); } catch(_) { }
+++
+++                if(location && !_pixeltowerSuppressLook) this._roomEngine.connection.send(new RoomUnitLookComposer(~~(location.x), ~~(location.y)));
++             }
++         }
++
 diff --git a/src/App.tsx b/src/App.tsx
 index 072b05d..fd5b79f 100644
 --- a/src/App.tsx
@@ -33,7 +78,7 @@ index 072b05d..fd5b79f 100644
                  }
 diff --git a/src/api/pixeltower/PixeltowerSoundMessages.ts b/src/api/pixeltower/PixeltowerSoundMessages.ts
 new file mode 100644
-index 0000000..a3db6f9
+index 0000000..f7d681f
 --- /dev/null
 +++ b/src/api/pixeltower/PixeltowerSoundMessages.ts
 @@ -0,0 +1,290 @@
@@ -327,6 +372,16 @@ index 0000000..a3db6f9
 +{
 +    GetConnection()?.registerMessages(new PixeltowerMessages());
 +}
+diff --git a/src/api/utils/LocalStorageKeys.ts b/src/api/utils/LocalStorageKeys.ts
+index 6c92279..a269c8a 100644
+--- a/src/api/utils/LocalStorageKeys.ts
++++ b/src/api/utils/LocalStorageKeys.ts
+@@ -2,4 +2,5 @@ export class LocalStorageKeys
+ {
+     public static CATALOG_PLACE_MULTIPLE_OBJECTS: string = 'catalogPlaceMultipleObjects';
+     public static CATALOG_SKIP_PURCHASE_CONFIRMATION: string = 'catalogSkipPurchaseConfirmation';
++    public static DISABLE_USER_INFO_POPUP: string = 'disableUserInfoPopup';
+ }
 diff --git a/src/assets/styles/bootstrap/_variables.scss b/src/assets/styles/bootstrap/_variables.scss
 index eb668b3..4c44a69 100644
 --- a/src/assets/styles/bootstrap/_variables.scss
@@ -384,7 +439,7 @@ index 8e1cd2b..197f628 100644
  @import './wired/WiredView';
  @import './game-center/GameCenterView.scss';
 diff --git a/src/components/main/MainView.tsx b/src/components/main/MainView.tsx
-index da7003d..ca3029d 100644
+index da7003d..7fb02ab 100644
 --- a/src/components/main/MainView.tsx
 +++ b/src/components/main/MainView.tsx
 @@ -1,9 +1,8 @@
@@ -420,7 +475,7 @@ index da7003d..ca3029d 100644
  import { UserProfileView } from '../user-profile/UserProfileView';
  import { UserSettingsView } from '../user-settings/UserSettingsView';
  import { WiredView } from '../wired/WiredView';
-@@ -81,16 +84,24 @@ export const MainView: FC<{}> = props =>
+@@ -81,16 +85,24 @@ export const MainView: FC<{}> = props =>
  
      return (
          <Base fit>
@@ -1032,7 +1087,7 @@ index 0000000..7a6d30c
 +}
 diff --git a/src/components/pixeltower/PixeltowerLinkListener.tsx b/src/components/pixeltower/PixeltowerLinkListener.tsx
 new file mode 100644
-index 0000000..1111111
+index 0000000..ebf363c
 --- /dev/null
 +++ b/src/components/pixeltower/PixeltowerLinkListener.tsx
 @@ -0,0 +1,38 @@
@@ -1076,7 +1131,7 @@ index 0000000..1111111
 +};
 diff --git a/src/components/pixeltower/StatsHUD.scss b/src/components/pixeltower/StatsHUD.scss
 new file mode 100644
-index 0000000..0103fb3
+index 0000000..5338a6a
 --- /dev/null
 +++ b/src/components/pixeltower/StatsHUD.scss
 @@ -0,0 +1,235 @@
@@ -1434,7 +1489,7 @@ index 0000000..97e3ffc
 +}
 diff --git a/src/components/pixeltower/StatusHUD.scss b/src/components/pixeltower/StatusHUD.scss
 new file mode 100644
-index 0000000..893daa9
+index 0000000..8eaaba4
 --- /dev/null
 +++ b/src/components/pixeltower/StatusHUD.scss
 @@ -0,0 +1,113 @@
@@ -2627,39 +2682,98 @@ index af1c12a..a1a1fc8 100644
          background.height = height;
  
 diff --git a/src/hooks/rooms/widgets/useAvatarInfoWidget.ts b/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
-index 9545362..1fd4489 100644
+index 9545362..30092a9 100644
 --- a/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
 +++ b/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
 @@ -1,6 +1,7 @@
- import { RoomEngineObjectEvent, RoomEngineUseProductEvent, RoomObjectCategory, RoomObjectType, RoomObjectVariable, RoomSessionPetInfoUpdateEvent, RoomSessionPetStatusUpdateEvent, RoomSessionUserDataUpdateEvent } from '@nitrots/nitro-renderer';
+-import { RoomEngineObjectEvent, RoomEngineUseProductEvent, RoomObjectCategory, RoomObjectType, RoomObjectVariable, RoomSessionPetInfoUpdateEvent, RoomSessionPetStatusUpdateEvent, RoomSessionUserDataUpdateEvent } from '@nitrots/nitro-renderer';
++import { RoomEngineObjectEvent, RoomEngineUseProductEvent, RoomObjectCategory, RoomObjectType, RoomObjectVariable, RoomSessionPetInfoUpdateEvent, RoomSessionPetStatusUpdateEvent, RoomSessionUserDataUpdateEvent, RoomUnitWalkComposer } from '@nitrots/nitro-renderer';
  import { useEffect, useState } from 'react';
 -import { AvatarInfoFurni, AvatarInfoName, AvatarInfoPet, AvatarInfoRentableBot, AvatarInfoUser, AvatarInfoUtilities, CanManipulateFurniture, FurniCategory, GetRoomEngine, GetSessionDataManager, IAvatarInfo, IsOwnerOfFurniture, RoomWidgetUpdateRoomObjectEvent, UseProductItem } from '../../../api';
-+import { AvatarInfoFurni, AvatarInfoName, AvatarInfoPet, AvatarInfoRentableBot, AvatarInfoUser, AvatarInfoUtilities, CanManipulateFurniture, FurniCategory, GetRoomEngine, GetSessionDataManager, IAvatarInfo, IsOwnerOfFurniture, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer, UseProductItem } from '../../../api';
++import { AvatarInfoFurni, AvatarInfoName, AvatarInfoPet, AvatarInfoRentableBot, AvatarInfoUser, AvatarInfoUtilities, CanManipulateFurniture, FurniCategory, GetLocalStorage, GetRoomEngine, GetSessionDataManager, IAvatarInfo, IsOwnerOfFurniture, LocalStorageKeys, RoomWidgetUpdateRoomObjectEvent, SendMessageComposer, UseProductItem } from '../../../api';
 +import { PixeltowerSetTargetComposer } from '../../../api/pixeltower/PixeltowerSoundMessages';
  import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../../events';
  import { useFriends } from '../../friends';
  import { useWired } from '../../wired';
-@@ -87,6 +88,11 @@ const useAvatarInfoWidgetState = () =>
+@@ -85,9 +86,51 @@ const useAvatarInfoWidgetState = () =>
+                         roomSession.userDataManager.requestPetInfo(userData.webID);
+                         setPendingPetId(userData.webID);
                          break;
-                     case RoomObjectType.USER:
-                         info = AvatarInfoUtilities.getUserInfo(category, userData);
+-                    case RoomObjectType.USER:
+-                        info = AvatarInfoUtilities.getUserInfo(category, userData);
++                    case RoomObjectType.USER: {
++                        const isSelf = userData.webID === GetSessionDataManager().userId;
++                        const popupDisabled = GetLocalStorage<boolean>(LocalStorageKeys.DISABLE_USER_INFO_POPUP);
++
++                        // pixeltower: `:ct` toggles the avatar-click info menu.
++                        // Self-click still opens own action wheel.
++                        if(!popupDisabled || isSelf)
++                            info = AvatarInfoUtilities.getUserInfo(category, userData);
++
 +                        // pixeltower: avatar-sprite click drives the TargetHUD.
-+                        // Skip self-selection — server also clears on self, but
-+                        // we don't want to burn a round-trip just to no-op.
-+                        if(userData.webID !== GetSessionDataManager().userId)
++                        // Fires regardless of `:ct` so combat targeting still works.
++                        if(!isSelf)
 +                            SendMessageComposer(new PixeltowerSetTargetComposer(userData.webID));
++
++                        // pixeltower: with `:ct` on, also walk past the clicked user
++                        // to the next tile in the same direction (if walkable). The
++                        // brief auto-rotation fired by the renderer's selection flow
++                        // is visually subsumed by the walk reorienting the avatar.
++                        if(popupDisabled && !isSelf)
++                        {
++                            const myObject = GetRoomEngine().getRoomObject(roomSession.roomId, roomSession.ownRoomIndex, RoomObjectCategory.UNIT);
++                            const theirObject = GetRoomEngine().getRoomObject(roomSession.roomId, userData.roomIndex, RoomObjectCategory.UNIT);
++
++                            if(myObject && theirObject)
++                            {
++                                const myLoc = myObject.getLocation();
++                                const theirLoc = theirObject.getLocation();
++                                const theirX = ~~theirLoc.x;
++                                const theirY = ~~theirLoc.y;
++                                const dx = Math.sign(theirX - ~~myLoc.x);
++                                const dy = Math.sign(theirY - ~~myLoc.y);
++
++                                if(dx !== 0 || dy !== 0)
++                                {
++                                    const targetX = theirX + dx;
++                                    const targetY = theirY + dy;
++                                    const geometry = GetRoomEngine().getLegacyWallGeometry(roomSession.roomId);
++
++                                    if(geometry && geometry.isRoomTile(targetX, targetY))
++                                        SendMessageComposer(new RoomUnitWalkComposer(targetX, targetY));
++                                }
++                            }
++                        }
                          break;
++                    }
                      case RoomObjectType.BOT:
                          info = AvatarInfoUtilities.getBotInfo(category, userData);
+                         break;
 diff --git a/src/hooks/rooms/widgets/useChatInputWidget.ts b/src/hooks/rooms/widgets/useChatInputWidget.ts
-index 5b11ecf..b4c092a 100644
+index 5b11ecf..5944d10 100644
 --- a/src/hooks/rooms/widgets/useChatInputWidget.ts
 +++ b/src/hooks/rooms/widgets/useChatInputWidget.ts
-@@ -170,6 +170,24 @@ const useChatInputWidgetState = () =>
-                         SendMessageComposer(new RoomSettingsComposer(roomSession.roomId));
+@@ -1,6 +1,6 @@
+ import { AvatarExpressionEnum, GetTicker, HabboClubLevelEnum, RoomControllerLevel, RoomEngineObjectEvent, RoomObjectCategory, RoomRotatingEffect, RoomSessionChatEvent, RoomSettingsComposer, RoomShakingEffect, RoomZoomEvent, TextureUtils } from '@nitrots/nitro-renderer';
+ import { useEffect, useState } from 'react';
+-import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetConfiguration, GetRoomEngine, GetSessionDataManager, LocalizeText, SendMessageComposer } from '../../../api';
++import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetConfiguration, GetLocalStorage, GetRoomEngine, GetSessionDataManager, LocalizeText, LocalStorageKeys, NotificationBubbleType, SendMessageComposer, SetLocalStorage } from '../../../api';
+ import { useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
+ import { useNotification } from '../../notification';
+ import { useObjectSelectedEvent } from '../engine';
+@@ -14,7 +14,7 @@ const useChatInputWidgetState = () =>
+     const [ isIdle, setIsIdle ] = useState(false);
+     const [ floodBlocked, setFloodBlocked ] = useState(false);
+     const [ floodBlockedSeconds, setFloodBlockedSeconds ] = useState(0);
+-    const { showNitroAlert = null, showConfirm = null } = useNotification();
++    const { showNitroAlert = null, showConfirm = null, showSingleBubble = null } = useNotification();
+     const { roomSession = null } = useRoom();
+ 
+     const sendChat = (text: string, chatType: number, recipientName: string = '', styleId: number = 0) =>
+@@ -171,6 +171,32 @@ const useChatInputWidgetState = () =>
                      }
  
-+                    return null;
+                     return null;
 +                case ':roomsettings':
 +                    if(GetSessionDataManager().isModerator)
 +                    {
@@ -2677,9 +2791,18 @@ index 5b11ecf..b4c092a 100644
 +                case ':commands':
 +                    CreateLinkEvent('commands-list/toggle');
 +
-                     return null;
++                    return null;
++                case ':ct': {
++                    const next = !GetLocalStorage<boolean>(LocalStorageKeys.DISABLE_USER_INFO_POPUP);
++
++                    SetLocalStorage(LocalStorageKeys.DISABLE_USER_INFO_POPUP, next);
++                    showSingleBubble(`Click-target menu ${next ? 'disabled' : 'enabled'}.`, NotificationBubbleType.INFO);
++
++                    return null;
++                }
              }
          }
+ 
 diff --git a/vite.config.js b/vite.config.js
 index 1c4696c..e05278a 100644
 --- a/vite.config.js
