@@ -8,7 +8,9 @@ import org.pixeltower.rp.core.RpChat;
 import org.pixeltower.rp.corp.Corporation;
 import org.pixeltower.rp.corp.CorporationManager;
 import org.pixeltower.rp.corp.CorporationMember;
+import org.pixeltower.rp.corp.CorporationRank;
 import org.pixeltower.rp.corp.ShiftManager;
+import org.pixeltower.rp.corp.WorkingMotto;
 
 /**
  * {@code :startwork} — clock in to your corp. You only earn paychecks while
@@ -40,6 +42,10 @@ public class StartWorkCommand extends Command {
 
         Corporation corp = CorporationManager.getById(membership.getCorpId()).orElse(null);
         String corpName = corp != null ? corp.getName() : "the corporation";
+        String rankTitle = corp != null
+                ? corp.getRank(membership.getRankNum()).map(CorporationRank::getTitle).orElse("Employee")
+                : "Employee";
+        WorkingMotto.apply(caller, rankTitle);
         RpChat.corpEmote(caller, "*has clocked in at " + corpName + "*");
         return true;
     }

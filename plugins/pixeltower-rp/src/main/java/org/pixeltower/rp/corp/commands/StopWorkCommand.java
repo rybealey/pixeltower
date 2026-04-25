@@ -8,6 +8,7 @@ import org.pixeltower.rp.core.RpChat;
 import org.pixeltower.rp.corp.Corporation;
 import org.pixeltower.rp.corp.CorporationManager;
 import org.pixeltower.rp.corp.ShiftManager;
+import org.pixeltower.rp.corp.WorkingMotto;
 
 /**
  * {@code :stopwork} — clock out. Stops countdown whispers and halts
@@ -29,6 +30,7 @@ public class StopWorkCommand extends Command {
             caller.whisper("You aren't clocked in.", RoomChatMessageBubbles.ALERT);
             return true;
         }
+        WorkingMotto.restore(caller);
 
         String corpName = CorporationManager.getMembership(habboId)
                 .flatMap(m -> CorporationManager.getById(m.getCorpId()))

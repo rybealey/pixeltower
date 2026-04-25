@@ -22,6 +22,7 @@ import com.eu.habbo.plugin.events.users.UserExitRoomEvent;
 import com.eu.habbo.plugin.events.users.UserIdleEvent;
 import com.eu.habbo.plugin.events.users.UserLoginEvent;
 import com.eu.habbo.plugin.events.users.UserSavedLookEvent;
+import com.eu.habbo.plugin.events.users.UserSavedMottoEvent;
 import com.eu.habbo.plugin.events.users.UserTalkEvent;
 import com.eu.habbo.plugin.events.users.UserTargetSelectedEvent;
 import org.pixeltower.rp.core.HomePositionStore;
@@ -33,6 +34,7 @@ import org.pixeltower.rp.core.commands.TargetCommand;
 import org.pixeltower.rp.core.commands.WardrobeCommand;
 import org.pixeltower.rp.corp.CorporationManager;
 import org.pixeltower.rp.corp.ShiftManager;
+import org.pixeltower.rp.corp.WorkingMotto;
 import org.pixeltower.rp.corp.commands.FireCommand;
 import org.pixeltower.rp.corp.commands.HireCommand;
 import org.pixeltower.rp.corp.commands.PromoteCommand;
@@ -327,12 +329,37 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         });
     }
 
+    /**
+     * While a player is clocked in their displayed motto is locked to
+     * {@code [WORKING] <rank>}. If a motto-save packet arrives mid-shift —
+     * e.g. from a custom client — capture the user's intent so it's applied
+     * on {@code :stopwork}, then force {@code event.newMotto} over the
+     * length cap so {@link com.eu.habbo.messages.incoming.users.SaveMottoEvent}
+     * skips its {@code setMotto} + DB write. The handler's broadcast still
+     * fires but reads the unchanged {@code [WORKING] X} from in-memory state,
+     * so the working badge stays visible to everyone in the room.
+     */
+    @EventHandler
+    public void onUserSavedMotto(UserSavedMottoEvent event) {
+        if (event.habbo == null) return;
+        int habboId = event.habbo.getHabboInfo().getId();
+        if (!WorkingMotto.isActive(habboId)) return;
+
+        WorkingMotto.updateIntent(habboId, event.newMotto);
+        // Sentinel longer than the 38-char default motto.max_length — chosen
+        // to fail the upstream length check in SaveMottoEvent.handle() so the
+        // setMotto/run pair is bypassed. The exact contents don't matter; only
+        // the length does. Don't shrink this without auditing motto.max_length.
+        event.newMotto = "_PIXELTOWER_WORKING_MOTTO_OVERRIDE_BLOCKED_PERSIST";
+    }
+
     @EventHandler
     public void onUserDisconnect(UserDisconnectEvent event) {
         if (event.habbo != null) {
             int habboId = event.habbo.getHabboInfo().getId();
             TargetTracker.clear(habboId);
             ShiftManager.stopWork(habboId);
+            WorkingMotto.clear(habboId);
             StatsManager.onDisconnect(habboId);
             EngagementRegistry.terminateAll(habboId, "logout");
             FightService.onDisconnect(habboId);

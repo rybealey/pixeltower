@@ -230,6 +230,7 @@ public final class CorporationManager {
 
         MEMBER_BY_HABBO.remove(targetHabboId);
         ShiftManager.stopWork(targetHabboId);
+        WorkingMotto.restoreById(targetHabboId);
         LOGGER.info("fire caller={} target={} corp={}",
                 callerHabboId, targetHabboId, corp.getId());
     }
@@ -344,6 +345,7 @@ public final class CorporationManager {
 
         MEMBER_BY_HABBO.remove(targetHabboId);
         ShiftManager.stopWork(targetHabboId);
+        WorkingMotto.restoreById(targetHabboId);
         LOGGER.info("superFire target={} corp={}",
                 targetHabboId, target.getCorpId());
     }
@@ -370,6 +372,7 @@ public final class CorporationManager {
 
         MEMBER_BY_HABBO.remove(habboId);
         ShiftManager.stopWork(habboId);
+        WorkingMotto.restoreById(habboId);
         LOGGER.info("quit habbo={} corp={}", habboId, member.getCorpId());
     }
 }
