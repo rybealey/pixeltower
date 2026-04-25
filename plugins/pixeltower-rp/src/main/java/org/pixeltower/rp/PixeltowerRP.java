@@ -222,7 +222,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         Emulator.getConfig().register("rp.admin.min_rank",            "5");
         Emulator.getConfig().register("rp.spawn.default_room_id",     "58");
 
-        Emulator.getConfig().register("rp.offer.heal.price",          "100");
+        Emulator.getConfig().register("rp.offer.heal.price",          "5");
 
         CorporationManager.init();
         FunctionalFurnitureService.loadAll();
