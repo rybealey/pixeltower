@@ -192,90 +192,140 @@ index d47c31b..7d3e8c9 100644
              <RoomView />
 diff --git a/src/components/pixeltower/OfferHUD.scss b/src/components/pixeltower/OfferHUD.scss
 new file mode 100644
-index 0000000..70612ac
+index 0000000..6555070
 --- /dev/null
 +++ b/src/components/pixeltower/OfferHUD.scss
-@@ -0,0 +1,87 @@
+@@ -0,0 +1,137 @@
 +@use './tokens' as *;
 +
-+// Roleplay service offer popup. Slides in below the Player HUD when a
-+// hospital worker (or any future service-corp member) sends `:offer x heal`.
-+// Auto-dismisses after 15s, on accept, or on reject.
++// Roleplay service offer popup. Matches .designs/client_ui.pen frame
++// 3P6R0 (Sale Offer Popup) — a single-row compact strip with item icon,
++// "<OFFERER> OFFERS" eyebrow, item-name + coin-price row, and red/green
++// action buttons. Slides in below the Player HUD.
 +
 +.pixeltower-offer-popup {
 +    position: absolute;
-+    // Player HUD is top:12px and ~120px tall — anchor below with a gap.
 +    top: 152px;
 +    left: 12px;
 +    z-index: 1100;
 +
-+    width: 280px;
-+    padding: 8px 10px;
++    width: 380px;
++    padding: 10px 12px;
++
++    background: #2B3A54;
++    border: 2px solid $pt-panel-stroke;
++    border-radius: 3px;
++    box-shadow: 0 3px 6px #00000080;
++
++    display: flex;
++    flex-direction: row;
++    align-items: center;
++    gap: 10px;
++
 +    color: $pt-text;
 +    font-family: $pt-font-family;
 +
-+    @include pt-panel;
-+
 +    animation: pixeltower-offer-slide-in 280ms ease-out;
 +
-+    &__header {
++    &__item-icon {
++        flex-shrink: 0;
++        width: 20px;
++        height: 20px;
++        color: $pt-coin-yellow;
++    }
++
++    &__text-col {
++        flex: 1 1 0;
++        min-width: 0;
 +        display: flex;
 +        flex-direction: column;
-+        margin-bottom: 6px;
++        gap: 1px;
 +    }
 +
-+    &__title {
++    &__eyebrow {
++        font-size: 10px;
 +        font-weight: 700;
-+        font-size: 13px;
++        color: #9FB3CC;
++        letter-spacing: 1.2px;
++        text-transform: uppercase;
++        white-space: nowrap;
++        overflow: hidden;
++        text-overflow: ellipsis;
 +    }
 +
-+    &__from {
-+        font-size: 11px;
-+        opacity: 0.85;
-+    }
-+
-+    &__description {
-+        font-size: 12px;
-+        margin-bottom: 8px;
-+    }
-+
-+    &__price-row {
++    &__main-row {
 +        display: flex;
++        flex-direction: row;
 +        align-items: center;
-+        gap: 6px;
-+        margin-bottom: 8px;
++        gap: 5px;
++        white-space: nowrap;
++    }
++
++    &__item-name {
++        font-size: 14px;
++        font-weight: 700;
++        color: #FFFFFF;
++    }
++
++    &__sep {
++        font-size: 14px;
++        font-weight: 700;
++        color: #7A95B8;
 +    }
 +
 +    &__coin-icon {
++        width: 12px;
++        height: 12px;
 +        color: $pt-coin-yellow;
-+        font-size: 14px;
 +    }
 +
-+    &__price { font-weight: 700; }
-+
-+    &__expiry {
-+        margin-left: auto;
-+        opacity: 0.7;
-+        font-size: 11px;
++    &__price {
++        font-size: 14px;
++        font-weight: 700;
++        color: $pt-coin-yellow;
 +    }
 +
 +    &__actions {
++        flex-shrink: 0;
 +        display: flex;
-+        gap: 6px;
++        flex-direction: row;
++        align-items: center;
++        gap: 8px;
 +    }
 +
 +    &__btn {
-+        @include pt-chip;
-+        flex: 1;
-+        padding: 6px 10px;
-+        color: $pt-text;
-+        font-family: $pt-font-family;
-+        font-weight: 700;
-+        font-size: 12px;
++        width: 28px;
++        height: 28px;
++        border-radius: 3px;
++        border: 2px solid $pt-panel-stroke;
++        padding: 0;
 +        cursor: pointer;
++        display: flex;
++        align-items: center;
++        justify-content: center;
 +
 +        &:hover { filter: brightness(1.1); }
 +        &:active { transform: translateY(1px); }
++    }
++
++    &__btn--decline {
++        background: linear-gradient(180deg,
++            #E04848 0%, #E04848 50%,
++            #7A1818 50%, #7A1818 100%);
++        box-shadow: 0 1px 0 #FF9090;
++    }
++
++    &__btn--accept {
++        background: linear-gradient(180deg,
++            #48C66B 0%, #48C66B 50%,
++            #1F6B36 50%, #1F6B36 100%);
++        box-shadow: 0 1px 0 #A0E8B4;
++    }
++
++    &__btn-icon {
++        width: 14px;
++        height: 14px;
++        color: #FFFFFF;
 +    }
 +}
 +
@@ -285,12 +335,13 @@ index 0000000..70612ac
 +}
 diff --git a/src/components/pixeltower/OfferHUD.tsx b/src/components/pixeltower/OfferHUD.tsx
 new file mode 100644
-index 0000000..1ae9807
+index 0000000..e0563e5
 --- /dev/null
 +++ b/src/components/pixeltower/OfferHUD.tsx
-@@ -0,0 +1,116 @@
+@@ -0,0 +1,122 @@
 +import { FC, useEffect, useState } from 'react';
-+import { LuCoins } from 'react-icons/lu';
++import type { IconType } from 'react-icons';
++import { LuCheck, LuCoins, LuHeartPulse, LuPackage, LuX } from 'react-icons/lu';
 +import { SendMessageComposer } from '../../api';
 +import {
 +    RoleplayOfferDismissEvent,
@@ -310,17 +361,25 @@ index 0000000..1ae9807
 +    expiresAt: number;
 +};
 +
++// Lucide icon names that the server may set via OfferService.iconResource().
++// Anything not listed falls back to a package/cube — the design's default.
++const ICON_MAP: Record<string, IconType> = {
++    'package': LuPackage,
++    'heart-pulse': LuHeartPulse
++};
++
 +/**
-+ * Listens for roleplay service offers and renders the slide-in popup
-+ * below the Player HUD. One offer is shown at a time; arrival of a new
-+ * offer replaces the visible one (server side also dismisses the prior).
-+ * Auto-dismisses on the client when the expiry timestamp passes — the
-+ * server pushes its own dismiss for hard correctness.
++ * Roleplay service offer popup — slides in below the player HUD when
++ * another player offers a paid service. One offer at a time; replaced
++ * on a new offer, dismissed on accept/reject/15s expiry.
++ *
++ * Layout matches .designs/client_ui.pen frame 3P6R0 (Sale Offer Popup):
++ * single horizontal strip with item icon, "<OFFERER> OFFERS" eyebrow,
++ * item-name + coin-price row, and red/green action buttons.
 + */
 +export const OfferHUD: FC<{}> = () =>
 +{
 +    const [ offer, setOffer ] = useState<ActiveOffer | null>(null);
-+    const [ now, setNow ] = useState<number>(() => Date.now());
 +
 +    useMessageEvent<RoleplayOfferEvent>(RoleplayOfferEvent, event =>
 +    {
@@ -358,17 +417,12 @@ index 0000000..1ae9807
 +            () => setOffer(prev => (prev && prev.offerId === offer.offerId ? null : prev)),
 +            remaining
 +        );
-+        const tickId = window.setInterval(() => setNow(Date.now()), 1000);
-+        return () =>
-+        {
-+            window.clearTimeout(timeoutId);
-+            window.clearInterval(tickId);
-+        };
++        return () => window.clearTimeout(timeoutId);
 +    }, [ offer ]);
 +
 +    if(!offer) return null;
 +
-+    const secondsLeft = Math.max(0, Math.ceil((offer.expiresAt - now) / 1000));
++    const ItemIcon = ICON_MAP[offer.iconResource] ?? LuPackage;
 +
 +    const respond = (accepted: boolean) =>
 +    {
@@ -378,28 +432,30 @@ index 0000000..1ae9807
 +
 +    return (
 +        <div className="pixeltower-offer-popup">
-+            <div className="pixeltower-offer-popup__header">
-+                <div className="pixeltower-offer-popup__title">{ offer.title }</div>
-+                <div className="pixeltower-offer-popup__from">from { offer.offererName }</div>
-+            </div>
-+            <div className="pixeltower-offer-popup__description">{ offer.description }</div>
-+            <div className="pixeltower-offer-popup__price-row">
-+                <LuCoins className="pixeltower-offer-popup__coin-icon" />
-+                <span className="pixeltower-offer-popup__price">{ offer.price.toLocaleString() } coins</span>
-+                <span className="pixeltower-offer-popup__expiry">{ secondsLeft }s</span>
++            <ItemIcon className="pixeltower-offer-popup__item-icon" />
++            <div className="pixeltower-offer-popup__text-col">
++                <div className="pixeltower-offer-popup__eyebrow">{ offer.offererName } offers</div>
++                <div className="pixeltower-offer-popup__main-row">
++                    <span className="pixeltower-offer-popup__item-name">{ offer.title }</span>
++                    <span className="pixeltower-offer-popup__sep">·</span>
++                    <LuCoins className="pixeltower-offer-popup__coin-icon" />
++                    <span className="pixeltower-offer-popup__price">{ offer.price.toLocaleString() }</span>
++                </div>
 +            </div>
 +            <div className="pixeltower-offer-popup__actions">
 +                <button
 +                    type="button"
-+                    className="pixeltower-offer-popup__btn pixeltower-offer-popup__btn--reject"
-+                    onClick={ () => respond(false) }>
-+                    Reject
++                    className="pixeltower-offer-popup__btn pixeltower-offer-popup__btn--decline"
++                    onClick={ () => respond(false) }
++                    aria-label="Reject">
++                    <LuX className="pixeltower-offer-popup__btn-icon" strokeWidth={ 3 } />
 +                </button>
 +                <button
 +                    type="button"
 +                    className="pixeltower-offer-popup__btn pixeltower-offer-popup__btn--accept"
-+                    onClick={ () => respond(true) }>
-+                    Accept
++                    onClick={ () => respond(true) }
++                    aria-label="Accept">
++                    <LuCheck className="pixeltower-offer-popup__btn-icon" strokeWidth={ 3 } />
 +                </button>
 +            </div>
 +        </div>

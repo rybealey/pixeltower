@@ -56,7 +56,8 @@ public class HealOfferService implements OfferService {
 
     @Override
     public String iconResource() {
-        return "";
+        // Lucide icon name; rendered by the OfferHUD's ICON_MAP.
+        return "heart-pulse";
     }
 
     @Override
