@@ -37,7 +37,7 @@ public class QuitJobCommand extends Command {
             return true;
         }
 
-        RpChat.emote(caller, "*resigns from their role at " + corpName + "*");
+        RpChat.corpEmote(caller, "*resigns from their role at " + corpName + "*");
         return true;
     }
 }

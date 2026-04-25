@@ -46,6 +46,16 @@ public final class RpChat {
     }
 
     /**
+     * Same as {@link #emote} but on the BLUE bubble — the canonical color
+     * for in-character corporation actions (hire, fire, resign, etc.).
+     * Distinguishes corp business from generic yellow RP emotes at a
+     * glance. Goes through the same username-splice path as yellow.
+     */
+    public static void corpEmote(Habbo habbo, String text) {
+        emote(habbo, text, RoomChatMessageBubbles.BLUE);
+    }
+
+    /**
      * Same as {@link #emote} but on the STAFF bubble (style id 23). Used for
      * actions performed by staff (e.g. :award) where the emote text already
      * includes the admin's name. The companion Nitro patch

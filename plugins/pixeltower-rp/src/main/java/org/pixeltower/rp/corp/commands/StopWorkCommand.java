@@ -4,6 +4,9 @@ import com.eu.habbo.habbohotel.commands.Command;
 import com.eu.habbo.habbohotel.gameclients.GameClient;
 import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.users.Habbo;
+import org.pixeltower.rp.core.RpChat;
+import org.pixeltower.rp.corp.Corporation;
+import org.pixeltower.rp.corp.CorporationManager;
 import org.pixeltower.rp.corp.ShiftManager;
 
 /**
@@ -27,7 +30,11 @@ public class StopWorkCommand extends Command {
             return true;
         }
 
-        caller.whisper("You've clocked out.", RoomChatMessageBubbles.WIRED);
+        String corpName = CorporationManager.getMembership(habboId)
+                .flatMap(m -> CorporationManager.getById(m.getCorpId()))
+                .map(Corporation::getName)
+                .orElse("the corporation");
+        RpChat.corpEmote(caller, "*has clocked out at " + corpName + "*");
         return true;
     }
 }

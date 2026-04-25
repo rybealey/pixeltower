@@ -4,6 +4,7 @@ import com.eu.habbo.habbohotel.commands.Command;
 import com.eu.habbo.habbohotel.gameclients.GameClient;
 import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.users.Habbo;
+import org.pixeltower.rp.core.RpChat;
 import org.pixeltower.rp.corp.Corporation;
 import org.pixeltower.rp.corp.CorporationManager;
 import org.pixeltower.rp.corp.CorporationMember;
@@ -38,9 +39,8 @@ public class StartWorkCommand extends Command {
         ShiftManager.startWork(habboId);
 
         Corporation corp = CorporationManager.getById(membership.getCorpId()).orElse(null);
-        String corpName = corp != null ? corp.getName() : "your corp";
-        caller.whisper("You've clocked in at " + corpName + ".",
-                RoomChatMessageBubbles.WIRED);
+        String corpName = corp != null ? corp.getName() : "the corporation";
+        RpChat.corpEmote(caller, "*has clocked in at " + corpName + "*");
         return true;
     }
 }

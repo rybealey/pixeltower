@@ -6,6 +6,7 @@ import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.users.Habbo;
 import org.pixeltower.rp.core.NoSuchUserException;
 import org.pixeltower.rp.core.NoTargetException;
+import org.pixeltower.rp.core.RpChat;
 import org.pixeltower.rp.core.TargetResolver;
 import org.pixeltower.rp.core.TargetResolver.ResolvedTarget;
 import org.pixeltower.rp.corp.Corporation;
@@ -67,7 +68,8 @@ public class FireCommand extends Command {
             return true;
         }
 
-        caller.whisper("You fired " + resolved.username + ".", RoomChatMessageBubbles.WIRED);
+        RpChat.corpEmote(caller,
+                "*fires " + resolved.username + " from " + corpName + "*");
         if (resolved.isOnline()) {
             resolved.online.whisper("You've been fired from " + corpName + ".",
                     RoomChatMessageBubbles.WIRED);

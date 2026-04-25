@@ -6,6 +6,7 @@ import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.users.Habbo;
 import org.pixeltower.rp.core.NoSuchUserException;
 import org.pixeltower.rp.core.NoTargetException;
+import org.pixeltower.rp.core.RpChat;
 import org.pixeltower.rp.core.TargetResolver;
 import org.pixeltower.rp.core.TargetResolver.ResolvedTarget;
 import org.pixeltower.rp.corp.Corporation;
@@ -88,8 +89,8 @@ public class HireCommand extends Command {
         CorporationRank newRank = corp.getRanks().get(rankNum);
         String rankTitle = newRank != null ? newRank.getTitle() : ("rank " + rankNum);
 
-        caller.whisper("You hired " + resolved.username + " as " + rankTitle + ".",
-                RoomChatMessageBubbles.WIRED);
+        RpChat.corpEmote(caller,
+                "*hires " + resolved.username + " at " + corp.getName() + "*");
         if (resolved.isOnline()) {
             resolved.online.whisper("You've been hired as " + rankTitle
                     + " at " + corp.getName() + ".", RoomChatMessageBubbles.WIRED);
