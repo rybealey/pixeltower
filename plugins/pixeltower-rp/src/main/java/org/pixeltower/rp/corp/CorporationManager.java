@@ -56,6 +56,11 @@ public final class CorporationManager {
         int rankCount = BY_ID.values().stream().mapToInt(c -> c.getRanks().size()).sum();
         LOGGER.info("CorporationManager initialized: {} corps, {} ranks, {} members",
                 BY_ID.size(), rankCount, MEMBER_BY_HABBO.size());
+
+        // Hot-reload safety: if init() runs while users are connected, push
+        // the freshly-loaded corp badges to every active room so clients
+        // resync without needing to re-enter.
+        CorpBadgeBroadcaster.pushAllRooms();
     }
 
     private static void loadCorps(Connection conn) throws SQLException {
@@ -201,6 +206,7 @@ public final class CorporationManager {
 
         MEMBER_BY_HABBO.put(targetHabboId,
                 new CorporationMember(corp.getId(), targetHabboId, rankNum, Instant.now()));
+        CorpBadgeBroadcaster.pushUserChange(targetHabboId);
         LOGGER.info("hire caller={} target={} corp={} rank={}",
                 callerHabboId, targetHabboId, corp.getId(), rankNum);
     }
@@ -244,6 +250,7 @@ public final class CorporationManager {
         MEMBER_BY_HABBO.remove(targetHabboId);
         ShiftManager.stopWork(targetHabboId);
         WorkingMotto.restoreById(targetHabboId);
+        CorpBadgeBroadcaster.pushUserChange(targetHabboId);
         LOGGER.info("fire caller={} target={} corp={}",
                 callerHabboId, targetHabboId, corp.getId());
     }
@@ -332,6 +339,7 @@ public final class CorporationManager {
 
         MEMBER_BY_HABBO.put(targetHabboId,
                 new CorporationMember(corpId, targetHabboId, rankNum, Instant.now()));
+        CorpBadgeBroadcaster.pushUserChange(targetHabboId);
         LOGGER.info("superHire target={} corp={} rank={}",
                 targetHabboId, corpId, rankNum);
     }
@@ -359,6 +367,7 @@ public final class CorporationManager {
         MEMBER_BY_HABBO.remove(targetHabboId);
         ShiftManager.stopWork(targetHabboId);
         WorkingMotto.restoreById(targetHabboId);
+        CorpBadgeBroadcaster.pushUserChange(targetHabboId);
         LOGGER.info("superFire target={} corp={}",
                 targetHabboId, target.getCorpId());
     }
@@ -386,6 +395,7 @@ public final class CorporationManager {
         MEMBER_BY_HABBO.remove(habboId);
         ShiftManager.stopWork(habboId);
         WorkingMotto.restoreById(habboId);
+        CorpBadgeBroadcaster.pushUserChange(habboId);
         LOGGER.info("quit habbo={} corp={}", habboId, member.getCorpId());
     }
 }

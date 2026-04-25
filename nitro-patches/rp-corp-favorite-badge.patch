@@ -1,0 +1,200 @@
+diff --git a/src/api/pixeltower/PixeltowerSoundMessages.ts b/src/api/pixeltower/PixeltowerSoundMessages.ts
+--- a/src/api/pixeltower/PixeltowerSoundMessages.ts
++++ b/src/api/pixeltower/PixeltowerSoundMessages.ts
+@@ -5,6 +5,7 @@
+ const PIXELTOWER_UPDATE_PLAYER_STATS = 6501;
+ const PIXELTOWER_UPDATE_TARGET_STATS = 6502;
+ const PIXELTOWER_OPEN_CLIENT_LINK = 6503;
++const PIXELTOWER_UPDATE_CORP_BADGES = 6504;
+ const PIXELTOWER_SET_TARGET = 6550;
+ 
+ // ──────────── PlaySound (header 6500) ────────────
+@@ -242,6 +243,57 @@
+     }
+ }
+ 
++// ──────────── UpdateCorpBadges (header 6504) ────────────
++//
++// Per-room map of habboId → corp hotel-badge code, used to override the
++// "favorite Habbo Group" badge slot in the user infostand for any
++// employee of a corp that has badge_code set in rp_corporations. The
++// override is purely visual; the user's actual favorite group on the
++// server is unchanged.
++
++export class UpdateCorpBadgesParser implements IMessageParser
++{
++    private _badges: Map<number, string>;
++
++    public flush(): boolean
++    {
++        this._badges = new Map<number, string>();
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++        this._badges = new Map<number, string>();
++        const count = wrapper.readInt();
++        for(let i = 0; i < count; i++)
++        {
++            const habboId = wrapper.readInt();
++            const badgeCode = wrapper.readString();
++            this._badges.set(habboId, badgeCode);
++        }
++        return true;
++    }
++
++    public get badges(): Map<number, string>
++    {
++        return this._badges;
++    }
++}
++
++export class UpdateCorpBadgesEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, UpdateCorpBadgesParser);
++    }
++
++    public getParser(): UpdateCorpBadgesParser
++    {
++        return this.parser as UpdateCorpBadgesParser;
++    }
++}
++
+ // ──────────── SetTarget (header 6550, client→server) ────────────
+ //
+ // Emitted from the room InfoStand whenever the local player selects
+@@ -277,7 +329,8 @@
+         [ PIXELTOWER_PLAY_SOUND, NitroPlaySoundEvent ],
+         [ PIXELTOWER_UPDATE_PLAYER_STATS, UpdatePlayerStatsEvent ],
+         [ PIXELTOWER_UPDATE_TARGET_STATS, UpdateTargetStatsEvent ],
+-        [ PIXELTOWER_OPEN_CLIENT_LINK, OpenClientLinkEvent ]
++        [ PIXELTOWER_OPEN_CLIENT_LINK, OpenClientLinkEvent ],
++        [ PIXELTOWER_UPDATE_CORP_BADGES, UpdateCorpBadgesEvent ]
+     ]);
+     public composers: Map<number, Function> = new Map<number, Function>([
+         [ PIXELTOWER_SET_TARGET, PixeltowerSetTargetComposer ]
+diff --git a/src/hooks/pixeltower/index.ts b/src/hooks/pixeltower/index.ts
+--- a/src/hooks/pixeltower/index.ts
++++ b/src/hooks/pixeltower/index.ts
+@@ -1,3 +1,4 @@
++export * from './useCorpBadges';
+ export * from './useEmployment';
+ export * from './useStats';
+ export * from './useTarget';
+diff --git a/src/hooks/pixeltower/useCorpBadges.ts b/src/hooks/pixeltower/useCorpBadges.ts
+new file mode 100644
+--- /dev/null
++++ b/src/hooks/pixeltower/useCorpBadges.ts
+@@ -0,0 +1,28 @@
++import { useState } from 'react';
++import { useBetween } from 'use-between';
++import { UpdateCorpBadgesEvent } from '../../api/pixeltower/PixeltowerSoundMessages';
++import { useMessageEvent } from '../events';
++
++/**
++ * Per-room {habboId -> corp hotel-badge code} map sent by the server on
++ * room entry and after any hire/fire/quit affecting the room. Drives the
++ * favorite-Habbo-Group badge override in the InfoStand. The listener has
++ * to be mounted at all times while in a room (the room-entry packet
++ * arrives before any infostand opens), so {@link CorpBadgesListener}
++ * mounts this hook from MainView and the InfoStand reads from it via
++ * {@code useBetween}-shared state.
++ */
++const useCorpBadgesState = () =>
++{
++    const [ badges, setBadges ] = useState<Map<number, string>>(new Map());
++
++    useMessageEvent<UpdateCorpBadgesEvent>(UpdateCorpBadgesEvent, event =>
++    {
++        const parser = event.getParser();
++        setBadges(new Map(parser.badges));
++    });
++
++    return { badges };
++}
++
++export const useCorpBadges = () => useBetween(useCorpBadgesState);
+diff --git a/src/components/pixeltower/CorpBadgesListener.tsx b/src/components/pixeltower/CorpBadgesListener.tsx
+new file mode 100644
+--- /dev/null
++++ b/src/components/pixeltower/CorpBadgesListener.tsx
+@@ -0,0 +1,16 @@
++import { FC } from 'react';
++import { useCorpBadges } from '../../hooks/pixeltower';
++
++/**
++ * Headless component that mounts {@link useCorpBadges} for its side effect:
++ * keeping the shared corp-badge map fresh while the user is in a room. The
++ * InfoStand consumes the same map via {@code useBetween} but only renders
++ * on demand — without an always-mounted listener, the room-entry packet
++ * (sent before any infostand opens) would be lost. Returns null because
++ * it has no UI of its own.
++ */
++export const CorpBadgesListener: FC<{}> = () =>
++{
++    useCorpBadges();
++    return null;
++}
+diff --git a/src/components/main/MainView.tsx b/src/components/main/MainView.tsx
+--- a/src/components/main/MainView.tsx
++++ b/src/components/main/MainView.tsx
+@@ -19,6 +19,7 @@
+ import { ModToolsView } from '../mod-tools/ModToolsView';
+ import { NavigatorView } from '../navigator/NavigatorView';
+ import { CommandsListView } from '../pixeltower/CommandsListView';
++import { CorpBadgesListener } from '../pixeltower/CorpBadgesListener';
+ import { DrawerHUD } from '../pixeltower/DrawerHUD';
+ import { PixeltowerLinkListener } from '../pixeltower/PixeltowerLinkListener';
+ import { StatsHUD } from '../pixeltower/StatsHUD';
+@@ -91,6 +92,7 @@
+                  (.designs/client_ui.pen frame Y6gyQ). ToolbarView.tsx is left on
+                  disk for reference; it is no longer rendered. */ }
+             <PixeltowerLinkListener />
++            <CorpBadgesListener />
+             <ToolbarHUD />
+             <StatsHUD />
+             <StatusHUD />
+diff --git a/src/components/room/widgets/avatar-info/infostand/InfoStandWidgetUserView.tsx b/src/components/room/widgets/avatar-info/infostand/InfoStandWidgetUserView.tsx
+--- a/src/components/room/widgets/avatar-info/infostand/InfoStandWidgetUserView.tsx
++++ b/src/components/room/widgets/avatar-info/infostand/InfoStandWidgetUserView.tsx
+@@ -4,6 +4,7 @@
+ import { AvatarInfoUser, CloneObject, GetConfiguration, GetGroupInformation, GetSessionDataManager, GetUserProfile, LocalizeText, SendMessageComposer } from '../../../../../api';
+ import { Column, Flex, LayoutAvatarImageView, LayoutBadgeImageView, Text, UserProfileIconView } from '../../../../../common';
+ import { useMessageEvent, useRoom, useRoomSessionManagerEvent } from '../../../../../hooks';
++import { useCorpBadges } from '../../../../../hooks/pixeltower';
+ import { InfoStandWidgetUserRelationshipsView } from './InfoStandWidgetUserRelationshipsView';
+ import { InfoStandWidgetUserTagsView } from './InfoStandWidgetUserTagsView';
+ 
+@@ -21,6 +22,8 @@
+     const [ isEditingMotto, setIsEditingMotto ] = useState(false);
+     const [ relationships, setRelationships ] = useState<RelationshipStatusInfoMessageParser>(null);
+     const { roomSession = null } = useRoom();
++    const { badges: corpBadges } = useCorpBadges();
++    const corpBadge = avatarInfo ? (corpBadges.get(avatarInfo.webID) ?? null) : null;
+ 
+     const saveMotto = (motto: string) =>
+     {
+@@ -145,10 +148,15 @@
+                                 <Flex center className="badge-image">
+                                     { avatarInfo.badges[0] && <LayoutBadgeImageView badgeCode={ avatarInfo.badges[0] } showInfo={ true } /> }
+                                 </Flex>
+-                                <Flex center pointer={ ( avatarInfo.groupId > 0) } className="badge-image" onClick={ event => GetGroupInformation(avatarInfo.groupId) }>
+-                                    { avatarInfo.groupId > 0 &&
+-                                        <LayoutBadgeImageView badgeCode={ avatarInfo.groupBadgeId } isGroup={ true } showInfo={ true } customTitle={ avatarInfo.groupName } /> }
+-                                </Flex>
++                                { corpBadge &&
++                                    <Flex center className="badge-image">
++                                        <LayoutBadgeImageView badgeCode={ corpBadge } isGroup={ false } showInfo={ true } />
++                                    </Flex> }
++                                { !corpBadge &&
++                                    <Flex center pointer={ ( avatarInfo.groupId > 0) } className="badge-image" onClick={ event => GetGroupInformation(avatarInfo.groupId) }>
++                                        { avatarInfo.groupId > 0 &&
++                                            <LayoutBadgeImageView badgeCode={ avatarInfo.groupBadgeId } isGroup={ true } showInfo={ true } customTitle={ avatarInfo.groupName } /> }
++                                    </Flex> }
+                             </Flex>
+                             <Flex center gap={ 1 }>
+                                 <Flex center className="badge-image">

@@ -32,6 +32,7 @@ import org.pixeltower.rp.core.TargetTracker;
 import org.pixeltower.rp.core.commands.DanceCommand;
 import org.pixeltower.rp.core.commands.TargetCommand;
 import org.pixeltower.rp.core.commands.WardrobeCommand;
+import org.pixeltower.rp.corp.CorpBadgeBroadcaster;
 import org.pixeltower.rp.corp.CorporationManager;
 import org.pixeltower.rp.corp.ShiftManager;
 import org.pixeltower.rp.corp.WorkingMotto;
@@ -386,6 +387,11 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         event.habbo.getHabboInfo().setHomeRoom(roomId);
         updateHomeRoom(habboId, roomId);
 
+        // Refresh the room's corp-favorite-group-badge override map for
+        // every client in the room (including the entering user). Polls
+        // for room-readiness so the entering user is included in the map.
+        attemptPushCorpBadgesAfterReady(event.habbo, event.room, 0);
+
         // Login-triggered entry: drop the user back on the tile they left on.
         // UserEnterRoomEvent fires BEFORE Arcturus's room-ready state is
         // populated (RoomUnit.room + HabboInfo.currentRoom both come later).
@@ -460,6 +466,34 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
                 return;
             }
             DeathState.reapplyIfDead(habbo);
+        }, POSITION_RESTORE_POLL_MS);
+    }
+
+    /**
+     * Same readiness poll as {@link #attemptReapplyAfterReady}, but pushes
+     * the room's corp-badge override map once the entering RoomUnit has
+     * been placed in the room. Without the poll the entering user wouldn't
+     * yet appear in {@code room.getHabbos()}, so their corp badge would
+     * be missing from the broadcast they themselves receive.
+     */
+    private static void attemptPushCorpBadgesAfterReady(Habbo habbo,
+                                                        com.eu.habbo.habbohotel.rooms.Room room,
+                                                        int attempt) {
+        Emulator.getThreading().run(() -> {
+            if (habbo == null || room == null) return;
+            if (attempt >= POSITION_RESTORE_MAX_ATTEMPTS) return;
+            com.eu.habbo.habbohotel.rooms.Room current =
+                    habbo.getHabboInfo().getCurrentRoom();
+            RoomUnit unit = habbo.getRoomUnit();
+            boolean ready = current != null
+                    && current.getId() == room.getId()
+                    && unit != null
+                    && unit.isInRoom();
+            if (!ready) {
+                attemptPushCorpBadgesAfterReady(habbo, room, attempt + 1);
+                return;
+            }
+            CorpBadgeBroadcaster.pushFullToRoom(room);
         }, POSITION_RESTORE_POLL_MS);
     }
 
