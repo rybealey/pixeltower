@@ -374,6 +374,19 @@ index 0000000..f7d681f
 +{
 +    GetConnection()?.registerMessages(new PixeltowerMessages());
 +}
+diff --git a/src/api/utils/GetLocalStorage.ts b/src/api/utils/GetLocalStorage.ts
+index 769df6d..b5c5995 100644
+--- a/src/api/utils/GetLocalStorage.ts
++++ b/src/api/utils/GetLocalStorage.ts
+@@ -2,7 +2,7 @@ export const GetLocalStorage = <T>(key: string) =>
+ {
+     try
+     {
+-        JSON.parse(window.localStorage.getItem(key)) as T ?? null
++        return JSON.parse(window.localStorage.getItem(key)) as T ?? null;
+     }
+     catch(e)
+     {
 diff --git a/src/api/utils/LocalStorageKeys.ts b/src/api/utils/LocalStorageKeys.ts
 index 6c92279..a269c8a 100644
 --- a/src/api/utils/LocalStorageKeys.ts
@@ -2752,27 +2765,18 @@ index 9545362..30092a9 100644
                          info = AvatarInfoUtilities.getBotInfo(category, userData);
                          break;
 diff --git a/src/hooks/rooms/widgets/useChatInputWidget.ts b/src/hooks/rooms/widgets/useChatInputWidget.ts
-index 5b11ecf..5944d10 100644
+index 5b11ecf..1639e5a 100644
 --- a/src/hooks/rooms/widgets/useChatInputWidget.ts
 +++ b/src/hooks/rooms/widgets/useChatInputWidget.ts
 @@ -1,6 +1,6 @@
  import { AvatarExpressionEnum, GetTicker, HabboClubLevelEnum, RoomControllerLevel, RoomEngineObjectEvent, RoomObjectCategory, RoomRotatingEffect, RoomSessionChatEvent, RoomSettingsComposer, RoomShakingEffect, RoomZoomEvent, TextureUtils } from '@nitrots/nitro-renderer';
  import { useEffect, useState } from 'react';
 -import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetConfiguration, GetRoomEngine, GetSessionDataManager, LocalizeText, SendMessageComposer } from '../../../api';
-+import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetConfiguration, GetLocalStorage, GetRoomEngine, GetSessionDataManager, LocalizeText, LocalStorageKeys, NotificationBubbleType, SendMessageComposer, SetLocalStorage } from '../../../api';
++import { ChatMessageTypeEnum, CreateLinkEvent, GetClubMemberLevel, GetConfiguration, GetLocalStorage, GetRoomEngine, GetRoomSessionManager, GetSessionDataManager, LocalizeText, LocalStorageKeys, SendMessageComposer, SetLocalStorage } from '../../../api';
  import { useRoomEngineEvent, useRoomSessionManagerEvent } from '../../events';
  import { useNotification } from '../../notification';
  import { useObjectSelectedEvent } from '../engine';
-@@ -14,7 +14,7 @@ const useChatInputWidgetState = () =>
-     const [ isIdle, setIsIdle ] = useState(false);
-     const [ floodBlocked, setFloodBlocked ] = useState(false);
-     const [ floodBlockedSeconds, setFloodBlockedSeconds ] = useState(0);
--    const { showNitroAlert = null, showConfirm = null } = useNotification();
-+    const { showNitroAlert = null, showConfirm = null, showSingleBubble = null } = useNotification();
-     const { roomSession = null } = useRoom();
- 
-     const sendChat = (text: string, chatType: number, recipientName: string = '', styleId: number = 0) =>
-@@ -171,6 +171,32 @@ const useChatInputWidgetState = () =>
+@@ -171,6 +171,42 @@ const useChatInputWidgetState = () =>
                      }
  
                      return null;
@@ -2798,7 +2802,17 @@ index 5b11ecf..5944d10 100644
 +                    const next = !GetLocalStorage<boolean>(LocalStorageKeys.DISABLE_USER_INFO_POPUP);
 +
 +                    SetLocalStorage(LocalStorageKeys.DISABLE_USER_INFO_POPUP, next);
-+                    showSingleBubble(`Click-target menu ${next ? 'disabled' : 'enabled'}.`, NotificationBubbleType.INFO);
++
++                    GetRoomSessionManager().events.dispatchEvent(
++                        new RoomSessionChatEvent(
++                            RoomSessionChatEvent.CHAT_EVENT,
++                            roomSession,
++                            roomSession.ownRoomIndex,
++                            `*Click-through has been ${next ? 'enabled' : 'disabled'}.*`,
++                            RoomSessionChatEvent.CHAT_TYPE_SPEAK,
++                            23
++                        )
++                    );
 +
 +                    return null;
 +                }
