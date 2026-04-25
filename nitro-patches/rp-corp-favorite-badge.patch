@@ -147,10 +147,10 @@ diff --git a/src/components/main/MainView.tsx b/src/components/main/MainView.tsx
  import { NavigatorView } from '../navigator/NavigatorView';
  import { CommandsListView } from '../pixeltower/CommandsListView';
 +import { CorpBadgesListener } from '../pixeltower/CorpBadgesListener';
+ import { DiamondsWindow } from '../pixeltower/DiamondsWindow';
  import { DrawerHUD } from '../pixeltower/DrawerHUD';
  import { PixeltowerLinkListener } from '../pixeltower/PixeltowerLinkListener';
- import { StatsHUD } from '../pixeltower/StatsHUD';
-@@ -91,6 +92,7 @@
+@@ -92,6 +93,7 @@
                   (.designs/client_ui.pen frame Y6gyQ). ToolbarView.tsx is left on
                   disk for reference; it is no longer rendered. */ }
              <PixeltowerLinkListener />

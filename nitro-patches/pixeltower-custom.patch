@@ -436,13 +436,14 @@ diff --git a/src/components/index.scss b/src/components/index.scss
 index 8e1cd2b..197f628 100644
 --- a/src/components/index.scss
 +++ b/src/components/index.scss
-@@ -17,10 +17,15 @@
+@@ -17,10 +17,16 @@
  @import './navigator/NavigatorView';
  @import './nitropedia/NitropediaView';
  @import './notification-center/NotificationCenterView';
 +@import './pixeltower/CommandsListView';
 +@import './pixeltower/StatsHUD';
 +@import './pixeltower/StatusHUD';
++@import './pixeltower/DiamondsWindow';
 +@import './pixeltower/DrawerHUD';
 +@import './pixeltower/ToolbarHUD';
 +@import './pixeltower/app-overrides';
@@ -468,7 +469,7 @@ index da7003d..7fb02ab 100644
  import { AvatarEditorView } from '../avatar-editor/AvatarEditorView';
  import { CameraWidgetView } from '../camera/CameraWidgetView';
  import { CampaignView } from '../campaign/CampaignView';
-@@ -16,14 +15,19 @@ import { GroupsView } from '../groups/GroupsView';
+@@ -16,14 +15,20 @@ import { GroupsView } from '../groups/GroupsView';
  import { GuideToolView } from '../guide-tool/GuideToolView';
  import { HcCenterView } from '../hc-center/HcCenterView';
  import { HelpView } from '../help/HelpView';
@@ -477,6 +478,7 @@ index da7003d..7fb02ab 100644
  import { ModToolsView } from '../mod-tools/ModToolsView';
  import { NavigatorView } from '../navigator/NavigatorView';
 +import { CommandsListView } from '../pixeltower/CommandsListView';
++import { DiamondsWindow } from '../pixeltower/DiamondsWindow';
 +import { DrawerHUD } from '../pixeltower/DrawerHUD';
 +import { PixeltowerLinkListener } from '../pixeltower/PixeltowerLinkListener';
 +import { StatsHUD } from '../pixeltower/StatsHUD';
@@ -490,7 +492,7 @@ index da7003d..7fb02ab 100644
  import { UserProfileView } from '../user-profile/UserProfileView';
  import { UserSettingsView } from '../user-settings/UserSettingsView';
  import { WiredView } from '../wired/WiredView';
-@@ -81,16 +85,24 @@ export const MainView: FC<{}> = props =>
+@@ -81,16 +86,25 @@ export const MainView: FC<{}> = props =>
  
      return (
          <Base fit>
@@ -510,6 +512,7 @@ index da7003d..7fb02ab 100644
 +            <TargetHUD />
 +            <DrawerHUD />
 +            <CommandsListView />
++            <DiamondsWindow />
              <ModToolsView />
              <RoomView />
              <ChatHistoryView />
@@ -1160,7 +1163,7 @@ new file mode 100644
 index 0000000..5338a6a
 --- /dev/null
 +++ b/src/components/pixeltower/StatsHUD.scss
-@@ -0,0 +1,235 @@
+@@ -0,0 +1,242 @@
 +@use './tokens' as *;
 +
 +// Player HUD + Target HUD styles.
@@ -1360,6 +1363,11 @@ index 0000000..5338a6a
 +        flex-direction: row;
 +        gap: 3px;
 +        padding: 0 2px;
++        // Inactive crime level reads as a faded indicator per
++        // .pen frame HzOI4 > VFQ5Z (opacity:0.5). Once the server emits
++        // a non-zero wanted level, the active flags override the haze
++        // via their own brighter drop-shadow filter.
++        opacity: 0.5;
 +    }
 +
 +    // Custom SVG crest (see WantedFlag in StatsHUD.tsx). Fill comes
@@ -1381,7 +1389,9 @@ index 0000000..5338a6a
 +    // ──────────── Target HUD variant (mirrored layout) ────────────
 +
 +    &--target {
-+        left: 296px;
++        // Sits flush-left of the Player HUD with the inter-HUD gap halved
++        // per the updated .pen layout (frame 1hvgH x:500, was 520).
++        left: 288px;
 +
 +        .pixeltower-stats-hud__row { flex-direction: row-reverse; }
 +        .pixeltower-stats-hud__bar-content { flex-direction: row-reverse; }
@@ -1518,7 +1528,7 @@ new file mode 100644
 index 0000000..8eaaba4
 --- /dev/null
 +++ b/src/components/pixeltower/StatusHUD.scss
-@@ -0,0 +1,113 @@
+@@ -0,0 +1,139 @@
 +@use './tokens' as *;
 +
 +// Top-right Status HUD — matches .designs/client_ui.pen frame KVhc5.
@@ -1614,6 +1624,32 @@ index 0000000..8eaaba4
 +        align-self: stretch;
 +    }
 +
++    // Button variant — same panel chrome, plus interactive affordances.
++    // Used by the diamond row (opens Diamonds Window) and the VIP row in
++    // its "Join VIP" zero-day state.
++    &__row-btn {
++        @extend .pixeltower-status-hud__row;
++        font-family: inherit;
++        color: inherit;
++        cursor: pointer;
++        transition: filter 120ms ease, background-color 120ms ease, transform 60ms ease;
++
++        &:hover {
++            filter: brightness(1.15);
++            background: rgba(94, 127, 163, 0.55);   // tinted lift on the slate panel
++        }
++
++        &:active {
++            transform: translateY(1px);
++            filter: brightness(0.95);
++        }
++
++        &:focus-visible {
++            outline: 2px solid $pt-text;
++            outline-offset: 2px;
++        }
++    }
++
 +    &__row-icon {
 +        width: 16px;
 +        height: 16px;
@@ -1637,10 +1673,11 @@ new file mode 100644
 index 0000000..833dc80
 --- /dev/null
 +++ b/src/components/pixeltower/StatusHUD.tsx
-@@ -0,0 +1,112 @@
+@@ -0,0 +1,120 @@
 +import { GetGuestRoomResultEvent } from '@nitrots/nitro-renderer';
 +import { FC, useEffect, useState } from 'react';
 +import { LuAlarmClock, LuCrown, LuGem, LuMapPin, LuUsers, LuWallet } from 'react-icons/lu';
++import { CreateLinkEvent } from '../../api';
 +import { useMessageEvent, usePurse, useRoom } from '../../hooks';
 +
 +const DIAMOND_CURRENCY_TYPE = 5;
@@ -1654,8 +1691,8 @@ index 0000000..833dc80
 +//   1. Room pill       (LuMapPin + current room name)
 +//   2. Info row        (time pill, online-users pill)
 +//   3. Coin row        (LuWallet + credits, slate chip)
-+//   4. Diamond row     (LuGem + activity points, slate chip)
-+//   5. VIP row         (LuCrown + remaining HC days, green chip)
++//   4. Diamond row     (LuGem + activity points) — button: opens Diamonds Window
++//   5. VIP row         (LuCrown + remaining HC days, or "Join VIP" at 0 days)
 +//
 +// Data sources:
 +//   - purse   → usePurse (credits, activity points, HC days)
@@ -1739,15 +1776,453 @@ index 0000000..833dc80
 +                <LuWallet className="pixeltower-status-hud__row-icon" />
 +                <span className="pixeltower-status-hud__row-value">{ coins }</span>
 +            </div>
-+            <div className="pixeltower-status-hud__row">
++            <button
++                type="button"
++                className="pixeltower-status-hud__row-btn"
++                aria-label="Open Diamonds"
++                title="Diamonds"
++                onClick={ () => CreateLinkEvent('diamonds-window/toggle') }>
 +                <LuGem className="pixeltower-status-hud__row-icon" />
 +                <span className="pixeltower-status-hud__row-value">{ diamonds }</span>
-+            </div>
++            </button>
 +            <div className="pixeltower-status-hud__row">
 +                <LuCrown className="pixeltower-status-hud__row-icon pixeltower-status-hud__row-icon--vip" />
-+                <span className="pixeltower-status-hud__row-value">VIP · { totalClubDays } d.</span>
++                <span className="pixeltower-status-hud__row-value">
++                    { totalClubDays === 0 ? 'Join VIP' : `VIP · ${ totalClubDays } d.` }
++                </span>
 +            </div>
 +        </div>
++    );
++}
+diff --git a/src/components/pixeltower/DiamondsWindow.scss b/src/components/pixeltower/DiamondsWindow.scss
+new file mode 100644
+index 0000000..0000000
+--- /dev/null
++++ b/src/components/pixeltower/DiamondsWindow.scss
+@@ -0,0 +1,273 @@
++@use './tokens' as *;
++
++// Diamonds Window — matches .designs/client_ui.pen frame 9Ax4A.
++// Standalone modal centred over the room canvas; surfaces what diamonds
++// do plus a stub purchase form (amount picker → $USD estimate → Buy CTA).
++// Opened by clicking the Diamonds row in the Status HUD.
++
++.pixeltower-diamonds-window {
++    position: fixed;
++    top: 50%;
++    left: 50%;
++    transform: translate(-50%, -50%);
++    z-index: 1200;                                  // above HUDs (z-index:1100)
++
++    width: 440px;
++    border-radius: 3px;
++    background: #3E4E6E;
++    border: 2px solid $pt-panel-stroke;
++    box-shadow:
++        0 3px 0 rgba(0, 0, 0, 0.50),
++        0 2px 0 #7A95B8;
++
++    color: $pt-text;
++    font-family: $pt-font-family;
++    user-select: none;
++
++    display: flex;
++    flex-direction: column;
++
++    // ──────────── header (slate chip gradient) ────────────
++
++    &__header {
++        @include pt-chip;
++        border-radius: 0;
++        border: 0;
++        height: 36px;
++        padding: 0 8px 0 12px;
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        box-shadow:
++            0 1px 0 #9AB4D3,
++            0 -2px 0 $pt-panel-stroke inset;
++    }
++
++    &__header-left {
++        display: flex;
++        align-items: center;
++        gap: 8px;
++    }
++
++    &__header-title {
++        font-size: 15px;
++        font-weight: 700;
++        letter-spacing: 0.5px;
++        text-shadow: 0 1px 0 rgba(10, 20, 36, 0.5);
++    }
++
++    &__close {
++        width: 26px;
++        height: 26px;
++        border-radius: 3px;
++        background: linear-gradient(180deg,
++            #E04848 0%, #E04848 50%,
++            #7A1818 50%, #7A1818 100%);
++        border: 2px solid $pt-panel-stroke;
++        box-shadow: 0 1px 0 #FF9090;
++        color: #fff;
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        cursor: pointer;
++        padding: 0;
++
++        svg { width: 12px; height: 12px; }
++        &:hover { filter: brightness(1.1); }
++    }
++
++    // ──────────── body ────────────
++
++    &__body {
++        display: flex;
++        flex-direction: column;
++        gap: 12px;
++        padding: 16px;
++    }
++
++    &__section-label {
++        font-size: 12px;
++        font-weight: 700;
++        letter-spacing: 1px;
++        color: #9FB3CC;
++    }
++
++    &__uses {
++        display: flex;
++        flex-direction: column;
++        background: #2B3A54;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++    }
++
++    &__use {
++        display: flex;
++        align-items: center;
++        gap: 12px;
++        padding: 10px 12px;
++        font-size: 14px;
++        color: #C4D1E0;
++
++        svg { width: 18px; height: 18px; flex-shrink: 0; color: #7DD3FC; }
++        &--vip svg { color: #FFD028; }
++    }
++
++    &__amount {
++        display: flex;
++        flex-direction: column;
++        gap: 8px;
++    }
++
++    &__input-row {
++        display: flex;
++        align-items: center;
++        gap: 8px;
++    }
++
++    &__step {
++        @include pt-chip;
++        width: 44px;
++        height: 44px;
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        cursor: pointer;
++        color: $pt-text;
++        box-shadow: 0 1px 0 #9AB4D3;
++
++        svg { width: 20px; height: 20px; }
++        &:hover { filter: brightness(1.08); }
++        &:disabled { opacity: 0.4; cursor: not-allowed; }
++    }
++
++    &__input {
++        flex: 1;
++        height: 44px;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++        background: linear-gradient(180deg,
++            #1A2436 0%, #1A2436 50%,
++            #2B3A54 50%, #2B3A54 100%);
++        box-shadow: 0 -1px 0 #9AB4D3;
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        gap: 10px;
++        color: $pt-text;
++        font-size: 22px;
++        font-weight: 900;
++        font-variant-numeric: tabular-nums;
++
++        svg { width: 18px; height: 18px; color: #7DD3FC; }
++    }
++
++    &__chips {
++        display: flex;
++        gap: 6px;
++    }
++
++    &__chip {
++        @include pt-chip;
++        flex: 1;
++        padding: 8px 6px;
++        font-size: 13px;
++        font-weight: 700;
++        cursor: pointer;
++        color: $pt-text;
++        box-shadow: 0 1px 0 #9AB4D3;
++
++        &:hover { filter: brightness(1.08); }
++
++        &--active {
++            font-weight: 900;
++            background: linear-gradient(180deg,
++                #2B3A54 0%, #2B3A54 50%,
++                #5E7FA3 50%, #5E7FA3 100%);
++            box-shadow: 0 -1px 0 $pt-panel-stroke;
++        }
++    }
++
++    &__cost {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        background: #2B3A54;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++        padding: 10px 12px;
++    }
++
++    &__cost-label {
++        font-size: 12px;
++        font-weight: 700;
++        letter-spacing: 1px;
++        color: #9FB3CC;
++    }
++
++    &__cost-rate {
++        font-size: 12px;
++        color: #7A95B8;
++    }
++
++    &__cost-value {
++        display: flex;
++        align-items: center;
++        gap: 6px;
++        font-size: 24px;
++        font-weight: 900;
++    }
++
++    &__cost-usd {
++        font-size: 12px;
++        font-weight: 900;
++        letter-spacing: 1px;
++        color: #9FB3CC;
++    }
++
++    // ──────────── footer ────────────
++
++    &__footer {
++        display: flex;
++        gap: 8px;
++        padding: 12px 16px;
++        background: #2B3A54;
++        border-top: 2px solid $pt-panel-stroke;
++        box-shadow: 0 1px 0 #9AB4D3;
++    }
++
++    &__btn {
++        @include pt-chip;
++        flex: 1;
++        padding: 10px 14px;
++        font-size: 14px;
++        font-weight: 900;
++        letter-spacing: 0.5px;
++        cursor: pointer;
++        color: $pt-text;
++        box-shadow: 0 1px 0 #9AB4D3;
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        gap: 8px;
++
++        svg { width: 16px; height: 16px; }
++        &:hover { filter: brightness(1.08); }
++
++        &--buy {
++            background: linear-gradient(180deg,
++                #4E85E0 0%, #4E85E0 50%,
++                #143972 50%, #143972 100%);
++            border-color: #050F22;
++            box-shadow: 0 1px 0 #A8C4EE;
++        }
++    }
++
++    // ──────────── backdrop (dim scrim) ────────────
++
++    &__scrim {
++        position: fixed;
++        inset: 0;
++        z-index: 1199;
++        background: rgba(0, 0, 0, 0.40);
++    }
++}
+diff --git a/src/components/pixeltower/DiamondsWindow.tsx b/src/components/pixeltower/DiamondsWindow.tsx
+new file mode 100644
+index 0000000..0000000
+--- /dev/null
++++ b/src/components/pixeltower/DiamondsWindow.tsx
+@@ -0,0 +1,146 @@
++import { ILinkEventTracker } from '@nitrots/nitro-renderer';
++import { FC, useEffect, useState } from 'react';
++import { LuArrowRightLeft, LuCrown, LuGem, LuMinus, LuPlus, LuShirt, LuShoppingCart, LuStar, LuX } from 'react-icons/lu';
++import { AddEventLinkTracker, RemoveLinkEventTracker } from '../../api';
++
++// Diamonds Window — matches .designs/client_ui.pen frame 9Ax4A.
++// Triggered from the Status HUD diamond row via
++// CreateLinkEvent('diamonds-window/show|hide|toggle').
++
++const PRESETS = [ 100, 500, 1000, 5000, 10000 ];
++const RATE_USD_PER_DIAMOND = 0.0001;                // 1 diamond = 0.01¢ per design copy
++
++const formatUSD = (value: number): string =>
++    `$${ value.toFixed(2) }`;
++
++const formatNumber = (value: number): string =>
++    value.toLocaleString('en-US');
++
++export const DiamondsWindow: FC<{}> = () =>
++{
++    const [ isVisible, setIsVisible ] = useState(false);
++    const [ amount, setAmount ] = useState<number>(5000);
++
++    useEffect(() =>
++    {
++        const linkTracker: ILinkEventTracker = {
++            linkReceived: (url: string) =>
++            {
++                const parts = url.split('/');
++                if(parts.length < 2) return;
++                switch(parts[1])
++                {
++                    case 'show':   setIsVisible(true); return;
++                    case 'hide':   setIsVisible(false); return;
++                    case 'toggle': setIsVisible(v => !v); return;
++                }
++            },
++            eventUrlPrefix: 'diamonds-window/'
++        };
++        AddEventLinkTracker(linkTracker);
++        return () => RemoveLinkEventTracker(linkTracker);
++    }, []);
++
++    if(!isVisible) return null;
++
++    const close = () => setIsVisible(false);
++    const cost  = amount * RATE_USD_PER_DIAMOND;
++
++    return (
++        <>
++            <div className="pixeltower-diamonds-window__scrim" onClick={ close } />
++            <div className="pixeltower-diamonds-window" role="dialog" aria-label="Diamonds">
++                <div className="pixeltower-diamonds-window__header">
++                    <div className="pixeltower-diamonds-window__header-left">
++                        <LuGem />
++                        <span className="pixeltower-diamonds-window__header-title">Diamonds</span>
++                    </div>
++                    <button
++                        type="button"
++                        className="pixeltower-diamonds-window__close"
++                        aria-label="Close"
++                        onClick={ close }>
++                        <LuX />
++                    </button>
++                </div>
++                <div className="pixeltower-diamonds-window__body">
++                    <div>
++                        <div className="pixeltower-diamonds-window__section-label">WHAT CAN YOU DO WITH DIAMONDS?</div>
++                        <div className="pixeltower-diamonds-window__uses" style={ { marginTop: 8 } }>
++                            <div className="pixeltower-diamonds-window__use">
++                                <LuShirt />
++                                <span>Exclusive avatar clothing and accessories</span>
++                            </div>
++                            <div className="pixeltower-diamonds-window__use">
++                                <LuStar />
++                                <span>Unique features that enhance gameplay</span>
++                            </div>
++                            <div className="pixeltower-diamonds-window__use">
++                                <LuArrowRightLeft />
++                                <span>Trade or transfer to other players</span>
++                            </div>
++                            <div className="pixeltower-diamonds-window__use pixeltower-diamonds-window__use--vip">
++                                <LuCrown />
++                                <span>Unlock VIP perks and priority access</span>
++                            </div>
++                        </div>
++                    </div>
++                    <div className="pixeltower-diamonds-window__amount">
++                        <div className="pixeltower-diamonds-window__section-label">AMOUNT</div>
++                        <div className="pixeltower-diamonds-window__input-row">
++                            <button
++                                type="button"
++                                className="pixeltower-diamonds-window__step"
++                                aria-label="Decrease"
++                                disabled={ amount <= PRESETS[0] }
++                                onClick={ () => setAmount(a => Math.max(PRESETS[0], a - PRESETS[0])) }>
++                                <LuMinus />
++                            </button>
++                            <div className="pixeltower-diamonds-window__input">
++                                <LuGem />
++                                <span>{ formatNumber(amount) }</span>
++                            </div>
++                            <button
++                                type="button"
++                                className="pixeltower-diamonds-window__step"
++                                aria-label="Increase"
++                                onClick={ () => setAmount(a => a + PRESETS[0]) }>
++                                <LuPlus />
++                            </button>
++                        </div>
++                        <div className="pixeltower-diamonds-window__chips">
++                            { PRESETS.map(preset => (
++                                <button
++                                    key={ preset }
++                                    type="button"
++                                    className={ 'pixeltower-diamonds-window__chip' + (preset === amount ? ' pixeltower-diamonds-window__chip--active' : '') }
++                                    onClick={ () => setAmount(preset) }>
++                                    { formatNumber(preset) }
++                                </button>
++                            )) }
++                        </div>
++                    </div>
++                    <div className="pixeltower-diamonds-window__cost">
++                        <div>
++                            <div className="pixeltower-diamonds-window__cost-label">ESTIMATED COST</div>
++                            <div className="pixeltower-diamonds-window__cost-rate">1 diamond = 0.01¢</div>
++                        </div>
++                        <div className="pixeltower-diamonds-window__cost-value">
++                            <span>{ formatUSD(cost) }</span>
++                            <span className="pixeltower-diamonds-window__cost-usd">USD</span>
++                        </div>
++                    </div>
++                </div>
++                <div className="pixeltower-diamonds-window__footer">
++                    <button type="button" className="pixeltower-diamonds-window__btn" onClick={ close }>
++                        Cancel
++                    </button>
++                    <button type="button" className="pixeltower-diamonds-window__btn pixeltower-diamonds-window__btn--buy">
++                        <LuShoppingCart />
++                        <span>Buy { formatNumber(amount) } Diamonds</span>
++                    </button>
++                </div>
++            </div>
++        </>
 +    );
 +}
 diff --git a/src/components/pixeltower/TargetHUD.tsx b/src/components/pixeltower/TargetHUD.tsx
@@ -2230,7 +2705,7 @@ new file mode 100644
 index 0000000..1bc5a1d
 --- /dev/null
 +++ b/src/components/pixeltower/_tokens.scss
-@@ -0,0 +1,85 @@
+@@ -0,0 +1,87 @@
 +// Shared design tokens + mixins for pixeltower HUDs.
 +// Palette extracted from .designs/client_ui.pen — all four HUD frames
 +// (Player HzOI4, Target 1hvgH, Status KVhc5, Drawer tW1BU) share the same
@@ -2276,7 +2751,9 @@ index 0000000..1bc5a1d
 +$pt-wanted-active-glow: #FFF4B0;
 +
 +// ──────────── Badges / accents ────────────
-+$pt-username-badge:        #0A1424;
++// Username badge — translucent slate to match .pen frames HzOI4 > ONOMa
++// (#0A142499, ~60% alpha). Avatar art shows through, room canvas does not.
++$pt-username-badge:        rgba(10, 20, 36, 0.60);
 +$pt-username-badge-target: rgba(0, 0, 0, 0.60);   // #00000099
 +$pt-vip-top:      #FFE066;                        // VIP badge gradient top half
 +$pt-vip-bottom:   #D99A00;                        // VIP badge gradient bottom half
