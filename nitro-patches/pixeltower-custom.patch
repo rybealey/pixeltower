@@ -2555,7 +2555,7 @@ new file mode 100644
 index 0000000..2c6ae63
 --- /dev/null
 +++ b/src/components/pixeltower/_app-overrides.scss
-@@ -0,0 +1,71 @@
+@@ -0,0 +1,72 @@
 +@use './tokens' as *;
 +
 +// Nitro's Bootstrap fork sets $body-bg: $black (see
@@ -2609,13 +2609,14 @@ index 0000000..2c6ae63
 +    display: none;
 +}
 +
-+// NitroCardContentView wraps body content in Bootstrap's `.card-body`,
-+// which paints flat gray (#EFEFEF-ish) by default. Repaint it slate so
-+// every pixeltower dialog (Diamonds, Commands List, future windows)
-+// reads as the same family as the toolbar/HUD chrome instead of a
-+// stock Bootstrap card.
-+.nitro-card.theme-primary .card-body,
-+.nitro-card.theme-primary-slim .card-body {
++// NitroCardContentView renders `.content-area` (see common/card/
++// NitroCardContentView.tsx) and NitroCardView.scss paints it $light
++// (#DFDFDF) by default — that's the gray every primary dialog body
++// shows. Repaint it slate so every pixeltower dialog (Diamonds,
++// Commands List, future windows) reads as the same family as the
++// toolbar/HUD chrome instead of a stock Bootstrap card.
++.nitro-card.theme-primary .content-area,
++.nitro-card.theme-primary-slim .content-area {
 +    background: #3E4E6E;
 +}
 +
