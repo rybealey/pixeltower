@@ -82,6 +82,7 @@ Everything in this section is **live** in the current server build.
 | `:fire <user\|x>` | Corp owner | Remove an employee |
 | `:promote <user\|x> <rank>` | Corp owner | Change an employee's rank |
 | `:startwork` / `:stopwork` | Employees | Clock in / clock out (auto-clockout on idle) |
+| `:quitjob` | Employees | Leave your corporation voluntarily |
 | `:award <user\|x> <currency> <amount>` | Staff (rank 5+) | Audited coin/bank adjustment |
 | `:revive <user\|x>` | Staff (rank 5+) | Full HP + energy refill |
 | `:roomsettings` | Staff | Opens the room settings window for the current room |

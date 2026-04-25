@@ -283,4 +283,29 @@ public final class CorporationManager {
         LOGGER.info("promote caller={} target={} corp={} newRank={}",
                 callerHabboId, targetHabboId, corp.getId(), newRank);
     }
+
+    /**
+     * Voluntary self-removal from one's corp. No permission checks — a
+     * member can always walk away. Mirrors {@link #fire} on the side
+     * effects: deletes the membership row, drops the cache entry, and
+     * stops any active shift.
+     */
+    public static void quit(int habboId) throws NotInCorporationException {
+        CorporationMember member = MEMBER_BY_HABBO.get(habboId);
+        if (member == null) throw new NotInCorporationException("caller");
+
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "DELETE FROM rp_corporation_members WHERE habbo_id = ?")) {
+            ps.setInt(1, habboId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.error("quit failed habbo={} corp={}", habboId, member.getCorpId(), e);
+            throw new RuntimeException("quit DB write failed", e);
+        }
+
+        MEMBER_BY_HABBO.remove(habboId);
+        ShiftManager.stopWork(habboId);
+        LOGGER.info("quit habbo={} corp={}", habboId, member.getCorpId());
+    }
 }
