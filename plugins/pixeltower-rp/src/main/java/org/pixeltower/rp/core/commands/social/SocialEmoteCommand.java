@@ -6,7 +6,6 @@ import com.eu.habbo.habbohotel.rooms.Room;
 import com.eu.habbo.habbohotel.rooms.RoomChatMessageBubbles;
 import com.eu.habbo.habbohotel.rooms.RoomUnit;
 import com.eu.habbo.habbohotel.users.Habbo;
-import com.eu.habbo.messages.outgoing.rooms.users.RoomUserEffectComposer;
 import org.pixeltower.rp.core.NoSuchUserException;
 import org.pixeltower.rp.core.NoTargetException;
 import org.pixeltower.rp.core.RpChat;
@@ -96,15 +95,16 @@ abstract class SocialEmoteCommand extends Command {
     }
 
     private void applyEffect(RoomUnit unit) {
-        // Arcturus 3.0.0 API: RoomUnit#setEffectId(effectId, durationSeconds)
-        // stores the effect + auto-expiry timestamp on the unit, but doesn't
-        // broadcast — viewers won't see the effect until a RoomUserEffectComposer
-        // is sent to the room. The unit auto-clears server-side after the
-        // duration elapses, so no manual cleanup is needed.
-        unit.setEffectId(this.effectId, DURATION_SECONDS);
+        // Use Room#giveEffect (the same helper Arcturus' own :enable handler
+        // calls) — it converts the duration into the absolute epoch end-
+        // timestamp RoomUnit#setEffectId actually expects, broadcasts the
+        // RoomUserEffectComposer, and respects Room.allowEffects. Calling
+        // setEffectId directly with `DURATION_SECONDS` would store an
+        // end-timestamp of "10 seconds after the 1970 epoch", causing the
+        // effect to expire on the very next tick — a single-frame flash.
         Room room = unit.getRoom();
         if (room != null) {
-            room.sendComposer(new RoomUserEffectComposer(unit).compose());
+            room.giveEffect(unit, this.effectId, DURATION_SECONDS);
         }
     }
 }
