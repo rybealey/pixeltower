@@ -1,7 +1,7 @@
 diff --git a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetAvatarView.tsx b/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetAvatarView.tsx
 --- a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetAvatarView.tsx
 +++ b/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetAvatarView.tsx
-@@ -218,10 +218,6 @@
+@@ -218,15 +218,6 @@
                      <ContextMenuListItemView onClick={ event => processAction('whisper') }>
                          { LocalizeText('infostand.button.whisper') }
                      </ContextMenuListItemView>
@@ -9,10 +9,15 @@ diff --git a/src/components/room/widgets/avatar-info/menu/AvatarInfoWidgetAvatar
 -                        <ContextMenuListItemView onClick={ event => processAction('respect') }>
 -                            { LocalizeText('infostand.button.respect', [ 'count' ], [ userRespectRemaining.toString() ]) }
 -                        </ContextMenuListItemView> }
-                     { !canRequestFriend(avatarInfo.webID) &&
-                         <ContextMenuListItemView onClick={ event => processAction('relationship') }>
-                             { LocalizeText('infostand.link.relationship') }
-@@ -235,9 +231,6 @@
+-                    { !canRequestFriend(avatarInfo.webID) &&
+-                        <ContextMenuListItemView onClick={ event => processAction('relationship') }>
+-                            { LocalizeText('infostand.link.relationship') }
+-                            <FaChevronRight className="right fa-icon" />
+-                        </ContextMenuListItemView> }
+                     { !avatarInfo.isIgnored &&
+                         <ContextMenuListItemView onClick={ event => processAction('ignore') }>
+                             { LocalizeText('infostand.button.ignore') }
+@@ -235,9 +226,6 @@
                          <ContextMenuListItemView onClick={ event => processAction('unignore') }>
                              { LocalizeText('infostand.button.unignore') }
                          </ContextMenuListItemView> }
