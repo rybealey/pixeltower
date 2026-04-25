@@ -293,7 +293,7 @@ diff --git a/src/components/pixeltower/CorporationsWindow.tsx b/src/components/p
 new file mode 100644
 --- /dev/null
 +++ b/src/components/pixeltower/CorporationsWindow.tsx
-@@ -0,0 +1,171 @@
+@@ -0,0 +1,169 @@
 +import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 +import { FC, useEffect, useMemo, useState } from 'react';
 +import { LuPackage, LuUsers } from 'react-icons/lu';
@@ -332,7 +332,6 @@ new file mode 100644
 +        if(bucket) bucket.members.push(m);
 +    });
 +    return Array.from(ranksByNum.entries())
-+        .filter(([ , v ]) => v.members.length > 0)
 +        .map(([ rankNum, v ]) => ({ rankNum, ...v }))
 +        .sort((a, b) => b.rankNum - a.rankNum);
 +}
@@ -427,34 +426,33 @@ new file mode 100644
 +                                        </div>
 +                                    </div>
 +                                </div>
-+                                { rankBuckets.length === 0 && (
-+                                    <div className="pixeltower-corporations-window__empty">No employees yet.</div>
-+                                ) }
 +                                { rankBuckets.map(bucket => (
 +                                    <div key={ bucket.rankNum } className="pixeltower-corporations-window__rank">
 +                                        <div className="pixeltower-corporations-window__rank-header">
 +                                            <span className="pixeltower-corporations-window__rank-title">{ bucket.title }</span>
 +                                            <span className="pixeltower-corporations-window__wage">${ formatNumber(bucket.salary) }</span>
 +                                        </div>
-+                                        <div className="pixeltower-corporations-window__rank-grid">
-+                                            { bucket.members.map(member => (
-+                                                <div key={ member.habboId } className="pixeltower-corporations-window__employee">
-+                                                    <div className="pixeltower-corporations-window__avatar">
-+                                                        { member.figure
-+                                                            ? <LayoutAvatarImageView figure={ member.figure } direction={ 2 } headOnly={ true } />
-+                                                            : null
-+                                                        }
++                                        { bucket.members.length > 0 && (
++                                            <div className="pixeltower-corporations-window__rank-grid">
++                                                { bucket.members.map(member => (
++                                                    <div key={ member.habboId } className="pixeltower-corporations-window__employee">
++                                                        <div className="pixeltower-corporations-window__avatar">
++                                                            { member.figure
++                                                                ? <LayoutAvatarImageView figure={ member.figure } direction={ 2 } />
++                                                                : null
++                                                            }
++                                                        </div>
++                                                        <div className="pixeltower-corporations-window__employee-text">
++                                                            <span className="pixeltower-corporations-window__employee-name">{ member.username }</span>
++                                                            <span className="pixeltower-corporations-window__employee-rank">{ bucket.title }</span>
++                                                        </div>
 +                                                    </div>
-+                                                    <div className="pixeltower-corporations-window__employee-text">
-+                                                        <span className="pixeltower-corporations-window__employee-name">{ member.username }</span>
-+                                                        <span className="pixeltower-corporations-window__employee-rank">{ bucket.title }</span>
-+                                                    </div>
-+                                                </div>
-+                                            )) }
-+                                            { bucket.members.length % 2 === 1 && (
-+                                                <div className="pixeltower-corporations-window__employee pixeltower-corporations-window__employee--filler" />
-+                                            ) }
-+                                        </div>
++                                                )) }
++                                                { bucket.members.length % 2 === 1 && (
++                                                    <div className="pixeltower-corporations-window__employee pixeltower-corporations-window__employee--filler" />
++                                                ) }
++                                            </div>
++                                        ) }
 +                                    </div>
 +                                )) }
 +                            </>
@@ -469,7 +467,7 @@ diff --git a/src/components/pixeltower/CorporationsWindow.scss b/src/components/
 new file mode 100644
 --- /dev/null
 +++ b/src/components/pixeltower/CorporationsWindow.scss
-@@ -0,0 +1,223 @@
+@@ -0,0 +1,232 @@
 +@use './tokens' as *;
 +
 +// Corporations Window — matches .designs/client_ui.pen frame qwlWN.
@@ -656,19 +654,28 @@ new file mode 100644
 +    }
 +
 +    &__avatar {
++        position: relative;
 +        width: 36px;
 +        height: 36px;
 +        border-radius: 3px;
 +        background: linear-gradient(180deg, #A0A8B5 0%, #A0A8B5 50%, #6B7280 50%, #6B7280 100%);
 +        flex-shrink: 0;
 +        overflow: hidden;
-+        display: flex;
-+        align-items: center;
-+        justify-content: center;
 +
++        // LayoutAvatarImageView renders a bare <div class="avatar-image"> with
++        // only backgroundImage set — no dimensions. Size it to the LARGE
++        // full-body sprite (64x110) and crop down to just the head via
++        // top:-12 + overflow:hidden on the parent. Mirrors StatsHUD.
 +        .avatar-image {
-+            transform: scale(0.65);
-+            transform-origin: center top;
++            position: absolute;
++            top: -12px;
++            left: 50%;
++            transform: translateX(-50%);
++            width: 64px;
++            height: 110px;
++            background-position: center top;
++            background-repeat: no-repeat;
++            image-rendering: pixelated;
 +        }
 +    }
 +
