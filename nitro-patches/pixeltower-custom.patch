@@ -2570,7 +2570,7 @@ new file mode 100644
 index 0000000..2c6ae63
 --- /dev/null
 +++ b/src/components/pixeltower/_app-overrides.scss
-@@ -0,0 +1,61 @@
+@@ -0,0 +1,70 @@
 +@use './tokens' as *;
 +
 +// Nitro's Bootstrap fork sets $body-bg: $black (see
@@ -2622,6 +2622,15 @@ index 0000000..2c6ae63
 +
 +.nitro-card.theme-primary-slim .nitro-card-header:before {
 +    display: none;
++}
++
++// Upstream NitroCardView.scss never sets a color on .nitro-card-header-close,
++// so FaTimes inherits the Bootstrap body color (near-black) and renders as a
++// black X on the red close chip. Force white so the icon reads correctly on
++// the red chip in every primary card (Diamonds, Commands List, alerts, etc.).
++.nitro-card.theme-primary .nitro-card-header-close,
++.nitro-card.theme-primary-slim .nitro-card-header-close {
++    color: #FFFFFF;
 +}
 +
 +// Hide the floating name-tag pill above avatars (own user, friends,
