@@ -707,7 +707,7 @@ new file mode 100644
 +        // as GroupMembersView .avatar-head, tuned for a 36×36 slot.
 +        .avatar-image {
 +            position: absolute;
-+            top: 18px;
++            top: -42px;
 +            left: -27px;
 +        }
 +    }
