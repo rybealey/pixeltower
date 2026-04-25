@@ -205,7 +205,7 @@ index 0000000..6555070
 +
 +.pixeltower-offer-popup {
 +    position: absolute;
-+    top: 152px;
++    top: 100px;
 +    left: 12px;
 +    z-index: 1100;
 +
