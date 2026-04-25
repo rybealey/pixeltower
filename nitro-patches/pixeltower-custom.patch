@@ -1799,86 +1799,21 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/src/components/pixeltower/DiamondsWindow.scss
-@@ -0,0 +1,273 @@
+@@ -0,0 +1,199 @@
 +@use './tokens' as *;
 +
 +// Diamonds Window — matches .designs/client_ui.pen frame 9Ax4A.
-+// Standalone modal centred over the room canvas; surfaces what diamonds
-+// do plus a stub purchase form (amount picker → $USD estimate → Buy CTA).
-+// Opened by clicking the Diamonds row in the Status HUD.
++// Outer chrome is NitroCardView (theme="primary") so it inherits the native
++// Habbo card frame, draggable header, and red X close button — same chrome
++// every other dialog uses (Commands List, Friends, Navigator, etc.). The
++// `_app-overrides.scss` rules restyle the header into the slate chip
++// gradient, so the design language matches without per-window CSS.
 +
 +.pixeltower-diamonds-window {
-+    position: fixed;
-+    top: 50%;
-+    left: 50%;
-+    transform: translate(-50%, -50%);
-+    z-index: 1200;                                  // above HUDs (z-index:1100)
-+
 +    width: 440px;
-+    border-radius: 3px;
-+    background: #3E4E6E;
-+    border: 2px solid $pt-panel-stroke;
-+    box-shadow:
-+        0 3px 0 rgba(0, 0, 0, 0.50),
-+        0 2px 0 #7A95B8;
-+
++    max-width: calc(100vw - 24px);
 +    color: $pt-text;
 +    font-family: $pt-font-family;
-+    user-select: none;
-+
-+    display: flex;
-+    flex-direction: column;
-+
-+    // ──────────── header (slate chip gradient) ────────────
-+
-+    &__header {
-+        @include pt-chip;
-+        border-radius: 0;
-+        border: 0;
-+        height: 36px;
-+        padding: 0 8px 0 12px;
-+        display: flex;
-+        align-items: center;
-+        justify-content: space-between;
-+        box-shadow:
-+            0 1px 0 #9AB4D3,
-+            0 -2px 0 $pt-panel-stroke inset;
-+    }
-+
-+    &__header-left {
-+        display: flex;
-+        align-items: center;
-+        gap: 8px;
-+    }
-+
-+    &__header-title {
-+        font-size: 15px;
-+        font-weight: 700;
-+        letter-spacing: 0.5px;
-+        text-shadow: 0 1px 0 rgba(10, 20, 36, 0.5);
-+    }
-+
-+    &__close {
-+        width: 26px;
-+        height: 26px;
-+        border-radius: 3px;
-+        background: linear-gradient(180deg,
-+            #E04848 0%, #E04848 50%,
-+            #7A1818 50%, #7A1818 100%);
-+        border: 2px solid $pt-panel-stroke;
-+        box-shadow: 0 1px 0 #FF9090;
-+        color: #fff;
-+        display: flex;
-+        align-items: center;
-+        justify-content: center;
-+        cursor: pointer;
-+        padding: 0;
-+
-+        svg { width: 12px; height: 12px; }
-+        &:hover { filter: brightness(1.1); }
-+    }
-+
-+    // ──────────── body ────────────
 +
 +    &__body {
 +        display: flex;
@@ -2063,33 +1998,28 @@ index 0000000..0000000
 +            box-shadow: 0 1px 0 #A8C4EE;
 +        }
 +    }
-+
-+    // ──────────── backdrop (dim scrim) ────────────
-+
-+    &__scrim {
-+        position: fixed;
-+        inset: 0;
-+        z-index: 1199;
-+        background: rgba(0, 0, 0, 0.40);
-+    }
 +}
 diff --git a/src/components/pixeltower/DiamondsWindow.tsx b/src/components/pixeltower/DiamondsWindow.tsx
 new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/src/components/pixeltower/DiamondsWindow.tsx
-@@ -0,0 +1,146 @@
+@@ -0,0 +1,137 @@
 +import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 +import { FC, useEffect, useState } from 'react';
-+import { LuArrowRightLeft, LuCrown, LuGem, LuMinus, LuPlus, LuShirt, LuShoppingCart, LuStar, LuX } from 'react-icons/lu';
++import { LuArrowRightLeft, LuCrown, LuGem, LuMinus, LuPlus, LuShirt, LuShoppingCart, LuStar } from 'react-icons/lu';
 +import { AddEventLinkTracker, RemoveLinkEventTracker } from '../../api';
++import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 +
 +// Diamonds Window — matches .designs/client_ui.pen frame 9Ax4A.
 +// Triggered from the Status HUD diamond row via
-+// CreateLinkEvent('diamonds-window/show|hide|toggle').
++// CreateLinkEvent('diamonds-window/show|hide|toggle'). Uses the native
++// Nitro card chrome (draggable header, red X close button) for parity
++// with every other in-game dialog.
 +
 +const PRESETS = [ 100, 500, 1000, 5000, 10000 ];
-+const RATE_USD_PER_DIAMOND = 0.0001;                // 1 diamond = 0.01¢ per design copy
++// Pricing: 1 diamond = $0.01 (1 cent). 100 diamonds = $1.00.
++const RATE_USD_PER_DIAMOND = 0.01;
 +
 +const formatUSD = (value: number): string =>
 +    `$${ value.toFixed(2) }`;
@@ -2128,22 +2058,9 @@ index 0000000..0000000
 +    const cost  = amount * RATE_USD_PER_DIAMOND;
 +
 +    return (
-+        <>
-+            <div className="pixeltower-diamonds-window__scrim" onClick={ close } />
-+            <div className="pixeltower-diamonds-window" role="dialog" aria-label="Diamonds">
-+                <div className="pixeltower-diamonds-window__header">
-+                    <div className="pixeltower-diamonds-window__header-left">
-+                        <LuGem />
-+                        <span className="pixeltower-diamonds-window__header-title">Diamonds</span>
-+                    </div>
-+                    <button
-+                        type="button"
-+                        className="pixeltower-diamonds-window__close"
-+                        aria-label="Close"
-+                        onClick={ close }>
-+                        <LuX />
-+                    </button>
-+                </div>
++        <NitroCardView uniqueKey="pixeltower-diamonds" theme="primary" classNames={ [ 'pixeltower-diamonds-window' ] }>
++            <NitroCardHeaderView headerText="Diamonds" onCloseClick={ close } />
++            <NitroCardContentView classNames={ [ 'pixeltower-diamonds-window__content' ] } overflow="hidden">
 +                <div className="pixeltower-diamonds-window__body">
 +                    <div>
 +                        <div className="pixeltower-diamonds-window__section-label">WHAT CAN YOU DO WITH DIAMONDS?</div>
@@ -2204,7 +2121,7 @@ index 0000000..0000000
 +                    <div className="pixeltower-diamonds-window__cost">
 +                        <div>
 +                            <div className="pixeltower-diamonds-window__cost-label">ESTIMATED COST</div>
-+                            <div className="pixeltower-diamonds-window__cost-rate">1 diamond = 0.01¢</div>
++                            <div className="pixeltower-diamonds-window__cost-rate">1 diamond = $0.01</div>
 +                        </div>
 +                        <div className="pixeltower-diamonds-window__cost-value">
 +                            <span>{ formatUSD(cost) }</span>
@@ -2221,8 +2138,8 @@ index 0000000..0000000
 +                        <span>Buy { formatNumber(amount) } Diamonds</span>
 +                    </button>
 +                </div>
-+            </div>
-+        </>
++            </NitroCardContentView>
++        </NitroCardView>
 +    );
 +}
 diff --git a/src/components/pixeltower/TargetHUD.tsx b/src/components/pixeltower/TargetHUD.tsx
