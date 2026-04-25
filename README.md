@@ -83,6 +83,8 @@ Everything in this section is **live** in the current server build.
 | `:promote <user\|x> <rank>` | Corp owner | Change an employee's rank |
 | `:startwork` / `:stopwork` | Employees | Clock in / clock out (auto-clockout on idle) |
 | `:quitjob` | Employees | Leave your corporation voluntarily |
+| `:superhire <user\|x> <corp_key> [rank]` | Staff (rank 5+) | Force-hire any user into any corp (rank defaults to entry) |
+| `:superfire <user\|x>` | Staff (rank 5+) | Force-remove any user from their corp |
 | `:award <user\|x> <currency> <amount>` | Staff (rank 5+) | Audited coin/bank adjustment |
 | `:revive <user\|x>` | Staff (rank 5+) | Full HP + energy refill |
 | `:roomsettings` | Staff | Opens the room settings window for the current room |

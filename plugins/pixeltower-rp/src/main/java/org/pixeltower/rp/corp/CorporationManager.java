@@ -285,6 +285,70 @@ public final class CorporationManager {
     }
 
     /**
+     * Staff-only force-hire. Skips the caller-rank checks {@link #hire}
+     * runs (the actor is the server, not a corp member). Still validates
+     * corp existence, rank existence, and the one-corp-at-a-time invariant.
+     */
+    public static void superHire(int targetHabboId, int corpId, int rankNum)
+            throws AlreadyInCorporationException, CorpRankNotFoundException {
+        Corporation corp = BY_ID.get(corpId);
+        if (corp == null) {
+            throw new IllegalArgumentException("corp_id " + corpId + " not found");
+        }
+        if (MEMBER_BY_HABBO.containsKey(targetHabboId)) {
+            throw new AlreadyInCorporationException();
+        }
+        if (corp.getRanks().get(rankNum) == null) {
+            throw new CorpRankNotFoundException(rankNum, corp.getCorpKey());
+        }
+
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "INSERT INTO rp_corporation_members (corp_id, habbo_id, rank_num) "
+                             + "VALUES (?, ?, ?)")) {
+            ps.setInt(1, corpId);
+            ps.setInt(2, targetHabboId);
+            ps.setInt(3, rankNum);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.error("superHire failed target={} corp={} rank={}",
+                    targetHabboId, corpId, rankNum, e);
+            throw new RuntimeException("superHire DB write failed", e);
+        }
+
+        MEMBER_BY_HABBO.put(targetHabboId,
+                new CorporationMember(corpId, targetHabboId, rankNum, Instant.now()));
+        LOGGER.info("superHire target={} corp={} rank={}",
+                targetHabboId, corpId, rankNum);
+    }
+
+    /**
+     * Staff-only force-fire. Skips the caller-rank checks {@link #fire}
+     * runs. Mirrors {@link #quit} on side effects (DB delete + cache
+     * drop + shift stop).
+     */
+    public static void superFire(int targetHabboId) throws NotInCorporationException {
+        CorporationMember target = MEMBER_BY_HABBO.get(targetHabboId);
+        if (target == null) throw new NotInCorporationException("target");
+
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "DELETE FROM rp_corporation_members WHERE habbo_id = ?")) {
+            ps.setInt(1, targetHabboId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.error("superFire failed target={} corp={}",
+                    targetHabboId, target.getCorpId(), e);
+            throw new RuntimeException("superFire DB write failed", e);
+        }
+
+        MEMBER_BY_HABBO.remove(targetHabboId);
+        ShiftManager.stopWork(targetHabboId);
+        LOGGER.info("superFire target={} corp={}",
+                targetHabboId, target.getCorpId());
+    }
+
+    /**
      * Voluntary self-removal from one's corp. No permission checks — a
      * member can always walk away. Mirrors {@link #fire} on the side
      * effects: deletes the membership row, drops the cache entry, and

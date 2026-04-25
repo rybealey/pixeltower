@@ -1,6 +1,7 @@
 package org.pixeltower.rp.corp;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,6 +46,16 @@ public final class Corporation {
 
     public Optional<CorporationRank> getRank(int rankNum) {
         return Optional.ofNullable(this.ranksByNum.get(rankNum));
+    }
+
+    /**
+     * Lowest-numbered rank in the ladder — the "entry" rank a fresh hire
+     * lands at when no rank is specified. Empty if the corp has no
+     * ranks defined yet.
+     */
+    public Optional<CorporationRank> getEntryRank() {
+        return this.ranksByNum.values().stream()
+                .min(Comparator.comparingInt(CorporationRank::getRankNum));
     }
 
     void addRank(CorporationRank rank) {

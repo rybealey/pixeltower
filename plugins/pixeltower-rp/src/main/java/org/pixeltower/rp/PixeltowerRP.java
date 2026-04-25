@@ -39,6 +39,8 @@ import org.pixeltower.rp.corp.commands.PromoteCommand;
 import org.pixeltower.rp.corp.commands.QuitJobCommand;
 import org.pixeltower.rp.corp.commands.StartWorkCommand;
 import org.pixeltower.rp.corp.commands.StopWorkCommand;
+import org.pixeltower.rp.corp.commands.SuperFireCommand;
+import org.pixeltower.rp.corp.commands.SuperHireCommand;
 import org.pixeltower.rp.corp.tasks.PaycheckTask;
 import org.pixeltower.rp.death.DeathState;
 import org.pixeltower.rp.economy.commands.AwardCommand;
@@ -230,6 +232,8 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         CommandHandler.addCommand(new StartWorkCommand());
         CommandHandler.addCommand(new StopWorkCommand());
         CommandHandler.addCommand(new QuitJobCommand());
+        CommandHandler.addCommand(new SuperHireCommand());
+        CommandHandler.addCommand(new SuperFireCommand());
         CommandHandler.addCommand(new StatsCommand());
         CommandHandler.addCommand(new RestoreCommand());
         CommandHandler.addCommand(new KillCommand());
