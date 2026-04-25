@@ -487,7 +487,7 @@ diff --git a/src/components/pixeltower/CorporationsWindow.scss b/src/components/
 new file mode 100644
 --- /dev/null
 +++ b/src/components/pixeltower/CorporationsWindow.scss
-@@ -0,0 +1,243 @@
+@@ -0,0 +1,245 @@
 +@use './tokens' as *;
 +
 +// Corporations Window — matches .designs/client_ui.pen frame qwlWN.
@@ -514,10 +514,12 @@ new file mode 100644
 +    color: $pt-corp-text-strong;
 +    font-family: $pt-font-family;
 +
-+    // Cap to ~75vh so the window never escapes the viewport. Body grows
-+    // up to that limit and the right pane scrolls independently when the
-+    // selected corp has more employees than fit.
-+    max-height: 75vh;
++    // Fixed height so the window doesn't shrink for sparsely-populated
++    // corps (e.g. The Armory with 0 employees). The right pane scrolls
++    // when employees exceed the available space. Capped on short viewports
++    // so it never escapes the visible area.
++    height: 600px;
++    max-height: calc(100vh - 80px);
 +
 +    &__content {
 +        display: flex;
