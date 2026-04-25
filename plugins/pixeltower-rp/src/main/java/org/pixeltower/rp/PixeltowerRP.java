@@ -62,7 +62,6 @@ import org.pixeltower.rp.medical.commands.RespawnCommand;
 import org.pixeltower.rp.functional.InteractionRpFunctional;
 import org.pixeltower.rp.stats.PlayerStats;
 import org.pixeltower.rp.stats.StatsManager;
-import org.pixeltower.rp.stats.SuicideService;
 import org.pixeltower.rp.stats.commands.KillCommand;
 import org.pixeltower.rp.stats.commands.RestoreCommand;
 import org.pixeltower.rp.stats.commands.SetEnergyCommand;
@@ -335,7 +334,6 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
             TargetTracker.clear(habboId);
             ShiftManager.stopWork(habboId);
             StatsManager.onDisconnect(habboId);
-            SuicideService.cancel(habboId);
             EngagementRegistry.terminateAll(habboId, "logout");
             FightService.onDisconnect(habboId);
         }
