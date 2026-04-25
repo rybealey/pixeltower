@@ -30,6 +30,7 @@ import org.pixeltower.rp.core.TargetService;
 import org.pixeltower.rp.core.TargetTracker;
 import org.pixeltower.rp.core.commands.DanceCommand;
 import org.pixeltower.rp.core.commands.TargetCommand;
+import org.pixeltower.rp.core.commands.WardrobeCommand;
 import org.pixeltower.rp.corp.CorporationManager;
 import org.pixeltower.rp.corp.ShiftManager;
 import org.pixeltower.rp.corp.commands.FireCommand;
@@ -219,6 +220,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         CommandHandler.addCommand(new AwardCommand());
         CommandHandler.addCommand(new TargetCommand());
         CommandHandler.addCommand(new DanceCommand());
+        CommandHandler.addCommand(new WardrobeCommand());
         CommandHandler.addCommand(new HireCommand());
         CommandHandler.addCommand(new FireCommand());
         CommandHandler.addCommand(new PromoteCommand());
