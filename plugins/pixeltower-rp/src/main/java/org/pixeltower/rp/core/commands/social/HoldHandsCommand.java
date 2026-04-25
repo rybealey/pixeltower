@@ -2,7 +2,7 @@ package org.pixeltower.rp.core.commands.social;
 
 /**
  * {@code :holdhands <user|x>} — reach out and take their hand. Both avatars
- * get effect 9 for two seconds; the room sees a yellow
+ * get effect 9 for seven seconds; the room sees a yellow
  * {@code *<caller> takes <target>'s hand*}.
  */
 public class HoldHandsCommand extends SocialEmoteCommand {
