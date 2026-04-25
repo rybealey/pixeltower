@@ -806,7 +806,7 @@ index 0000000..fed70a5
 +    { name: 'promote',      params: '%user% %rank%',            paramsPlaceholder: true, description: "Change a corp member's rank (requires CAN_PROMOTE)", category: 'job' },
 +    // Staff — economy → stats → combat → rooms
 +    { name: 'award',        params: '%user% %currency% %amount%', paramsPlaceholder: true, description: "Credit or debit a player's coins or bank",      category: 'staff' },
-+    { name: 'revive',       params: '%user%',                   paramsPlaceholder: true, description: "Restore a player's HP and energy to max",          category: 'staff' },
++    { name: 'restore',      params: '%user%',                   paramsPlaceholder: true, description: "Restore a player's HP and energy to max",          category: 'staff' },
 +    { name: 'sethealth',    params: '%user% %value%',           paramsPlaceholder: true, description: "Set a player's HP",                                category: 'staff' },
 +    { name: 'setenergy',    params: '%user% %value%',           paramsPlaceholder: true, description: "Set a player's energy",                            category: 'staff' },
 +    { name: 'kill',         params: '%user%',                   paramsPlaceholder: true, description: 'Instantly KO a player',                            category: 'staff' },

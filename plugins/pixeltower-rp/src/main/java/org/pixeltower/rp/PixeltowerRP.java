@@ -60,7 +60,7 @@ import org.pixeltower.rp.functional.InteractionRpFunctional;
 import org.pixeltower.rp.stats.PlayerStats;
 import org.pixeltower.rp.stats.StatsManager;
 import org.pixeltower.rp.stats.commands.KillCommand;
-import org.pixeltower.rp.stats.commands.ReviveCommand;
+import org.pixeltower.rp.stats.commands.RestoreCommand;
 import org.pixeltower.rp.stats.commands.SetEnergyCommand;
 import org.pixeltower.rp.stats.commands.SetHealthCommand;
 import org.pixeltower.rp.stats.commands.StatsCommand;
@@ -227,7 +227,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         CommandHandler.addCommand(new StartWorkCommand());
         CommandHandler.addCommand(new StopWorkCommand());
         CommandHandler.addCommand(new StatsCommand());
-        CommandHandler.addCommand(new ReviveCommand());
+        CommandHandler.addCommand(new RestoreCommand());
         CommandHandler.addCommand(new KillCommand());
         CommandHandler.addCommand(new SetHealthCommand());
         CommandHandler.addCommand(new SetEnergyCommand());

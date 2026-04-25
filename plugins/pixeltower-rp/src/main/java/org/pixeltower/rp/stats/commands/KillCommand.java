@@ -18,7 +18,7 @@ import org.pixeltower.rp.stats.outgoing.UpdatePlayerStatsComposer;
  * (cache + DB via {@link StatsManager#killPlayer(int)}) and shouts a
  * flavor-text emote visible to everyone in the room.
  *
- * Gated by {@code rp.admin.min_rank}, matching {@link ReviveCommand}.
+ * Gated by {@code rp.admin.min_rank}, matching {@link RestoreCommand}.
  */
 public class KillCommand extends Command {
 
