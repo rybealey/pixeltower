@@ -2,7 +2,7 @@ package org.pixeltower.rp.core.commands.social;
 
 /**
  * {@code :hug <user|x>} — a warm hug. Both avatars get effect 168 for ten
- * seconds; the room sees a yellow {@code *<caller> gives <target> a warm hug*}.
+ * seconds; the room sees a hearts {@code *<caller> gives <target> a warm hug*}.
  */
 public class HugCommand extends SocialEmoteCommand {
 

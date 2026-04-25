@@ -19,7 +19,7 @@ import org.pixeltower.rp.fight.FightRange;
  * {@code :kiss}, {@code :holdhands}, {@code :bite}). All four commands
  * resolve a target by name (or {@code x}), gate on adjacency / online /
  * self-target, apply a transient avatar effect to both avatars for ten
- * seconds, and shout an asterisk-wrapped action emote in the yellow
+ * seconds, and shout an asterisk-wrapped action emote in the hearts
  * bubble — which the action-emote Nitro patch renders as
  * {@code *<caller> <verb> <target>*} for everyone in the room.
  *
@@ -91,7 +91,7 @@ abstract class SocialEmoteCommand extends Command {
         applyEffect(caller.getRoomUnit());
         applyEffect(target.getRoomUnit());
 
-        RpChat.emote(caller, "*" + emoteTemplate.formatted(resolved.username) + "*");
+        RpChat.affectionEmote(caller, "*" + emoteTemplate.formatted(resolved.username) + "*");
         return true;
     }
 
