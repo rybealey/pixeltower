@@ -74,6 +74,7 @@ import org.pixeltower.rp.offer.OfferManager;
 import org.pixeltower.rp.offer.OfferRegistry;
 import org.pixeltower.rp.offer.OfferService;
 import org.pixeltower.rp.offer.PendingOffer;
+import org.pixeltower.rp.offer.commands.HealCommand;
 import org.pixeltower.rp.offer.commands.OfferCommand;
 import org.pixeltower.rp.offer.services.HealOfferService;
 import org.pixeltower.rp.stats.PlayerStats;
@@ -269,6 +270,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         CommandHandler.addCommand(new HoldHandsCommand());
         CommandHandler.addCommand(new BiteCommand());
         CommandHandler.addCommand(new OfferCommand());
+        CommandHandler.addCommand(new HealCommand());
     }
 
     /**
