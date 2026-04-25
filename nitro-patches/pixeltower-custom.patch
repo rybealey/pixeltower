@@ -2697,7 +2697,7 @@ index af1c12a..a1a1fc8 100644
          background.height = height;
  
 diff --git a/src/hooks/rooms/widgets/useAvatarInfoWidget.ts b/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
-index 9545362..30092a9 100644
+index 9545362..da2402b 100644
 --- a/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
 +++ b/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
 @@ -1,6 +1,7 @@
@@ -2710,7 +2710,7 @@ index 9545362..30092a9 100644
  import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../../events';
  import { useFriends } from '../../friends';
  import { useWired } from '../../wired';
-@@ -85,9 +86,51 @@ const useAvatarInfoWidgetState = () =>
+@@ -85,9 +86,37 @@ const useAvatarInfoWidgetState = () =>
                          roomSession.userDataManager.requestPetInfo(userData.webID);
                          setPendingPetId(userData.webID);
                          break;
@@ -2730,33 +2730,19 @@ index 9545362..30092a9 100644
 +                        if(!isSelf)
 +                            SendMessageComposer(new PixeltowerSetTargetComposer(userData.webID));
 +
-+                        // pixeltower: with `:ct` on, also walk past the clicked user
-+                        // to the next tile in the same direction (if walkable). The
-+                        // brief auto-rotation fired by the renderer's selection flow
-+                        // is visually subsumed by the walk reorienting the avatar.
++                        // pixeltower: with `:ct` on, walk to the clicked user's tile
++                        // ("click through" to where they're standing). Tile stacking
++                        // already lets us land on the same tile; server pathfinder
++                        // handles the route. To go further, click another tile.
 +                        if(popupDisabled && !isSelf)
 +                        {
-+                            const myObject = GetRoomEngine().getRoomObject(roomSession.roomId, roomSession.ownRoomIndex, RoomObjectCategory.UNIT);
 +                            const theirObject = GetRoomEngine().getRoomObject(roomSession.roomId, userData.roomIndex, RoomObjectCategory.UNIT);
 +
-+                            if(myObject && theirObject)
++                            if(theirObject)
 +                            {
-+                                const myLoc = myObject.getLocation();
 +                                const theirLoc = theirObject.getLocation();
-+                                const theirX = ~~theirLoc.x;
-+                                const theirY = ~~theirLoc.y;
-+                                const dx = Math.sign(theirX - ~~myLoc.x);
-+                                const dy = Math.sign(theirY - ~~myLoc.y);
 +
-+                                if(dx !== 0 || dy !== 0)
-+                                {
-+                                    const targetX = theirX + dx;
-+                                    const targetY = theirY + dy;
-+                                    const geometry = GetRoomEngine().getLegacyWallGeometry(roomSession.roomId);
-+
-+                                    if(geometry && geometry.isRoomTile(targetX, targetY))
-+                                        SendMessageComposer(new RoomUnitWalkComposer(targetX, targetY));
-+                                }
++                                SendMessageComposer(new RoomUnitWalkComposer(~~theirLoc.x, ~~theirLoc.y));
 +                            }
 +                        }
                          break;
@@ -2765,7 +2751,7 @@ index 9545362..30092a9 100644
                          info = AvatarInfoUtilities.getBotInfo(category, userData);
                          break;
 diff --git a/src/hooks/rooms/widgets/useChatInputWidget.ts b/src/hooks/rooms/widgets/useChatInputWidget.ts
-index 5b11ecf..1639e5a 100644
+index 5b11ecf..23dd400 100644
 --- a/src/hooks/rooms/widgets/useChatInputWidget.ts
 +++ b/src/hooks/rooms/widgets/useChatInputWidget.ts
 @@ -1,6 +1,6 @@
@@ -2810,7 +2796,7 @@ index 5b11ecf..1639e5a 100644
 +                            roomSession.ownRoomIndex,
 +                            `*Click-through has been ${next ? 'enabled' : 'disabled'}.*`,
 +                            RoomSessionChatEvent.CHAT_TYPE_SPEAK,
-+                            23
++                            30
 +                        )
 +                    );
 +
