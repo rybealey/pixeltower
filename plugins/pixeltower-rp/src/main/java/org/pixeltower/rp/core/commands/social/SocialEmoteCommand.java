@@ -17,7 +17,7 @@ import org.pixeltower.rp.fight.FightRange;
  * Shared scaffolding for the affectionate social commands ({@code :hug},
  * {@code :kiss}, {@code :holdhands}, {@code :bite}). All four commands
  * resolve a target by name (or {@code x}), gate on adjacency / online /
- * self-target, apply a transient avatar effect to both avatars for ten
+ * self-target, apply a transient avatar effect to both avatars for five
  * seconds, and shout an asterisk-wrapped action emote in the hearts
  * bubble — which the action-emote Nitro patch renders as
  * {@code *<caller> <verb> <target>*} for everyone in the room.
@@ -28,7 +28,7 @@ import org.pixeltower.rp.fight.FightRange;
  */
 abstract class SocialEmoteCommand extends Command {
 
-    private static final int DURATION_SECONDS = 10;
+    private static final int DURATION_SECONDS = 5;
 
     private final String alias;
     private final int effectId;
