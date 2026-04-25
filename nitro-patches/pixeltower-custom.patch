@@ -736,10 +736,10 @@ index 0000000..023b264
 +}
 diff --git a/src/components/pixeltower/CommandsListView.tsx b/src/components/pixeltower/CommandsListView.tsx
 new file mode 100644
-index 0000000..f690d50
+index 0000000..fed70a5
 --- /dev/null
 +++ b/src/components/pixeltower/CommandsListView.tsx
-@@ -0,0 +1,195 @@
+@@ -0,0 +1,196 @@
 +import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 +import { FC, useEffect, useMemo, useState } from 'react';
 +import { LuSearch } from 'react-icons/lu';
@@ -780,6 +780,7 @@ index 0000000..f690d50
 +    { name: 'stats',        description: 'Show your own stats',                                                                                           category: 'general' },
 +    { name: 'hit',          params: '%user%',                   paramsPlaceholder: true, description: 'Swing at a player (combat rules apply)',           category: 'general' },
 +    { name: 'respawn',      description: 'Leave the downed state and return to the hospital',                                                             category: 'general' },
++    { name: 'ct',           description: 'Toggle click-through: suppress avatar menus, walk past players when clicked',                                   category: 'general' },
 +    { name: 'commands',     description: 'Open this reference window',                                                                                    category: 'general' },
 +    // Banking — lifecycle order: open → inspect → move → peer-to-peer
 +    { name: 'openaccount',  description: 'Open a personal bank account',                                                                                  category: 'banking' },
