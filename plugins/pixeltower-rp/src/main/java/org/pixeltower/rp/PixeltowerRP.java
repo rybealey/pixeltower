@@ -27,6 +27,9 @@ import com.eu.habbo.plugin.events.users.UserTalkEvent;
 import com.eu.habbo.plugin.events.users.UserTargetSelectedEvent;
 import com.eu.habbo.plugin.events.users.UserOfferResponseEvent;
 import com.eu.habbo.plugin.events.users.UserCorporationsRequestedEvent;
+import com.eu.habbo.plugin.events.users.UserMacroDeleteRequestedEvent;
+import com.eu.habbo.plugin.events.users.UserMacroSaveRequestedEvent;
+import com.eu.habbo.plugin.events.users.UserMacrosRequestedEvent;
 import org.pixeltower.rp.core.HomePositionStore;
 import org.pixeltower.rp.core.StaffGate;
 import org.pixeltower.rp.core.TargetService;
@@ -69,6 +72,9 @@ import org.pixeltower.rp.fight.commands.HitCommand;
 import org.pixeltower.rp.fight.commands.SetZoneCommand;
 import org.pixeltower.rp.fight.commands.SlapCommand;
 import org.pixeltower.rp.functional.FunctionalFurnitureService;
+import org.pixeltower.rp.macros.Macro;
+import org.pixeltower.rp.macros.MacrosManager;
+import org.pixeltower.rp.macros.outgoing.MacrosListComposer;
 import org.pixeltower.rp.medical.RespawnScheduler;
 import org.pixeltower.rp.medical.commands.RespawnCommand;
 import org.pixeltower.rp.functional.InteractionRpFunctional;
@@ -390,6 +396,49 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
 
         event.habbo.getClient().sendResponse(
                 new CorporationsListComposer(corps, membersByCorp));
+    }
+
+    /**
+     * Macros snapshot for the local player. Fired by the patched Arcturus
+     * {@code PixeltowerRequestMacrosEvent} handler when the MacrosWindow
+     * opens or the MacrosKeybindListener mounts. Macros are per-player so
+     * we filter by habbo_id; no extra authorization needed.
+     */
+    @EventHandler
+    public void onUserMacrosRequested(UserMacrosRequestedEvent event) {
+        if (event.habbo == null) return;
+        sendMacrosList(event.habbo);
+    }
+
+    /**
+     * Save (or replace) a macro and rebroadcast the full list. The plugin
+     * always returns the entire list rather than a delta — saves are
+     * infrequent and keeping the wire format symmetric with the initial
+     * snapshot keeps the client trivially correct.
+     */
+    @EventHandler
+    public void onUserMacroSaveRequested(UserMacroSaveRequestedEvent event) {
+        if (event.habbo == null) return;
+        int habboId = event.habbo.getHabboInfo().getId();
+        if (!MacrosManager.save(habboId, event.keybind, event.command, event.category)) return;
+        sendMacrosList(event.habbo);
+    }
+
+    /**
+     * Delete a macro by id (ownership re-checked in the manager) and
+     * rebroadcast the full list.
+     */
+    @EventHandler
+    public void onUserMacroDeleteRequested(UserMacroDeleteRequestedEvent event) {
+        if (event.habbo == null) return;
+        int habboId = event.habbo.getHabboInfo().getId();
+        if (!MacrosManager.delete(habboId, event.macroId)) return;
+        sendMacrosList(event.habbo);
+    }
+
+    private static void sendMacrosList(Habbo habbo) {
+        List<Macro> macros = MacrosManager.loadFor(habbo.getHabboInfo().getId());
+        habbo.getClient().sendResponse(new MacrosListComposer(macros));
     }
 
     /**

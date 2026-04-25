@@ -1,0 +1,1334 @@
+diff --git a/src/api/pixeltower/MacroBindingFormat.ts b/src/api/pixeltower/MacroBindingFormat.ts
+new file mode 100644
+index 0000000..32aa046
+--- /dev/null
++++ b/src/api/pixeltower/MacroBindingFormat.ts
+@@ -0,0 +1,97 @@
++// Shared encoding for macro keybindings — used by useKeybindCapture (when
++// the user presses a key in the Add Macro modal) and MacrosKeybindListener
++// (when matching a global press against the saved macro list). Encoding
++// stays the same string round-trip: client → server → client.
++//
++// Wire format: optional `Mod+`* prefix (canonical order
++// Ctrl+Shift+Alt+Meta+) followed by exactly one of:
++//   Key:<KeyboardEvent.code>     e.g. Key:Digit4, Key:KeyW, Key:F2
++//   Mouse4 / Mouse5              browser back/forward thumb buttons
++//   MouseMiddle                  scroll-wheel click
++
++const MOD_ORDER: Array<{ flag: 'ctrlKey' | 'shiftKey' | 'altKey' | 'metaKey'; label: string }> = [
++    { flag: 'ctrlKey',  label: 'Ctrl' },
++    { flag: 'shiftKey', label: 'Shift' },
++    { flag: 'altKey',   label: 'Alt' },
++    { flag: 'metaKey',  label: 'Meta' }
++];
++
++const MODIFIER_KEY_CODES = new Set<string>([
++    'ControlLeft', 'ControlRight',
++    'ShiftLeft', 'ShiftRight',
++    'AltLeft', 'AltRight',
++    'MetaLeft', 'MetaRight',
++    'OSLeft', 'OSRight'
++]);
++
++const modifierPrefix = (e: { ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean }): string =>
++    MOD_ORDER.filter(m => e[m.flag]).map(m => m.label + '+').join('');
++
++export const isModifierOnlyKey = (code: string): boolean =>
++    MODIFIER_KEY_CODES.has(code);
++
++export const encodeKeyEvent = (event: KeyboardEvent): string | null =>
++{
++    if(!event.code || isModifierOnlyKey(event.code)) return null;
++    return modifierPrefix(event) + 'Key:' + event.code;
++}
++
++export const encodeMouseEvent = (event: MouseEvent): string | null =>
++{
++    let token: string;
++    switch(event.button)
++    {
++        case 1: token = 'MouseMiddle'; break;
++        case 3: token = 'Mouse4'; break;
++        case 4: token = 'Mouse5'; break;
++        default: return null; // ignore left/right click — they're used for normal interaction
++    }
++    return modifierPrefix(event) + token;
++}
++
++// Map KeyboardEvent.code → human label. Covers the codes a player is likely
++// to bind. Falls through to the raw code so unmapped keys are still legible.
++const CODE_LABELS: Record<string, string> = {
++    Backquote: '`', Minus: '-', Equal: '=',
++    BracketLeft: '[', BracketRight: ']', Backslash: '\\',
++    Semicolon: ';', Quote: "'",
++    Comma: ',', Period: '.', Slash: '/',
++    Space: 'Space', Enter: 'Enter', Tab: 'Tab', Escape: 'Esc',
++    Backspace: 'Backspace', Delete: 'Del', Insert: 'Ins',
++    Home: 'Home', End: 'End', PageUp: 'PgUp', PageDown: 'PgDn',
++    ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
++    NumpadAdd: 'Num+', NumpadSubtract: 'Num-',
++    NumpadMultiply: 'Num*', NumpadDivide: 'Num/',
++    NumpadEnter: 'NumEnter', NumpadDecimal: 'Num.'
++};
++
++const labelKeyCode = (code: string): string =>
++{
++    if(CODE_LABELS[code]) return CODE_LABELS[code];
++    if(code.startsWith('Key')) return code.slice(3);            // KeyW → W
++    if(code.startsWith('Digit')) return code.slice(5);          // Digit4 → 4
++    if(code.startsWith('Numpad')) return 'Num' + code.slice(6); // Numpad4 → Num4
++    if(/^F\d{1,2}$/.test(code)) return code;                    // F1..F12 verbatim
++    return code;
++}
++
++const TOKEN_LABELS: Record<string, string> = {
++    Mouse4: 'Mouse Forward',
++    Mouse5: 'Mouse Back',
++    MouseMiddle: 'Middle Click'
++};
++
++export const formatBindingForDisplay = (binding: string): string =>
++{
++    if(!binding) return '';
++    const segments = binding.split('+');
++    const last = segments.pop();
++    const mods = segments.join('+');
++
++    let body: string;
++    if(last && last.startsWith('Key:')) body = labelKeyCode(last.slice(4));
++    else if(last && TOKEN_LABELS[last]) body = TOKEN_LABELS[last];
++    else body = last || '';
++
++    return mods.length ? mods + '+' + body : body;
++}
+diff --git a/src/api/pixeltower/PixeltowerSoundMessages.ts b/src/api/pixeltower/PixeltowerSoundMessages.ts
+index 0eed99e..76609c4 100644
+--- a/src/api/pixeltower/PixeltowerSoundMessages.ts
++++ b/src/api/pixeltower/PixeltowerSoundMessages.ts
+@@ -12,6 +12,10 @@ const PIXELTOWER_ROLEPLAY_OFFER_DISMISS = 6511;
+ const PIXELTOWER_ROLEPLAY_OFFER_RESPONSE = 6551;
+ const PIXELTOWER_SET_TARGET = 6550;
+ const PIXELTOWER_REQUEST_CORPORATIONS = 6552;
++const PIXELTOWER_MACROS_LIST = 6553;
++const PIXELTOWER_REQUEST_MACROS = 6554;
++const PIXELTOWER_SAVE_MACRO = 6555;
++const PIXELTOWER_DELETE_MACRO = 6556;
+ 
+ // ──────────── PlaySound (header 6500) ────────────
+ 
+@@ -571,6 +575,116 @@ export class RequestCorporationsComposer implements IMessageComposer<Constructor
+     public dispose(): void { return; }
+ }
+ 
++// ──────────── MacrosList (header 6553) ────────────
++//
++// Snapshot of every macro the local player has saved. Sent in response to
++// RequestMacrosComposer; the MacrosWindow + MacrosKeybindListener replace
++// their state wholesale on each receipt. The `keybind` field uses the
++// MacroBindingFormat encoding (see api/pixeltower/MacroBindingFormat.ts).
++
++export interface MacrosListItem
++{
++    macroId: number;
++    keybind: string;
++    command: string;
++    category: string;
++}
++
++export class MacrosListParser implements IMessageParser
++{
++    private _macros: MacrosListItem[];
++
++    public flush(): boolean
++    {
++        this._macros = [];
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++        this._macros = [];
++        const count = wrapper.readInt();
++        for(let i = 0; i < count; i++)
++        {
++            this._macros.push({
++                macroId: wrapper.readInt(),
++                keybind: wrapper.readString(),
++                command: wrapper.readString(),
++                category: wrapper.readString()
++            });
++        }
++        return true;
++    }
++
++    public get macros(): MacrosListItem[]
++    {
++        return this._macros;
++    }
++}
++
++export class MacrosListEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, MacrosListParser);
++    }
++
++    public getParser(): MacrosListParser
++    {
++        return this.parser as MacrosListParser;
++    }
++}
++
++// ──────────── RequestMacros (header 6554, client→server) ────────────
++
++export class RequestMacrosComposer implements IMessageComposer<ConstructorParameters<typeof RequestMacrosComposer>>
++{
++    private _data: ConstructorParameters<typeof RequestMacrosComposer>;
++
++    constructor()
++    {
++        this._data = [];
++    }
++
++    public getMessageArray() { return this._data; }
++    public dispose(): void { return; }
++}
++
++// ──────────── SaveMacro (header 6555, client→server) ────────────
++//
++// Wire format: int macroId (0 for new), string keybind, string command,
++// string category. Server upserts on (habboId, keybind) and replies with
++// a fresh MacrosListEvent.
++
++export class SaveMacroComposer implements IMessageComposer<ConstructorParameters<typeof SaveMacroComposer>>
++{
++    private _data: ConstructorParameters<typeof SaveMacroComposer>;
++
++    constructor(macroId: number, keybind: string, command: string, category: string)
++    {
++        this._data = [ macroId, keybind, command, category ];
++    }
++
++    public getMessageArray() { return this._data; }
++    public dispose(): void { return; }
++}
++
++// ──────────── DeleteMacro (header 6556, client→server) ────────────
++
++export class DeleteMacroComposer implements IMessageComposer<ConstructorParameters<typeof DeleteMacroComposer>>
++{
++    private _data: ConstructorParameters<typeof DeleteMacroComposer>;
++
++    constructor(macroId: number)
++    {
++        this._data = [ macroId ];
++    }
++
++    public getMessageArray() { return this._data; }
++    public dispose(): void { return; }
++}
++
+ // ──────────── registration ────────────
+ 
+ class PixeltowerMessages implements IMessageConfiguration
+@@ -583,12 +697,16 @@ class PixeltowerMessages implements IMessageConfiguration
+         [ PIXELTOWER_UPDATE_CORP_BADGES, UpdateCorpBadgesEvent ],
+         [ PIXELTOWER_CORPORATIONS_LIST, CorporationsListEvent ],
+         [ PIXELTOWER_ROLEPLAY_OFFER, RoleplayOfferEvent ],
+-        [ PIXELTOWER_ROLEPLAY_OFFER_DISMISS, RoleplayOfferDismissEvent ]
++        [ PIXELTOWER_ROLEPLAY_OFFER_DISMISS, RoleplayOfferDismissEvent ],
++        [ PIXELTOWER_MACROS_LIST, MacrosListEvent ]
+     ]);
+     public composers: Map<number, Function> = new Map<number, Function>([
+         [ PIXELTOWER_SET_TARGET, PixeltowerSetTargetComposer ],
+         [ PIXELTOWER_ROLEPLAY_OFFER_RESPONSE, RoleplayOfferResponseComposer ],
+-        [ PIXELTOWER_REQUEST_CORPORATIONS, RequestCorporationsComposer ]
++        [ PIXELTOWER_REQUEST_CORPORATIONS, RequestCorporationsComposer ],
++        [ PIXELTOWER_REQUEST_MACROS, RequestMacrosComposer ],
++        [ PIXELTOWER_SAVE_MACRO, SaveMacroComposer ],
++        [ PIXELTOWER_DELETE_MACRO, DeleteMacroComposer ]
+     ]);
+ }
+ 
+diff --git a/src/components/index.scss b/src/components/index.scss
+index c81d479..429b70b 100644
+--- a/src/components/index.scss
++++ b/src/components/index.scss
+@@ -22,6 +22,8 @@
+ @import './pixeltower/StatusHUD';
+ @import './pixeltower/DiamondsWindow';
+ @import './pixeltower/CorporationsWindow';
++@import './pixeltower/MacrosWindow';
++@import './pixeltower/AddMacroDialog';
+ @import './pixeltower/DrawerHUD';
+ @import './pixeltower/ToolbarHUD';
+ @import './pixeltower/OfferHUD';
+diff --git a/src/components/main/MainView.tsx b/src/components/main/MainView.tsx
+index 898dd5f..5d25374 100644
+--- a/src/components/main/MainView.tsx
++++ b/src/components/main/MainView.tsx
+@@ -23,6 +23,8 @@ import { CorpBadgesListener } from '../pixeltower/CorpBadgesListener';
+ import { CorporationsWindow } from '../pixeltower/CorporationsWindow';
+ import { DiamondsWindow } from '../pixeltower/DiamondsWindow';
+ import { DrawerHUD } from '../pixeltower/DrawerHUD';
++import { MacrosKeybindListener } from '../pixeltower/MacrosKeybindListener';
++import { MacrosWindow } from '../pixeltower/MacrosWindow';
+ import { OfferHUD } from '../pixeltower/OfferHUD';
+ import { PixeltowerLinkListener } from '../pixeltower/PixeltowerLinkListener';
+ import { StatsHUD } from '../pixeltower/StatsHUD';
+@@ -105,6 +107,8 @@ export const MainView: FC<{}> = props =>
+             <OfferHUD />
+             <DiamondsWindow />
+             <CorporationsWindow />
++            <MacrosWindow />
++            <MacrosKeybindListener />
+             <ModToolsView />
+             <RoomView />
+             <ChatHistoryView />
+diff --git a/src/components/pixeltower/AddMacroDialog.scss b/src/components/pixeltower/AddMacroDialog.scss
+new file mode 100644
+index 0000000..bfbff16
+--- /dev/null
++++ b/src/components/pixeltower/AddMacroDialog.scss
+@@ -0,0 +1,206 @@
++@use './tokens' as *;
++
++// Add New Macro dialog — .designs/client_ui.pen frame X8ukF. Stand-alone
++// floating window draggable by its title bar; opened by the "+ New Macro"
++// button in the Macros window title bar.
++
++$pt-add-macro-shell-bg:    #3E4E6E;
++$pt-add-macro-body-bg:     #DFDFDF;
++$pt-add-macro-input-bg:    #FFFFFF;
++$pt-add-macro-input-stroke: #A0A8B5;
++$pt-add-macro-text-strong: #1F2C40;
++$pt-add-macro-text-muted:  #6B7280;
++
++$pt-add-macro-title-top:    #5E7FA3;
++$pt-add-macro-title-bottom: #2B3A54;
++$pt-add-macro-title-glow:   #9AB4D3;
++
++$pt-add-macro-red-top:      #E04848;
++$pt-add-macro-red-bottom:   #7A1818;
++$pt-add-macro-red-glow:     #FF9090;
++
++$pt-add-macro-green-top:    #48C66B;
++$pt-add-macro-green-bottom: #1F6B36;
++$pt-add-macro-green-glow:   #9AE3B0;
++
++.pixeltower-add-macro {
++    width: 380px;
++    max-width: calc(100vw - 24px);
++    background: $pt-add-macro-shell-bg;
++    border: 2px solid $pt-panel-stroke;
++    border-radius: 3px;
++    box-shadow:
++        0 3px 0 rgba(0, 0, 0, 0.50),
++        0 2px 0 #7A95B8;
++    color: $pt-add-macro-text-strong;
++    font-family: $pt-font-family;
++    overflow: hidden;
++    display: flex;
++    flex-direction: column;
++
++    &__title-bar {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        height: 36px;
++        padding: 0 8px 0 12px;
++        background: linear-gradient(180deg,
++            $pt-add-macro-title-top 0%, $pt-add-macro-title-top 50%,
++            $pt-add-macro-title-bottom 50%, $pt-add-macro-title-bottom 100%);
++        box-shadow:
++            inset 0 -2px 0 $pt-panel-stroke,
++            0 1px 0 $pt-add-macro-title-glow;
++        cursor: move;
++        user-select: none;
++    }
++
++    &__title {
++        color: #FFFFFF;
++        font-weight: 700;
++        font-size: 15px;
++        letter-spacing: 0.5px;
++        text-shadow: 0 1px 0 rgba(10, 20, 36, 0.50);
++    }
++
++    &__close {
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        width: 26px;
++        height: 26px;
++        padding: 0;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++        background: linear-gradient(180deg,
++            $pt-add-macro-red-top 0%, $pt-add-macro-red-top 50%,
++            $pt-add-macro-red-bottom 50%, $pt-add-macro-red-bottom 100%);
++        color: #FFFFFF;
++        cursor: pointer;
++        box-shadow: 0 1px 0 $pt-add-macro-red-glow;
++
++        svg { width: 12px; height: 12px; }
++        &:hover { filter: brightness(1.08); }
++    }
++
++    &__body {
++        display: flex;
++        flex-direction: column;
++        gap: 12px;
++        padding: 14px;
++        background: $pt-add-macro-body-bg;
++    }
++
++    &__field {
++        display: flex;
++        flex-direction: column;
++        gap: 5px;
++    }
++
++    &__label {
++        font-size: 12px;
++        font-weight: 700;
++        letter-spacing: 0.4px;
++        color: $pt-add-macro-text-strong;
++    }
++
++    &__input {
++        display: flex;
++        align-items: center;
++        height: 34px;
++        padding: 0 10px;
++        background: $pt-add-macro-input-bg;
++        border: 1px solid $pt-add-macro-input-stroke;
++        border-radius: 2px;
++        font-family: inherit;
++        font-size: 13px;
++        color: $pt-add-macro-text-strong;
++        outline: none;
++        width: 100%;
++        box-sizing: border-box;
++
++        &--key {
++            justify-content: flex-start;
++            cursor: pointer;
++            text-align: left;
++        }
++
++        &--capturing {
++            border-color: $pt-add-macro-title-bottom;
++            box-shadow: 0 0 0 2px rgba(94, 127, 163, 0.30);
++        }
++
++        &--select {
++            justify-content: space-between;
++            font-weight: 700;
++        }
++
++        &--readonly {
++            cursor: default;
++        }
++
++        &--text {
++            font-family: 'Ubuntu Mono', Ubuntu, monospace;
++        }
++
++        &::placeholder { color: $pt-add-macro-text-muted; }
++    }
++
++    &__placeholder {
++        color: $pt-add-macro-text-muted;
++        font-size: 12px;
++        letter-spacing: 0.3px;
++    }
++
++    &__value {
++        color: $pt-add-macro-text-strong;
++        font-weight: 700;
++    }
++
++    &__chevron {
++        width: 14px;
++        height: 14px;
++        color: $pt-add-macro-text-strong;
++    }
++
++    &__buttons {
++        display: flex;
++        justify-content: flex-end;
++        gap: 8px;
++        margin-top: 4px;
++    }
++
++    &__btn {
++        display: inline-flex;
++        align-items: center;
++        gap: 6px;
++        height: 32px;
++        padding: 0 14px;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++        color: #FFFFFF;
++        font-family: inherit;
++        font-weight: 700;
++        font-size: 13px;
++        letter-spacing: 0.5px;
++        cursor: pointer;
++        text-shadow: 0 1px 0 rgba(10, 20, 36, 0.50);
++
++        svg { width: 13px; height: 13px; }
++        &:hover { filter: brightness(1.08); }
++        &:disabled { filter: grayscale(0.6) brightness(0.85); cursor: not-allowed; }
++
++        &--reset {
++            background: linear-gradient(180deg,
++                $pt-add-macro-red-top 0%, $pt-add-macro-red-top 50%,
++                $pt-add-macro-red-bottom 50%, $pt-add-macro-red-bottom 100%);
++            box-shadow: 0 1px 0 $pt-add-macro-red-glow;
++        }
++
++        &--add {
++            background: linear-gradient(180deg,
++                $pt-add-macro-green-top 0%, $pt-add-macro-green-top 50%,
++                $pt-add-macro-green-bottom 50%, $pt-add-macro-green-bottom 100%);
++            box-shadow: 0 1px 0 $pt-add-macro-green-glow;
++        }
++    }
++}
+diff --git a/src/components/pixeltower/AddMacroDialog.tsx b/src/components/pixeltower/AddMacroDialog.tsx
+new file mode 100644
+index 0000000..1840698
+--- /dev/null
++++ b/src/components/pixeltower/AddMacroDialog.tsx
+@@ -0,0 +1,103 @@
++import { FC, useEffect, useState } from 'react';
++import { LuCheck, LuChevronDown, LuRotateCcw, LuX } from 'react-icons/lu';
++import { formatBindingForDisplay } from '../../api/pixeltower/MacroBindingFormat';
++import { DraggableWindow } from '../../common';
++import { useKeybindCapture } from '../../hooks/pixeltower';
++
++// .designs/client_ui.pen frame X8ukF — modal triggered by the
++// "+ New Macro" button in the Macros window title bar. Owns local form
++// state; on Add Macro, hands the captured binding + command back via
++// onSave and the parent dispatches the SaveMacroComposer.
++
++interface AddMacroDialogProps
++{
++    onClose: () => void;
++    onSave: (keybind: string, command: string, category: string) => void;
++}
++
++export const AddMacroDialog: FC<AddMacroDialogProps> = ({ onClose, onSave }) =>
++{
++    const { isCapturing, captured, startCapture, reset } = useKeybindCapture();
++    const [ command, setCommand ] = useState('');
++    const [ wasCapturing, setWasCapturing ] = useState(false);
++
++    // Track once we've left capture mode so the placeholder swap doesn't flash
++    // back to "Press a key…" between presses.
++    useEffect(() => { if(isCapturing) setWasCapturing(true); }, [ isCapturing ]);
++
++    const canSave = captured.length > 0 && command.trim().length > 0;
++
++    const handleSave = () =>
++    {
++        if(!canSave) return;
++        onSave(captured, command.trim(), 'Default');
++    };
++
++    const placeholder = isCapturing ? 'Press a key or mouse button…' : 'Click to record a keybinding';
++    const display = formatBindingForDisplay(captured);
++
++    return (
++        <DraggableWindow uniqueKey="pixeltower-add-macro" handleSelector=".pixeltower-add-macro__drag-handle">
++            <div className="pixeltower-add-macro">
++                <div className="pixeltower-add-macro__title-bar pixeltower-add-macro__drag-handle">
++                    <span className="pixeltower-add-macro__title">Add New Macro</span>
++                    <button
++                        type="button"
++                        className="pixeltower-add-macro__close"
++                        title="Close"
++                        onClick={ onClose }>
++                        <LuX />
++                    </button>
++                </div>
++                <div className="pixeltower-add-macro__body">
++                    <div className="pixeltower-add-macro__field">
++                        <label className="pixeltower-add-macro__label">Keybinding</label>
++                        <button
++                            type="button"
++                            className={ 'pixeltower-add-macro__input pixeltower-add-macro__input--key' + (isCapturing ? ' pixeltower-add-macro__input--capturing' : '') }
++                            onClick={ startCapture }>
++                            { display
++                                ? <span className="pixeltower-add-macro__value">{ display }</span>
++                                : <span className="pixeltower-add-macro__placeholder">{ wasCapturing ? placeholder : placeholder }</span>
++                            }
++                        </button>
++                    </div>
++                    <div className="pixeltower-add-macro__field">
++                        <label className="pixeltower-add-macro__label">Category</label>
++                        <div className="pixeltower-add-macro__input pixeltower-add-macro__input--select pixeltower-add-macro__input--readonly">
++                            <span className="pixeltower-add-macro__value">Default</span>
++                            <LuChevronDown className="pixeltower-add-macro__chevron" />
++                        </div>
++                    </div>
++                    <div className="pixeltower-add-macro__field">
++                        <label className="pixeltower-add-macro__label">Command</label>
++                        <input
++                            type="text"
++                            className="pixeltower-add-macro__input pixeltower-add-macro__input--text"
++                            placeholder="Enter macro command"
++                            value={ command }
++                            onChange={ e => setCommand(e.target.value) }
++                            maxLength={ 128 } />
++                    </div>
++                    <div className="pixeltower-add-macro__buttons">
++                        <button
++                            type="button"
++                            className="pixeltower-add-macro__btn pixeltower-add-macro__btn--reset"
++                            onClick={ reset }>
++                            <LuRotateCcw />
++                            <span>Reset Keys</span>
++                        </button>
++                        <button
++                            type="button"
++                            className="pixeltower-add-macro__btn pixeltower-add-macro__btn--add"
++                            disabled={ !canSave }
++                            onClick={ handleSave }>
++                            <LuCheck />
++                            <span>Add Macro</span>
++                        </button>
++                    </div>
++                </div>
++            </div>
++        </DraggableWindow>
++    );
++}
+diff --git a/src/components/pixeltower/DrawerHUD.tsx b/src/components/pixeltower/DrawerHUD.tsx
+index f9c6760..0ed0473 100644
+--- a/src/components/pixeltower/DrawerHUD.tsx
++++ b/src/components/pixeltower/DrawerHUD.tsx
+@@ -17,7 +17,7 @@ type DrawerButton = { key: string; label: string; Icon: typeof LuBackpack; linkE
+ 
+ const BUTTONS: DrawerButton[] = [
+     { key: 'inventory', label: 'Inventory', Icon: LuBackpack },
+-    { key: 'macros',    label: 'Macros',    Icon: LuKeyboard },
++    { key: 'macros',    label: 'Macros',    Icon: LuKeyboard,  linkEvent: 'macros-window/toggle' },
+     { key: 'gangs',     label: 'Gangs',     Icon: LuUsers },
+     { key: 'corps',     label: 'Corps',     Icon: LuBuilding2, linkEvent: 'corporations-window/toggle' },
+     { key: 'wanted',    label: 'Wanted',    Icon: LuScroll },
+diff --git a/src/components/pixeltower/MacrosKeybindListener.tsx b/src/components/pixeltower/MacrosKeybindListener.tsx
+new file mode 100644
+index 0000000..b1ed484
+--- /dev/null
++++ b/src/components/pixeltower/MacrosKeybindListener.tsx
+@@ -0,0 +1,90 @@
++import { FC, useEffect } from 'react';
++import { ChatMessageTypeEnum, SendMessageComposer } from '../../api';
++import { encodeKeyEvent, encodeMouseEvent } from '../../api/pixeltower/MacroBindingFormat';
++import { RequestMacrosComposer } from '../../api/pixeltower/PixeltowerSoundMessages';
++import { useRoom } from '../../hooks';
++import { useMacros } from '../../hooks/pixeltower';
++import { useChatInputWidget } from '../../hooks/rooms/widgets/useChatInputWidget';
++
++// Headless component — mounted once in MainView. Owns the global keydown +
++// mousedown listeners that fire saved macros from anywhere in the client.
++//
++// Why a separate component: the MacrosWindow is unmounted while closed, but
++// the dispatcher needs to run continuously. useMacros is shared across both
++// components via useBetween, so the listener stays in sync with whatever
++// the player has saved.
++//
++// Why useChatInputWidget here: it exposes sendChat(), which already has all
++// the :command shortcuts wired up (:ps x → currently selected target, :hit,
++// :commands open, etc.). Reusing it means a macro for ":ps x" behaves
++// identically to typing ":ps x" into the chat box. The hook isn't memoized
++// across instances so its internal state is parallel to the chat widget's,
++// but only sendChat is read here, and sendChat reads roomSession from the
++// shared useRoom() context.
++
++export const MacrosKeybindListener: FC<{}> = () =>
++{
++    const { macros } = useMacros();
++    const { sendChat } = useChatInputWidget();
++    const { roomSession } = useRoom();
++
++    // Pull a fresh list once on mount. The window also requests on every
++    // open, but mounting before the window is ever opened means saved macros
++    // start firing from the first key press of the session.
++    useEffect(() =>
++    {
++        SendMessageComposer(new RequestMacrosComposer());
++    }, []);
++
++    useEffect(() =>
++    {
++        if(!sendChat || !roomSession || macros.length === 0) return;
++
++        const map = new Map<string, string>();
++        macros.forEach(m => map.set(m.keybind, m.command));
++
++        const isInputActive = () =>
++        {
++            const el = document.activeElement as HTMLElement | null;
++            if(!el) return false;
++            const tag = el.tagName;
++            if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
++            if(el.isContentEditable) return true;
++            return false;
++        };
++
++        const fire = (binding: string): boolean =>
++        {
++            const command = map.get(binding);
++            if(!command) return false;
++            sendChat(command, ChatMessageTypeEnum.CHAT_DEFAULT);
++            return true;
++        };
++
++        const onKey = (event: KeyboardEvent) =>
++        {
++            if(isInputActive()) return;
++            const binding = encodeKeyEvent(event);
++            if(!binding) return;
++            if(fire(binding)) event.preventDefault();
++        };
++
++        const onMouse = (event: MouseEvent) =>
++        {
++            if(isInputActive()) return;
++            const binding = encodeMouseEvent(event);
++            if(!binding) return;
++            if(fire(binding)) event.preventDefault();
++        };
++
++        document.addEventListener('keydown', onKey);
++        document.addEventListener('mousedown', onMouse);
++        return () =>
++        {
++            document.removeEventListener('keydown', onKey);
++            document.removeEventListener('mousedown', onMouse);
++        };
++    }, [ macros, sendChat, roomSession ]);
++
++    return null;
++}
+diff --git a/src/components/pixeltower/MacrosWindow.scss b/src/components/pixeltower/MacrosWindow.scss
+new file mode 100644
+index 0000000..22f925b
+--- /dev/null
++++ b/src/components/pixeltower/MacrosWindow.scss
+@@ -0,0 +1,312 @@
++@use './tokens' as *;
++
++// Macros window — .designs/client_ui.pen frame 59QGF. Custom title bar
++// because the design needs both a green "+ New Macro" button and a red
++// close X side-by-side, which NitroCardHeaderView doesn't accommodate.
++
++$pt-macros-shell-bg:    #3E4E6E;
++$pt-macros-body-bg:     #DFDFDF;
++$pt-macros-text-strong: #1F2C40;
++$pt-macros-text-muted:  #6B7280;
++
++$pt-macros-title-top:    #5E7FA3;
++$pt-macros-title-bottom: #2B3A54;
++$pt-macros-title-glow:   #9AB4D3;
++
++$pt-macros-red-top:      #E04848;
++$pt-macros-red-bottom:   #7A1818;
++$pt-macros-red-glow:     #FF9090;
++
++$pt-macros-green-top:    #48C66B;
++$pt-macros-green-bottom: #1F6B36;
++$pt-macros-green-glow:   #9AE3B0;
++
++$pt-macros-table-bg:     #FFFFFF;
++$pt-macros-table-stroke: #A0A8B5;
++$pt-macros-header-bg:    #EAEAEA;
++$pt-macros-row-divider:  #D0D0D0;
++
++$pt-macros-cmd-chip-bg:     #F4F5F7;
++$pt-macros-cmd-chip-stroke: #C5CCD6;
++$pt-macros-cmd-chip-text:   #2B3A54;
++$pt-macros-cmd-chip-edit:   #9AA3B2;
++
++.pixeltower-macros-window {
++    width: 520px;
++    max-width: calc(100vw - 24px);
++    background: $pt-macros-shell-bg;
++    border: 2px solid $pt-panel-stroke;
++    border-radius: 3px;
++    box-shadow:
++        0 3px 0 rgba(0, 0, 0, 0.50),
++        0 2px 0 #7A95B8;
++    color: $pt-macros-text-strong;
++    font-family: $pt-font-family;
++    overflow: hidden;
++    display: flex;
++    flex-direction: column;
++
++    &__title-bar {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        height: 36px;
++        padding: 0 8px 0 12px;
++        background: linear-gradient(180deg,
++            $pt-macros-title-top 0%, $pt-macros-title-top 50%,
++            $pt-macros-title-bottom 50%, $pt-macros-title-bottom 100%);
++        box-shadow:
++            inset 0 -2px 0 $pt-panel-stroke,
++            0 1px 0 $pt-macros-title-glow;
++        cursor: move;
++        user-select: none;
++    }
++
++    &__title {
++        color: #FFFFFF;
++        font-weight: 700;
++        font-size: 15px;
++        letter-spacing: 0.5px;
++        text-shadow: 0 1px 0 rgba(10, 20, 36, 0.50);
++    }
++
++    &__title-buttons {
++        display: flex;
++        align-items: center;
++        gap: 6px;
++    }
++
++    &__new-btn {
++        display: inline-flex;
++        align-items: center;
++        gap: 6px;
++        height: 26px;
++        padding: 0 10px;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++        background: linear-gradient(180deg,
++            $pt-macros-green-top 0%, $pt-macros-green-top 50%,
++            $pt-macros-green-bottom 50%, $pt-macros-green-bottom 100%);
++        box-shadow: 0 1px 0 $pt-macros-green-glow;
++        color: #FFFFFF;
++        font-family: inherit;
++        font-weight: 700;
++        font-size: 12px;
++        letter-spacing: 0.4px;
++        text-shadow: 0 1px 0 rgba(10, 20, 36, 0.50);
++        cursor: pointer;
++
++        svg { width: 12px; height: 12px; }
++        &:hover { filter: brightness(1.08); }
++    }
++
++    &__close {
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        width: 26px;
++        height: 26px;
++        padding: 0;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++        background: linear-gradient(180deg,
++            $pt-macros-red-top 0%, $pt-macros-red-top 50%,
++            $pt-macros-red-bottom 50%, $pt-macros-red-bottom 100%);
++        box-shadow: 0 1px 0 $pt-macros-red-glow;
++        color: #FFFFFF;
++        cursor: pointer;
++
++        svg { width: 12px; height: 12px; }
++        &:hover { filter: brightness(1.08); }
++    }
++
++    &__tab-strip {
++        background: $pt-macros-body-bg;
++        padding: 8px 12px 0 12px;
++    }
++
++    &__tabs {
++        display: inline-flex;
++        height: 30px;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++        overflow: hidden;
++        box-shadow: 0 1px 0 $pt-macros-title-glow;
++    }
++
++    &__tab {
++        display: inline-flex;
++        align-items: center;
++        justify-content: center;
++        padding: 0 16px;
++        background: linear-gradient(180deg,
++            $pt-macros-title-top 0%, $pt-macros-title-top 50%,
++            $pt-macros-title-bottom 50%, $pt-macros-title-bottom 100%);
++        border: 0;
++        color: #C4D1E0;
++        font-family: inherit;
++        font-weight: 700;
++        font-size: 13px;
++        letter-spacing: 0.5px;
++        cursor: pointer;
++        transition: filter 120ms ease;
++
++        &:hover { filter: brightness(1.08); }
++
++        &--active {
++            background: linear-gradient(180deg,
++                $pt-macros-title-bottom 0%, $pt-macros-title-bottom 50%,
++                $pt-macros-title-top 50%, $pt-macros-title-top 100%);
++            color: #FFFFFF;
++            font-weight: 900;
++        }
++
++        &--plus {
++            padding: 0;
++            width: 32px;
++
++            svg { width: 14px; height: 14px; color: #FFFFFF; }
++            &:disabled {
++                opacity: 0.55;
++                cursor: not-allowed;
++                &:hover { filter: none; }
++            }
++        }
++    }
++
++    &__tab-divider {
++        width: 2px;
++        height: 30px;
++        background: $pt-panel-stroke;
++        flex-shrink: 0;
++    }
++
++    &__body {
++        background: $pt-macros-body-bg;
++        padding: 12px 16px 16px 16px;
++        display: flex;
++        flex-direction: column;
++        gap: 12px;
++    }
++
++    &__table {
++        background: $pt-macros-table-bg;
++        border: 1px solid $pt-macros-table-stroke;
++        border-radius: 3px;
++        overflow: hidden;
++        display: flex;
++        flex-direction: column;
++    }
++
++    &__row {
++        display: flex;
++        align-items: center;
++        gap: 12px;
++        padding: 8px 12px;
++        border-bottom: 1px solid $pt-macros-row-divider;
++
++        &:last-child { border-bottom: 0; }
++
++        &--header {
++            background: $pt-macros-header-bg;
++            color: $pt-macros-text-muted;
++            font-size: 12px;
++            font-weight: 700;
++            letter-spacing: 1px;
++            text-transform: uppercase;
++        }
++    }
++
++    &__col {
++        display: flex;
++        align-items: center;
++        font-size: 14px;
++        font-weight: 700;
++        color: $pt-macros-text-strong;
++
++        &--key {
++            width: 140px;
++            flex-shrink: 0;
++        }
++
++        &--cmd {
++            flex: 1 1 auto;
++            min-width: 0;
++        }
++
++        &--action {
++            flex-shrink: 0;
++            width: 24px;
++            justify-content: center;
++        }
++    }
++
++    &__row--header &__col--cmd,
++    &__row--header &__col--key,
++    &__row--header &__col--action {
++        font-weight: 700;
++        color: $pt-macros-text-muted;
++    }
++
++    &__cmd-chip {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        gap: 6px;
++        height: 28px;
++        padding: 0 8px;
++        width: 100%;
++        background: $pt-macros-cmd-chip-bg;
++        border: 1px solid $pt-macros-cmd-chip-stroke;
++        border-radius: 3px;
++        min-width: 0;
++    }
++
++    &__cmd-text {
++        font-family: 'Ubuntu Mono', Ubuntu, monospace;
++        font-weight: normal;
++        font-size: 13px;
++        color: $pt-macros-cmd-chip-text;
++        text-overflow: ellipsis;
++        white-space: nowrap;
++        overflow: hidden;
++        flex: 1 1 auto;
++        min-width: 0;
++    }
++
++    &__cmd-edit {
++        width: 11px;
++        height: 11px;
++        color: $pt-macros-cmd-chip-edit;
++        flex-shrink: 0;
++    }
++
++    &__delete {
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        width: 24px;
++        height: 24px;
++        padding: 0;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++        background: linear-gradient(180deg,
++            $pt-macros-red-top 0%, $pt-macros-red-top 50%,
++            $pt-macros-red-bottom 50%, $pt-macros-red-bottom 100%);
++        box-shadow: 0 1px 0 $pt-macros-red-glow;
++        color: #FFFFFF;
++        cursor: pointer;
++
++        svg { width: 12px; height: 12px; }
++        &:hover { filter: brightness(1.08); }
++    }
++
++    &__empty {
++        padding: 18px 12px;
++        text-align: center;
++        color: $pt-macros-text-muted;
++        font-size: 13px;
++
++        strong { color: $pt-macros-text-strong; }
++    }
++}
+diff --git a/src/components/pixeltower/MacrosWindow.tsx b/src/components/pixeltower/MacrosWindow.tsx
+new file mode 100644
+index 0000000..7d2d3d1
+--- /dev/null
++++ b/src/components/pixeltower/MacrosWindow.tsx
+@@ -0,0 +1,160 @@
++import { ILinkEventTracker } from '@nitrots/nitro-renderer';
++import { FC, useEffect, useState } from 'react';
++import { LuPencil, LuPlus, LuTrash2, LuX } from 'react-icons/lu';
++import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
++import { formatBindingForDisplay } from '../../api/pixeltower/MacroBindingFormat';
++import { DeleteMacroComposer, RequestMacrosComposer, SaveMacroComposer } from '../../api/pixeltower/PixeltowerSoundMessages';
++import { DraggableWindow } from '../../common';
++import { useMacros } from '../../hooks/pixeltower';
++import { AddMacroDialog } from './AddMacroDialog';
++
++// Macros Window — .designs/client_ui.pen frame 59QGF.
++// Triggered from the Drawer HUD "Macros" button via
++// CreateLinkEvent('macros-window/show|hide|toggle'). The .pen design has a
++// custom title bar with both a green "+ New Macro" button and a red close X,
++// so we render our own chrome (DraggableWindow + custom title bar) instead
++// of using NitroCardView/NitroCardHeaderView like the other RP dialogs.
++//
++// The roster is fetched via RequestMacrosComposer (header 6554) on each
++// open and replied to with a MacrosListEvent (header 6553), shared across
++// the app via the useMacros hook. The MacrosKeybindListener consumes the
++// same hook to dispatch saved bindings against the global key/mouse stream.
++
++export const MacrosWindow: FC<{}> = () =>
++{
++    const [ isVisible, setIsVisible ] = useState(false);
++    const [ addOpen, setAddOpen ] = useState(false);
++    const { macros } = useMacros();
++
++    useEffect(() =>
++    {
++        const linkTracker: ILinkEventTracker = {
++            linkReceived: (url: string) =>
++            {
++                const parts = url.split('/');
++                if(parts.length < 2) return;
++                switch(parts[1])
++                {
++                    case 'show':   setIsVisible(true); return;
++                    case 'hide':   setIsVisible(false); return;
++                    case 'toggle': setIsVisible(v => !v); return;
++                }
++            },
++            eventUrlPrefix: 'macros-window/'
++        };
++        AddEventLinkTracker(linkTracker);
++        return () => RemoveLinkEventTracker(linkTracker);
++    }, []);
++
++    useEffect(() =>
++    {
++        if(!isVisible) return;
++        SendMessageComposer(new RequestMacrosComposer());
++    }, [ isVisible ]);
++
++    if(!isVisible) return null;
++
++    const close = () =>
++    {
++        setAddOpen(false);
++        setIsVisible(false);
++    };
++
++    const handleSave = (keybind: string, command: string, category: string) =>
++    {
++        SendMessageComposer(new SaveMacroComposer(0, keybind, command, category));
++        setAddOpen(false);
++    };
++
++    const handleDelete = (macroId: number) =>
++    {
++        SendMessageComposer(new DeleteMacroComposer(macroId));
++    };
++
++    return (
++        <>
++            <DraggableWindow uniqueKey="pixeltower-macros" handleSelector=".pixeltower-macros-window__drag-handle">
++                <div className="pixeltower-macros-window">
++                    <div className="pixeltower-macros-window__title-bar pixeltower-macros-window__drag-handle">
++                        <span className="pixeltower-macros-window__title">Macros</span>
++                        <div className="pixeltower-macros-window__title-buttons">
++                            <button
++                                type="button"
++                                className="pixeltower-macros-window__new-btn"
++                                title="New macro"
++                                onClick={ () => setAddOpen(true) }>
++                                <LuPlus />
++                                <span>New Macro</span>
++                            </button>
++                            <button
++                                type="button"
++                                className="pixeltower-macros-window__close"
++                                title="Close"
++                                onClick={ close }>
++                                <LuX />
++                            </button>
++                        </div>
++                    </div>
++                    <div className="pixeltower-macros-window__tab-strip">
++                        <div className="pixeltower-macros-window__tabs">
++                            <button
++                                type="button"
++                                className="pixeltower-macros-window__tab pixeltower-macros-window__tab--active">
++                                Default
++                            </button>
++                            <span className="pixeltower-macros-window__tab-divider" />
++                            <button
++                                type="button"
++                                className="pixeltower-macros-window__tab pixeltower-macros-window__tab--plus"
++                                title="More categories coming soon"
++                                disabled>
++                                <LuPlus />
++                            </button>
++                        </div>
++                    </div>
++                    <div className="pixeltower-macros-window__body">
++                        <div className="pixeltower-macros-window__table">
++                            <div className="pixeltower-macros-window__row pixeltower-macros-window__row--header">
++                                <div className="pixeltower-macros-window__col pixeltower-macros-window__col--key">Keybinding</div>
++                                <div className="pixeltower-macros-window__col pixeltower-macros-window__col--cmd">Command</div>
++                                <div className="pixeltower-macros-window__col pixeltower-macros-window__col--action">Action</div>
++                            </div>
++                            { macros.length === 0 && (
++                                <div className="pixeltower-macros-window__empty">
++                                    No macros yet — click <strong>+ New Macro</strong> to bind a key.
++                                </div>
++                            ) }
++                            { macros.map(macro => (
++                                <div key={ macro.macroId } className="pixeltower-macros-window__row">
++                                    <div className="pixeltower-macros-window__col pixeltower-macros-window__col--key">
++                                        { formatBindingForDisplay(macro.keybind) }
++                                    </div>
++                                    <div className="pixeltower-macros-window__col pixeltower-macros-window__col--cmd">
++                                        <div className="pixeltower-macros-window__cmd-chip">
++                                            <span className="pixeltower-macros-window__cmd-text">{ macro.command }</span>
++                                            <LuPencil className="pixeltower-macros-window__cmd-edit" />
++                                        </div>
++                                    </div>
++                                    <div className="pixeltower-macros-window__col pixeltower-macros-window__col--action">
++                                        <button
++                                            type="button"
++                                            className="pixeltower-macros-window__delete"
++                                            title="Delete macro"
++                                            onClick={ () => handleDelete(macro.macroId) }>
++                                            <LuTrash2 />
++                                        </button>
++                                    </div>
++                                </div>
++                            )) }
++                        </div>
++                    </div>
++                </div>
++            </DraggableWindow>
++            { addOpen && (
++                <AddMacroDialog
++                    onClose={ () => setAddOpen(false) }
++                    onSave={ handleSave } />
++            ) }
++        </>
++    );
++}
+diff --git a/src/hooks/pixeltower/index.ts b/src/hooks/pixeltower/index.ts
+index 01292f5..c8fdc62 100644
+--- a/src/hooks/pixeltower/index.ts
++++ b/src/hooks/pixeltower/index.ts
+@@ -1,5 +1,7 @@
+ export * from './useCorpBadges';
+ export * from './useCorporations';
+ export * from './useEmployment';
++export * from './useKeybindCapture';
++export * from './useMacros';
+ export * from './useStats';
+ export * from './useTarget';
+diff --git a/src/hooks/pixeltower/useKeybindCapture.ts b/src/hooks/pixeltower/useKeybindCapture.ts
+new file mode 100644
+index 0000000..8047d53
+--- /dev/null
++++ b/src/hooks/pixeltower/useKeybindCapture.ts
+@@ -0,0 +1,79 @@
++import { useCallback, useEffect, useState } from 'react';
++import { encodeKeyEvent, encodeMouseEvent } from '../../api/pixeltower/MacroBindingFormat';
++
++/**
++ * Capture-mode hook used by the Add Macro modal's Keybinding field.
++ *
++ * Caller flow:
++ *   1. User clicks the field → component calls startCapture().
++ *   2. While capturing, the next keydown or mousedown anywhere in the
++ *      document is translated to the canonical binding string and stored
++ *      in `captured`. Capture mode auto-exits.
++ *   3. Component reads `captured` for save, or calls reset() to clear it.
++ *
++ * Bare modifier presses (Shift on its own etc.) and unmapped mouse buttons
++ * are ignored — the user has to follow up with a real key/button.
++ */
++export interface KeybindCaptureApi
++{
++    isCapturing: boolean;
++    captured: string;
++    startCapture: () => void;
++    cancelCapture: () => void;
++    reset: () => void;
++}
++
++export const useKeybindCapture = (initial: string = ''): KeybindCaptureApi =>
++{
++    const [ isCapturing, setIsCapturing ] = useState(false);
++    const [ captured, setCaptured ] = useState(initial);
++
++    const startCapture = useCallback(() => setIsCapturing(true), []);
++    const cancelCapture = useCallback(() => setIsCapturing(false), []);
++    const reset = useCallback(() => { setCaptured(''); setIsCapturing(false); }, []);
++
++    useEffect(() =>
++    {
++        if(!isCapturing) return;
++
++        const onKey = (event: KeyboardEvent) =>
++        {
++            // Escape always cancels without recording.
++            if(event.code === 'Escape')
++            {
++                event.preventDefault();
++                event.stopPropagation();
++                setIsCapturing(false);
++                return;
++            }
++            const encoded = encodeKeyEvent(event);
++            if(!encoded) return;
++            event.preventDefault();
++            event.stopPropagation();
++            setCaptured(encoded);
++            setIsCapturing(false);
++        };
++
++        const onMouse = (event: MouseEvent) =>
++        {
++            const encoded = encodeMouseEvent(event);
++            if(!encoded) return;
++            event.preventDefault();
++            event.stopPropagation();
++            setCaptured(encoded);
++            setIsCapturing(false);
++        };
++
++        // capture-phase listeners so we get the press before any
++        // input/textarea swallows it.
++        document.addEventListener('keydown', onKey, true);
++        document.addEventListener('mousedown', onMouse, true);
++        return () =>
++        {
++            document.removeEventListener('keydown', onKey, true);
++            document.removeEventListener('mousedown', onMouse, true);
++        };
++    }, [ isCapturing ]);
++
++    return { isCapturing, captured, startCapture, cancelCapture, reset };
++}
+diff --git a/src/hooks/pixeltower/useMacros.ts b/src/hooks/pixeltower/useMacros.ts
+new file mode 100644
+index 0000000..d1f361a
+--- /dev/null
++++ b/src/hooks/pixeltower/useMacros.ts
+@@ -0,0 +1,28 @@
++import { useState } from 'react';
++import { useBetween } from 'use-between';
++import { MacrosListEvent, MacrosListItem } from '../../api/pixeltower/PixeltowerSoundMessages';
++import { useMessageEvent } from '../events';
++
++export type Macro = MacrosListItem;
++
++/**
++ * Local player's saved macros, replaced wholesale on every MacrosListEvent
++ * (header 6553). Requested via {@code RequestMacrosComposer} from the
++ * MacrosWindow on open and on initial mount of MacrosKeybindListener.
++ *
++ * Shared via useBetween so the window UI and the global keybind dispatcher
++ * read from the same source of truth — saving a macro updates both.
++ */
++const useMacrosState = () =>
++{
++    const [ macros, setMacros ] = useState<Macro[]>([]);
++
++    useMessageEvent<MacrosListEvent>(MacrosListEvent, event =>
++    {
++        setMacros(event.getParser().macros);
++    });
++
++    return { macros };
++}
++
++export const useMacros = () => useBetween(useMacrosState);
