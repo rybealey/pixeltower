@@ -746,7 +746,7 @@ new file mode 100644
 index 0000000..fed70a5
 --- /dev/null
 +++ b/src/components/pixeltower/CommandsListView.tsx
-@@ -0,0 +1,196 @@
+@@ -0,0 +1,197 @@
 +import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 +import { FC, useEffect, useMemo, useState } from 'react';
 +import { LuSearch } from 'react-icons/lu';
@@ -788,6 +788,7 @@ index 0000000..fed70a5
 +    { name: 'hit',          params: '%user%',                   paramsPlaceholder: true, description: 'Swing at a player (combat rules apply)',           category: 'general' },
 +    { name: 'respawn',      description: 'Leave the downed state and return to the hospital',                                                             category: 'general' },
 +    { name: 'ct',           description: 'Toggle click-through: suppress avatar menus, walk past players when clicked',                                   category: 'general' },
++    { name: 'dance',        params: '%name%',                   paramsPlaceholder: true, description: 'Start a dance (Dance, Pogo Mogo, Duck Funk, The Rollie); no name toggles the standard Dance', category: 'general' },
 +    { name: 'commands',     description: 'Open this reference window',                                                                                    category: 'general' },
 +    // Banking — lifecycle order: open → inspect → move → peer-to-peer
 +    { name: 'openaccount',  description: 'Open a personal bank account',                                                                                  category: 'banking' },
