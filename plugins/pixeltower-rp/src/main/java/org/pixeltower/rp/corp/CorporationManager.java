@@ -60,7 +60,7 @@ public final class CorporationManager {
 
     private static void loadCorps(Connection conn) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT id, corp_key, name, hq_room_id, paycheck_interval_s, stock_capacity "
+                "SELECT id, corp_key, name, hq_room_id, paycheck_interval_s, stock_capacity, badge_code "
                         + "FROM rp_corporations");
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
@@ -71,7 +71,8 @@ public final class CorporationManager {
                         rs.getString("name"),
                         hqRoomId,
                         rs.getInt("paycheck_interval_s"),
-                        rs.getInt("stock_capacity"));
+                        rs.getInt("stock_capacity"),
+                        rs.getString("badge_code"));
                 BY_ID.put(corp.getId(), corp);
                 BY_KEY.put(corp.getCorpKey(), corp);
             }
@@ -127,6 +128,18 @@ public final class CorporationManager {
 
     public static Optional<CorporationMember> getMembership(int habboId) {
         return Optional.ofNullable(MEMBER_BY_HABBO.get(habboId));
+    }
+
+    /**
+     * Hotel badge code for the corp this habbo belongs to, or empty if no
+     * corp / no badge configured. Drives the infostand favorite-group
+     * override broadcast by {@code CorpBadgeBroadcaster}.
+     */
+    public static Optional<String> getBadgeCodeFor(int habboId) {
+        return getMembership(habboId)
+                .flatMap(m -> getById(m.getCorpId()))
+                .map(Corporation::getBadgeCode)
+                .filter(code -> code != null && !code.isEmpty());
     }
 
     public static boolean hasPermission(int habboId, RankPermission p) {

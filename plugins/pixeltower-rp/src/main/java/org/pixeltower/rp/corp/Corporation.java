@@ -20,16 +20,18 @@ public final class Corporation {
     private final Integer hqRoomId;
     private final int paycheckIntervalS;
     private final int stockCapacity;
+    private final String badgeCode;
     private final Map<Integer, CorporationRank> ranksByNum;
 
     public Corporation(int id, String corpKey, String name, Integer hqRoomId,
-                       int paycheckIntervalS, int stockCapacity) {
+                       int paycheckIntervalS, int stockCapacity, String badgeCode) {
         this.id = id;
         this.corpKey = corpKey;
         this.name = name;
         this.hqRoomId = hqRoomId;
         this.paycheckIntervalS = paycheckIntervalS;
         this.stockCapacity = stockCapacity;
+        this.badgeCode = badgeCode;
         this.ranksByNum = new ConcurrentHashMap<>();
     }
 
@@ -39,6 +41,7 @@ public final class Corporation {
     public Integer getHqRoomId() { return this.hqRoomId; }
     public int getPaycheckIntervalS() { return this.paycheckIntervalS; }
     public int getStockCapacity() { return this.stockCapacity; }
+    public String getBadgeCode() { return this.badgeCode; }
 
     public Map<Integer, CorporationRank> getRanks() {
         return Collections.unmodifiableMap(this.ranksByNum);
