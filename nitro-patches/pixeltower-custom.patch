@@ -788,7 +788,7 @@ index 0000000..fed70a5
 +    { name: 'hit',          params: '%user%',                   paramsPlaceholder: true, description: 'Swing at a player (combat rules apply)',           category: 'general' },
 +    { name: 'respawn',      description: 'Leave the downed state and return to the hospital',                                                             category: 'general' },
 +    { name: 'ct',           description: 'Toggle click-through: suppress avatar menus, walk past players when clicked',                                   category: 'general' },
-+    { name: 'dance',        params: '%name%',                   paramsPlaceholder: true, description: 'Start a dance (Dance, Pogo Mogo, Duck Funk, The Rollie); no name toggles the standard Dance', category: 'general' },
++    { name: 'dance',        params: '%1-4%',                    paramsPlaceholder: true, description: 'Start a dance (1=Dance, 2=Pogo Mogo, 3=Duck Funk, 4=The Rollie); no number toggles the standard Dance', category: 'general' },
 +    { name: 'commands',     description: 'Open this reference window',                                                                                    category: 'general' },
 +    // Banking — lifecycle order: open → inspect → move → peer-to-peer
 +    { name: 'openaccount',  description: 'Open a personal bank account',                                                                                  category: 'banking' },

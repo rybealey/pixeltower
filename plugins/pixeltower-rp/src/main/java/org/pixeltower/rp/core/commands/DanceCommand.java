@@ -10,16 +10,14 @@ import com.eu.habbo.habbohotel.users.Habbo;
 import com.eu.habbo.messages.outgoing.rooms.users.RoomUserDanceComposer;
 
 /**
- * {@code :dance [name]} — toggle / select a dance for yourself.
+ * {@code :dance [1-4]} — toggle / select a dance for yourself.
  *
  * No-arg behavior:
  *   - if currently dancing → stop
- *   - else                 → start the standard Dance ({@code HAB_HOP})
+ *   - else                 → start the standard Dance (id 1)
  *
- * Named: {@code :dance dance | pogo mogo | duck funk | the rollie}.
- * Names are case-insensitive and accept the squished form
- * (e.g. {@code pogomogo}, {@code therollie}) since the chat split would
- * otherwise turn multi-word names into multiple params.
+ * IDs follow the Arcturus {@link DanceType} ordinals: 1=Dance, 2=Pogo Mogo,
+ * 3=Duck Funk, 4=The Rollie.
  */
 public class DanceCommand extends Command {
 
@@ -44,17 +42,8 @@ public class DanceCommand extends Command {
                     ? DanceType.HAB_HOP
                     : DanceType.NONE;
         } else {
-            StringBuilder joined = new StringBuilder();
-            for (int i = 1; i < params.length; i++) {
-                if (i > 1) joined.append(' ');
-                joined.append(params[i]);
-            }
-            DanceType resolved = resolve(joined.toString());
-            if (resolved == null) {
-                caller.whisper("Usage: :dance [dance | pogo mogo | duck funk | the rollie]",
-                        RoomChatMessageBubbles.ALERT);
-                return true;
-            }
+            DanceType resolved = resolve(params[1]);
+            if (resolved == null) return true;
             target = resolved;
         }
 
@@ -63,14 +52,13 @@ public class DanceCommand extends Command {
         return true;
     }
 
-    private static DanceType resolve(String name) {
-        String key = name.trim().toLowerCase().replace(" ", "");
-        return switch (key) {
-            case "dance"     -> DanceType.HAB_HOP;
-            case "pogomogo"  -> DanceType.POGO_MOGO;
-            case "duckfunk"  -> DanceType.DUCK_FUNK;
-            case "therollie" -> DanceType.THE_ROLLIE;
-            default          -> null;
+    private static DanceType resolve(String arg) {
+        return switch (arg.trim()) {
+            case "1" -> DanceType.HAB_HOP;
+            case "2" -> DanceType.POGO_MOGO;
+            case "3" -> DanceType.DUCK_FUNK;
+            case "4" -> DanceType.THE_ROLLIE;
+            default  -> null;
         };
     }
 }
