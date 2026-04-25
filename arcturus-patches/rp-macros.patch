@@ -31,8 +31,35 @@ diff --git a/src/main/java/com/eu/habbo/messages/incoming/Incoming.java b/src/ma
 +    // pixeltower: client deletes a macro by id. Wire format: int macroId.
 +    public static final int PixeltowerDeleteMacroEvent = 6556;
  }
+diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerDeleteMacroEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerDeleteMacroEvent.java
+new file mode 100644
+index 0000000..0376443
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerDeleteMacroEvent.java
+@@ -0,0 +1,20 @@
++package com.eu.habbo.messages.incoming.users;
++
++import com.eu.habbo.Emulator;
++import com.eu.habbo.messages.incoming.MessageHandler;
++import com.eu.habbo.plugin.events.users.UserMacroDeleteRequestedEvent;
++
++/**
++ * Pixeltower-custom incoming packet (header 6556). Emitted by the trash
++ * icon on each row of the MacrosWindow. Wire format: int macroId.
++ * Ownership is verified inside MacrosManager.delete().
++ */
++public class PixeltowerDeleteMacroEvent extends MessageHandler {
++    @Override
++    public void handle() throws Exception {
++        if (this.client == null || this.client.getHabbo() == null) return;
++        int macroId = this.packet.readInt();
++        Emulator.getPluginManager().fireEvent(
++                new UserMacroDeleteRequestedEvent(this.client.getHabbo(), macroId));
++    }
++}
 diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerRequestMacrosEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerRequestMacrosEvent.java
 new file mode 100644
+index 0000000..6d4d9d4
 --- /dev/null
 +++ b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerRequestMacrosEvent.java
 @@ -0,0 +1,21 @@
@@ -59,9 +86,10 @@ new file mode 100644
 +}
 diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerSaveMacroEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerSaveMacroEvent.java
 new file mode 100644
+index 0000000..1b6d217
 --- /dev/null
 +++ b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerSaveMacroEvent.java
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,29 @@
 +package com.eu.habbo.messages.incoming.users;
 +
 +import com.eu.habbo.Emulator;
@@ -91,56 +119,35 @@ new file mode 100644
 +                        this.client.getHabbo(), macroId, keybind, command, category));
 +    }
 +}
-diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerDeleteMacroEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerDeleteMacroEvent.java
+diff --git a/src/main/java/com/eu/habbo/plugin/events/users/UserMacroDeleteRequestedEvent.java b/src/main/java/com/eu/habbo/plugin/events/users/UserMacroDeleteRequestedEvent.java
 new file mode 100644
+index 0000000..84073e7
 --- /dev/null
-+++ b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerDeleteMacroEvent.java
-@@ -0,0 +1,22 @@
-+package com.eu.habbo.messages.incoming.users;
-+
-+import com.eu.habbo.Emulator;
-+import com.eu.habbo.messages.incoming.MessageHandler;
-+import com.eu.habbo.plugin.events.users.UserMacroDeleteRequestedEvent;
-+
-+/**
-+ * Pixeltower-custom incoming packet (header 6556). Emitted by the trash
-+ * icon on each row of the MacrosWindow. Wire format: int macroId.
-+ * Ownership is verified inside MacrosManager.delete().
-+ */
-+public class PixeltowerDeleteMacroEvent extends MessageHandler {
-+    @Override
-+    public void handle() throws Exception {
-+        if (this.client == null || this.client.getHabbo() == null) return;
-+        int macroId = this.packet.readInt();
-+        Emulator.getPluginManager().fireEvent(
-+                new UserMacroDeleteRequestedEvent(this.client.getHabbo(), macroId));
-+    }
-+}
-diff --git a/src/main/java/com/eu/habbo/plugin/events/users/UserMacrosRequestedEvent.java b/src/main/java/com/eu/habbo/plugin/events/users/UserMacrosRequestedEvent.java
-new file mode 100644
---- /dev/null
-+++ b/src/main/java/com/eu/habbo/plugin/events/users/UserMacrosRequestedEvent.java
-@@ -0,0 +1,15 @@
++++ b/src/main/java/com/eu/habbo/plugin/events/users/UserMacroDeleteRequestedEvent.java
+@@ -0,0 +1,17 @@
 +package com.eu.habbo.plugin.events.users;
 +
 +import com.eu.habbo.habbohotel.users.Habbo;
 +
 +/**
-+ * Fired when a Habbo asks for a fresh list of their saved macros —
-+ * emitted by the {@code PixeltowerRequestMacrosEvent} incoming handler.
-+ * The {@code habbo} field on the super-class is the requester, who should
-+ * receive the resulting MacrosListComposer.
++ * Fired when a Habbo deletes a macro from the MacrosWindow. Ownership
++ * is re-checked inside MacrosManager.delete() — passing this event does
++ * not authorize anything by itself.
 + */
-+public class UserMacrosRequestedEvent extends UserEvent {
-+    public UserMacrosRequestedEvent(Habbo requester) {
++public class UserMacroDeleteRequestedEvent extends UserEvent {
++    public final int macroId;
++
++    public UserMacroDeleteRequestedEvent(Habbo requester, int macroId) {
 +        super(requester);
++        this.macroId = macroId;
 +    }
 +}
 diff --git a/src/main/java/com/eu/habbo/plugin/events/users/UserMacroSaveRequestedEvent.java b/src/main/java/com/eu/habbo/plugin/events/users/UserMacroSaveRequestedEvent.java
 new file mode 100644
+index 0000000..b70be08
 --- /dev/null
 +++ b/src/main/java/com/eu/habbo/plugin/events/users/UserMacroSaveRequestedEvent.java
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,29 @@
 +package com.eu.habbo.plugin.events.users;
 +
 +import com.eu.habbo.habbohotel.users.Habbo;
@@ -170,25 +177,24 @@ new file mode 100644
 +        this.category = category;
 +    }
 +}
-diff --git a/src/main/java/com/eu/habbo/plugin/events/users/UserMacroDeleteRequestedEvent.java b/src/main/java/com/eu/habbo/plugin/events/users/UserMacroDeleteRequestedEvent.java
+diff --git a/src/main/java/com/eu/habbo/plugin/events/users/UserMacrosRequestedEvent.java b/src/main/java/com/eu/habbo/plugin/events/users/UserMacrosRequestedEvent.java
 new file mode 100644
+index 0000000..158f941
 --- /dev/null
-+++ b/src/main/java/com/eu/habbo/plugin/events/users/UserMacroDeleteRequestedEvent.java
-@@ -0,0 +1,18 @@
++++ b/src/main/java/com/eu/habbo/plugin/events/users/UserMacrosRequestedEvent.java
+@@ -0,0 +1,15 @@
 +package com.eu.habbo.plugin.events.users;
 +
 +import com.eu.habbo.habbohotel.users.Habbo;
 +
 +/**
-+ * Fired when a Habbo deletes a macro from the MacrosWindow. Ownership
-+ * is re-checked inside MacrosManager.delete() — passing this event does
-+ * not authorize anything by itself.
++ * Fired when a Habbo asks for a fresh list of their saved macros —
++ * emitted by the {@code PixeltowerRequestMacrosEvent} incoming handler.
++ * The {@code habbo} field on the super-class is the requester, who should
++ * receive the resulting MacrosListComposer.
 + */
-+public class UserMacroDeleteRequestedEvent extends UserEvent {
-+    public final int macroId;
-+
-+    public UserMacroDeleteRequestedEvent(Habbo requester, int macroId) {
++public class UserMacrosRequestedEvent extends UserEvent {
++    public UserMacrosRequestedEvent(Habbo requester) {
 +        super(requester);
-+        this.macroId = macroId;
 +    }
 +}
