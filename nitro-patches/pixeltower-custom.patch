@@ -2759,7 +2759,7 @@ index 9545362..e3a6679 100644
                          info = AvatarInfoUtilities.getBotInfo(category, userData);
                          break;
 diff --git a/src/hooks/rooms/widgets/useChatInputWidget.ts b/src/hooks/rooms/widgets/useChatInputWidget.ts
-index 5b11ecf..23dd400 100644
+index 5b11ecf..e7407d8 100644
 --- a/src/hooks/rooms/widgets/useChatInputWidget.ts
 +++ b/src/hooks/rooms/widgets/useChatInputWidget.ts
 @@ -1,6 +1,6 @@
@@ -2804,7 +2804,7 @@ index 5b11ecf..23dd400 100644
 +                            roomSession.ownRoomIndex,
 +                            `*Click-through has been ${next ? 'enabled' : 'disabled'}.*`,
 +                            RoomSessionChatEvent.CHAT_TYPE_SPEAK,
-+                            30
++                            34
 +                        )
 +                    );
 +

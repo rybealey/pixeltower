@@ -9,7 +9,7 @@ index 19eb6a5..64952d5 100644
 -                    <b className="username mr-1" dangerouslySetInnerHTML={ { __html: `${ chat.username }: ` } } />
 -                    <span className="message" dangerouslySetInnerHTML={ { __html: `${ chat.formattedText }` } } />
 +                    { /^\*.*\*$/.test(chat.formattedText) ? (
-+                        (chat.styleId === 23 || chat.styleId === 30) ? (
++                        (chat.styleId === 23 || chat.styleId === 34) ? (
 +                            <span className="message action-emote" dangerouslySetInnerHTML={ { __html: chat.formattedText } } />
 +                        ) : (
 +                            <span className="message action-emote" dangerouslySetInnerHTML={ { __html: chat.formattedText.replace(/^\*/, `*${ chat.username } `) } } />
