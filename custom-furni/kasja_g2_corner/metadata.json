@@ -1,0 +1,29 @@
+{
+  "id": 99009,
+  "classname": "kasja_g2_corner",
+  "revision": 99009,
+  "category": "other",
+  "defaultdir": 0,
+  "xdim": 1,
+  "ydim": 1,
+  "partcolors": {
+    "color": []
+  },
+  "name": "Corner",
+  "description": "",
+  "adurl": "",
+  "offerid": 99009,
+  "buyout": true,
+  "rentofferid": -1,
+  "rentbuyout": false,
+  "bc": false,
+  "excludeddynamic": false,
+  "customparams": "",
+  "specialtype": 1,
+  "canstandon": false,
+  "cansiton": false,
+  "canlayon": false,
+  "furniline": "kasja_farm",
+  "environment": "",
+  "rare": false
+}

@@ -1,0 +1,29 @@
+{
+  "id": 99011,
+  "classname": "kasja_g2_doublestair",
+  "revision": 99011,
+  "category": "other",
+  "defaultdir": 0,
+  "xdim": 2,
+  "ydim": 1,
+  "partcolors": {
+    "color": []
+  },
+  "name": "Double Stair",
+  "description": "",
+  "adurl": "",
+  "offerid": 99011,
+  "buyout": true,
+  "rentofferid": -1,
+  "rentbuyout": false,
+  "bc": false,
+  "excludeddynamic": false,
+  "customparams": "",
+  "specialtype": 1,
+  "canstandon": true,
+  "cansiton": false,
+  "canlayon": false,
+  "furniline": "kasja_farm",
+  "environment": "",
+  "rare": false
+}

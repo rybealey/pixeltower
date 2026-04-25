@@ -1,0 +1,29 @@
+{
+  "id": 99027,
+  "classname": "kasja_g2_stairs",
+  "revision": 99027,
+  "category": "other",
+  "defaultdir": 0,
+  "xdim": 1,
+  "ydim": 1,
+  "partcolors": {
+    "color": []
+  },
+  "name": "Stairs",
+  "description": "",
+  "adurl": "",
+  "offerid": 99027,
+  "buyout": true,
+  "rentofferid": -1,
+  "rentbuyout": false,
+  "bc": false,
+  "excludeddynamic": false,
+  "customparams": "",
+  "specialtype": 1,
+  "canstandon": true,
+  "cansiton": false,
+  "canlayon": false,
+  "furniline": "kasja_farm",
+  "environment": "",
+  "rare": false
+}

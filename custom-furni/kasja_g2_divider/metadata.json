@@ -1,0 +1,29 @@
+{
+  "id": 99010,
+  "classname": "kasja_g2_divider",
+  "revision": 99010,
+  "category": "other",
+  "defaultdir": 0,
+  "xdim": 2,
+  "ydim": 1,
+  "partcolors": {
+    "color": []
+  },
+  "name": "Divider",
+  "description": "",
+  "adurl": "",
+  "offerid": 99010,
+  "buyout": true,
+  "rentofferid": -1,
+  "rentbuyout": false,
+  "bc": false,
+  "excludeddynamic": false,
+  "customparams": "",
+  "specialtype": 1,
+  "canstandon": true,
+  "cansiton": false,
+  "canlayon": false,
+  "furniline": "kasja_farm",
+  "environment": "",
+  "rare": false
+}

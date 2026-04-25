@@ -1,0 +1,29 @@
+{
+  "id": 99032,
+  "classname": "kasja_g2_triplestair",
+  "revision": 99032,
+  "category": "other",
+  "defaultdir": 0,
+  "xdim": 2,
+  "ydim": 1,
+  "partcolors": {
+    "color": []
+  },
+  "name": "Triple Stair",
+  "description": "",
+  "adurl": "",
+  "offerid": 99032,
+  "buyout": true,
+  "rentofferid": -1,
+  "rentbuyout": false,
+  "bc": false,
+  "excludeddynamic": false,
+  "customparams": "",
+  "specialtype": 1,
+  "canstandon": true,
+  "cansiton": false,
+  "canlayon": false,
+  "furniline": "kasja_farm",
+  "environment": "",
+  "rare": false
+}

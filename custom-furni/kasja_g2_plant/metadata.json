@@ -1,0 +1,29 @@
+{
+  "id": 99017,
+  "classname": "kasja_g2_plant",
+  "revision": 99017,
+  "category": "other",
+  "defaultdir": 0,
+  "xdim": 1,
+  "ydim": 1,
+  "partcolors": {
+    "color": []
+  },
+  "name": "Plant",
+  "description": "",
+  "adurl": "",
+  "offerid": 99017,
+  "buyout": true,
+  "rentofferid": -1,
+  "rentbuyout": false,
+  "bc": false,
+  "excludeddynamic": false,
+  "customparams": "",
+  "specialtype": 1,
+  "canstandon": false,
+  "cansiton": false,
+  "canlayon": false,
+  "furniline": "kasja_farm",
+  "environment": "",
+  "rare": false
+}

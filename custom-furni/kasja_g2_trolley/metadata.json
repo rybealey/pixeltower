@@ -1,0 +1,29 @@
+{
+  "id": 99033,
+  "classname": "kasja_g2_trolley",
+  "revision": 99033,
+  "category": "other",
+  "defaultdir": 0,
+  "xdim": 1,
+  "ydim": 2,
+  "partcolors": {
+    "color": []
+  },
+  "name": "Trolley",
+  "description": "",
+  "adurl": "",
+  "offerid": 99033,
+  "buyout": true,
+  "rentofferid": -1,
+  "rentbuyout": false,
+  "bc": false,
+  "excludeddynamic": false,
+  "customparams": "",
+  "specialtype": 1,
+  "canstandon": false,
+  "cansiton": false,
+  "canlayon": false,
+  "furniline": "kasja_farm",
+  "environment": "",
+  "rare": false
+}

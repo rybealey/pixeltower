@@ -1,0 +1,29 @@
+{
+  "id": 99007,
+  "classname": "kasja_g2_bucket",
+  "revision": 99007,
+  "category": "other",
+  "defaultdir": 0,
+  "xdim": 1,
+  "ydim": 1,
+  "partcolors": {
+    "color": []
+  },
+  "name": "Bucket",
+  "description": "",
+  "adurl": "",
+  "offerid": 99007,
+  "buyout": true,
+  "rentofferid": -1,
+  "rentbuyout": false,
+  "bc": false,
+  "excludeddynamic": false,
+  "customparams": "",
+  "specialtype": 1,
+  "canstandon": false,
+  "cansiton": false,
+  "canlayon": false,
+  "furniline": "kasja_farm",
+  "environment": "",
+  "rare": false
+}

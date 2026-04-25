@@ -1,0 +1,29 @@
+{
+  "id": 99022,
+  "classname": "kasja_g2_seedbag",
+  "revision": 99022,
+  "category": "other",
+  "defaultdir": 0,
+  "xdim": 1,
+  "ydim": 1,
+  "partcolors": {
+    "color": []
+  },
+  "name": "Seed Bag",
+  "description": "",
+  "adurl": "",
+  "offerid": 99022,
+  "buyout": true,
+  "rentofferid": -1,
+  "rentbuyout": false,
+  "bc": false,
+  "excludeddynamic": false,
+  "customparams": "",
+  "specialtype": 1,
+  "canstandon": false,
+  "cansiton": false,
+  "canlayon": false,
+  "furniline": "kasja_farm",
+  "environment": "",
+  "rare": false
+}
