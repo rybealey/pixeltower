@@ -2697,7 +2697,7 @@ index af1c12a..a1a1fc8 100644
          background.height = height;
  
 diff --git a/src/hooks/rooms/widgets/useAvatarInfoWidget.ts b/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
-index 9545362..da2402b 100644
+index 9545362..80ec22b 100644
 --- a/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
 +++ b/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
 @@ -1,6 +1,7 @@
@@ -2710,7 +2710,7 @@ index 9545362..da2402b 100644
  import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../../events';
  import { useFriends } from '../../friends';
  import { useWired } from '../../wired';
-@@ -85,9 +86,37 @@ const useAvatarInfoWidgetState = () =>
+@@ -85,9 +86,41 @@ const useAvatarInfoWidgetState = () =>
                          roomSession.userDataManager.requestPetInfo(userData.webID);
                          setPendingPetId(userData.webID);
                          break;
@@ -2730,19 +2730,23 @@ index 9545362..da2402b 100644
 +                        if(!isSelf)
 +                            SendMessageComposer(new PixeltowerSetTargetComposer(userData.webID));
 +
-+                        // pixeltower: with `:ct` on, walk to the clicked user's tile
-+                        // ("click through" to where they're standing). Tile stacking
-+                        // already lets us land on the same tile; server pathfinder
-+                        // handles the route. To go further, click another tile.
++                        // pixeltower: with `:ct` on, walk to the tile under the
++                        // cursor — the white-bordered tile the user sees. The
++                        // renderer's tile-cursor object only updates on tile
++                        // hover events; when the mouse moves onto an avatar
++                        // (UNIT category) it stays at the last hovered tile,
++                        // which is exactly the iso hover-tile we want to walk
++                        // to. Looked up by category CURSOR + the renderer's
++                        // fixed cursor object id (-2).
 +                        if(popupDisabled && !isSelf)
 +                        {
-+                            const theirObject = GetRoomEngine().getRoomObject(roomSession.roomId, userData.roomIndex, RoomObjectCategory.UNIT);
++                            const cursor = GetRoomEngine().getRoomObject(roomSession.roomId, -2, RoomObjectCategory.CURSOR);
 +
-+                            if(theirObject)
++                            if(cursor)
 +                            {
-+                                const theirLoc = theirObject.getLocation();
++                                const cursorLoc = cursor.getLocation();
 +
-+                                SendMessageComposer(new RoomUnitWalkComposer(~~theirLoc.x, ~~theirLoc.y));
++                                SendMessageComposer(new RoomUnitWalkComposer(~~cursorLoc.x, ~~cursorLoc.y));
 +                            }
 +                        }
                          break;
