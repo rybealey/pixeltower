@@ -2697,7 +2697,7 @@ index af1c12a..a1a1fc8 100644
          background.height = height;
  
 diff --git a/src/hooks/rooms/widgets/useAvatarInfoWidget.ts b/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
-index 9545362..80ec22b 100644
+index 9545362..e3a6679 100644
 --- a/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
 +++ b/src/hooks/rooms/widgets/useAvatarInfoWidget.ts
 @@ -1,6 +1,7 @@
@@ -2710,7 +2710,7 @@ index 9545362..80ec22b 100644
  import { useRoomEngineEvent, useRoomSessionManagerEvent, useUiEvent } from '../../events';
  import { useFriends } from '../../friends';
  import { useWired } from '../../wired';
-@@ -85,9 +86,41 @@ const useAvatarInfoWidgetState = () =>
+@@ -85,9 +86,45 @@ const useAvatarInfoWidgetState = () =>
                          roomSession.userDataManager.requestPetInfo(userData.webID);
                          setPendingPetId(userData.webID);
                          break;
@@ -2720,13 +2720,15 @@ index 9545362..80ec22b 100644
 +                        const isSelf = userData.webID === GetSessionDataManager().userId;
 +                        const popupDisabled = GetLocalStorage<boolean>(LocalStorageKeys.DISABLE_USER_INFO_POPUP);
 +
-+                        // pixeltower: `:ct` toggles the avatar-click info menu.
-+                        // Self-click still opens own action wheel.
-+                        if(!popupDisabled || isSelf)
++                        // pixeltower: `:ct` toggles the avatar-click info menu
++                        // — applies to clicks on self too (own action wheel
++                        // is suppressed when the toggle is on).
++                        if(!popupDisabled)
 +                            info = AvatarInfoUtilities.getUserInfo(category, userData);
 +
 +                        // pixeltower: avatar-sprite click drives the TargetHUD.
-+                        // Fires regardless of `:ct` so combat targeting still works.
++                        // Fires regardless of `:ct` so combat targeting still
++                        // works. Skipped for self — you can't target yourself.
 +                        if(!isSelf)
 +                            SendMessageComposer(new PixeltowerSetTargetComposer(userData.webID));
 +
@@ -2737,8 +2739,10 @@ index 9545362..80ec22b 100644
 +                        // (UNIT category) it stays at the last hovered tile,
 +                        // which is exactly the iso hover-tile we want to walk
 +                        // to. Looked up by category CURSOR + the renderer's
-+                        // fixed cursor object id (-2).
-+                        if(popupDisabled && !isSelf)
++                        // fixed cursor object id (-2). Applies to self-clicks
++                        // too — clicking your own avatar walks you to the
++                        // cursor tile.
++                        if(popupDisabled)
 +                        {
 +                            const cursor = GetRoomEngine().getRoomObject(roomSession.roomId, -2, RoomObjectCategory.CURSOR);
 +
