@@ -63,6 +63,7 @@ import org.pixeltower.rp.fight.FightService;
 import org.pixeltower.rp.fight.commands.FightTestCommand;
 import org.pixeltower.rp.fight.commands.HitCommand;
 import org.pixeltower.rp.fight.commands.SetZoneCommand;
+import org.pixeltower.rp.fight.commands.SlapCommand;
 import org.pixeltower.rp.functional.FunctionalFurnitureService;
 import org.pixeltower.rp.medical.RespawnScheduler;
 import org.pixeltower.rp.medical.commands.RespawnCommand;
@@ -249,6 +250,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         CommandHandler.addCommand(new SetEnergyCommand());
         CommandHandler.addCommand(new FightTestCommand());
         CommandHandler.addCommand(new HitCommand());
+        CommandHandler.addCommand(new SlapCommand());
         CommandHandler.addCommand(new SetZoneCommand());
         CommandHandler.addCommand(new RespawnCommand());
         CommandHandler.addCommand(new HugCommand());
