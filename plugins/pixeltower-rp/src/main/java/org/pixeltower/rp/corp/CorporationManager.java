@@ -161,6 +161,11 @@ public final class CorporationManager {
         return MEMBER_BY_HABBO.values();
     }
 
+    /** All cached corps. Safe for read-only iteration (values view of a ConcurrentHashMap). */
+    public static Iterable<Corporation> allCorps() {
+        return BY_ID.values();
+    }
+
     // ──────────── mutations ────────────
 
     /**

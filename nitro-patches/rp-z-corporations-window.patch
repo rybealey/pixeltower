@@ -1,0 +1,695 @@
+diff --git a/src/api/pixeltower/PixeltowerSoundMessages.ts b/src/api/pixeltower/PixeltowerSoundMessages.ts
+--- a/src/api/pixeltower/PixeltowerSoundMessages.ts
++++ b/src/api/pixeltower/PixeltowerSoundMessages.ts
+@@ -6,10 +6,12 @@
+ const PIXELTOWER_UPDATE_TARGET_STATS = 6502;
+ const PIXELTOWER_OPEN_CLIENT_LINK = 6503;
+ const PIXELTOWER_UPDATE_CORP_BADGES = 6504;
++const PIXELTOWER_CORPORATIONS_LIST = 6505;
+ const PIXELTOWER_ROLEPLAY_OFFER = 6510;
+ const PIXELTOWER_ROLEPLAY_OFFER_DISMISS = 6511;
+ const PIXELTOWER_ROLEPLAY_OFFER_RESPONSE = 6551;
+ const PIXELTOWER_SET_TARGET = 6550;
++const PIXELTOWER_REQUEST_CORPORATIONS = 6552;
+ 
+ // ──────────── PlaySound (header 6500) ────────────
+ 
+@@ -294,9 +296,113 @@
+     public getParser(): UpdateCorpBadgesParser
+     {
+         return this.parser as UpdateCorpBadgesParser;
++    }
++}
++
++// ──────────── CorporationsList (header 6505) ────────────
++//
++// Full snapshot of every corp + its rank ladder + its current member roster
++// (with username + figure). Sent in response to RequestCorporationsComposer;
++// the window replaces its state wholesale on each receipt.
++
++export interface CorporationsListRank
++{
++    rankNum: number;
++    title: string;
++    salary: number;
++}
++
++export interface CorporationsListMember
++{
++    habboId: number;
++    username: string;
++    figure: string;
++    rankNum: number;
++}
++
++export interface CorporationsListCorp
++{
++    corpId: number;
++    corpKey: string;
++    corpName: string;
++    badgeCode: string;
++    stockCapacity: number;
++    ranks: CorporationsListRank[];
++    members: CorporationsListMember[];
++}
++
++export class CorporationsListParser implements IMessageParser
++{
++    private _corporations: CorporationsListCorp[];
++
++    public flush(): boolean
++    {
++        this._corporations = [];
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++        this._corporations = [];
++        const corpCount = wrapper.readInt();
++        for(let i = 0; i < corpCount; i++)
++        {
++            const corpId = wrapper.readInt();
++            const corpKey = wrapper.readString();
++            const corpName = wrapper.readString();
++            const badgeCode = wrapper.readString();
++            const stockCapacity = wrapper.readInt();
++
++            const rankCount = wrapper.readInt();
++            const ranks: CorporationsListRank[] = [];
++            for(let r = 0; r < rankCount; r++)
++            {
++                ranks.push({
++                    rankNum: wrapper.readInt(),
++                    title: wrapper.readString(),
++                    salary: wrapper.readInt()
++                });
++            }
++
++            const memberCount = wrapper.readInt();
++            const members: CorporationsListMember[] = [];
++            for(let m = 0; m < memberCount; m++)
++            {
++                members.push({
++                    habboId: wrapper.readInt(),
++                    username: wrapper.readString(),
++                    figure: wrapper.readString(),
++                    rankNum: wrapper.readInt()
++                });
++            }
++
++            this._corporations.push({
++                corpId, corpKey, corpName, badgeCode, stockCapacity, ranks, members
++            });
++        }
++        return true;
+     }
++
++    public get corporations(): CorporationsListCorp[]
++    {
++        return this._corporations;
++    }
+ }
+ 
++export class CorporationsListEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, CorporationsListParser);
++    }
++
++    public getParser(): CorporationsListParser
++    {
++        return this.parser as CorporationsListParser;
++    }
++}
++
+ // ──────────── RoleplayOffer (header 6510) ────────────
+ //
+ // Roleplay service offer popup (heal, repair, …) sent by the OfferManager
+@@ -447,6 +553,24 @@
+     }
+ }
+ 
++// ──────────── RequestCorporations (header 6552, client→server) ────────────
++//
++// Empty-body request for a fresh CorporationsListEvent snapshot. Sent by
++// the CorporationsWindow whenever it opens.
++
++export class RequestCorporationsComposer implements IMessageComposer<ConstructorParameters<typeof RequestCorporationsComposer>>
++{
++    private _data: ConstructorParameters<typeof RequestCorporationsComposer>;
++
++    constructor()
++    {
++        this._data = [];
++    }
++
++    public getMessageArray() { return this._data; }
++    public dispose(): void { return; }
++}
++
+ // ──────────── registration ────────────
+ 
+ class PixeltowerMessages implements IMessageConfiguration
+@@ -457,12 +581,14 @@
+         [ PIXELTOWER_UPDATE_TARGET_STATS, UpdateTargetStatsEvent ],
+         [ PIXELTOWER_OPEN_CLIENT_LINK, OpenClientLinkEvent ],
+         [ PIXELTOWER_UPDATE_CORP_BADGES, UpdateCorpBadgesEvent ],
++        [ PIXELTOWER_CORPORATIONS_LIST, CorporationsListEvent ],
+         [ PIXELTOWER_ROLEPLAY_OFFER, RoleplayOfferEvent ],
+         [ PIXELTOWER_ROLEPLAY_OFFER_DISMISS, RoleplayOfferDismissEvent ]
+     ]);
+     public composers: Map<number, Function> = new Map<number, Function>([
+         [ PIXELTOWER_SET_TARGET, PixeltowerSetTargetComposer ],
+-        [ PIXELTOWER_ROLEPLAY_OFFER_RESPONSE, RoleplayOfferResponseComposer ]
++        [ PIXELTOWER_ROLEPLAY_OFFER_RESPONSE, RoleplayOfferResponseComposer ],
++        [ PIXELTOWER_REQUEST_CORPORATIONS, RequestCorporationsComposer ]
+     ]);
+ }
+ 
+diff --git a/src/hooks/pixeltower/index.ts b/src/hooks/pixeltower/index.ts
+--- a/src/hooks/pixeltower/index.ts
++++ b/src/hooks/pixeltower/index.ts
+@@ -1,4 +1,5 @@
+ export * from './useCorpBadges';
++export * from './useCorporations';
+ export * from './useEmployment';
+ export * from './useStats';
+ export * from './useTarget';
+diff --git a/src/components/index.scss b/src/components/index.scss
+--- a/src/components/index.scss
++++ b/src/components/index.scss
+@@ -21,6 +21,7 @@
+ @import './pixeltower/StatsHUD';
+ @import './pixeltower/StatusHUD';
+ @import './pixeltower/DiamondsWindow';
++@import './pixeltower/CorporationsWindow';
+ @import './pixeltower/DrawerHUD';
+ @import './pixeltower/ToolbarHUD';
+ @import './pixeltower/OfferHUD';
+diff --git a/src/components/main/MainView.tsx b/src/components/main/MainView.tsx
+--- a/src/components/main/MainView.tsx
++++ b/src/components/main/MainView.tsx
+@@ -20,6 +20,7 @@
+ import { NavigatorView } from '../navigator/NavigatorView';
+ import { CommandsListView } from '../pixeltower/CommandsListView';
+ import { CorpBadgesListener } from '../pixeltower/CorpBadgesListener';
++import { CorporationsWindow } from '../pixeltower/CorporationsWindow';
+ import { DiamondsWindow } from '../pixeltower/DiamondsWindow';
+ import { DrawerHUD } from '../pixeltower/DrawerHUD';
+ import { OfferHUD } from '../pixeltower/OfferHUD';
+@@ -103,6 +104,7 @@
+             <CommandsListView />
+             <OfferHUD />
+             <DiamondsWindow />
++            <CorporationsWindow />
+             <ModToolsView />
+             <RoomView />
+             <ChatHistoryView />
+diff --git a/src/components/pixeltower/DrawerHUD.tsx b/src/components/pixeltower/DrawerHUD.tsx
+--- a/src/components/pixeltower/DrawerHUD.tsx
++++ b/src/components/pixeltower/DrawerHUD.tsx
+@@ -3,23 +3,23 @@
+     LuBackpack, LuBuilding2, LuChevronLeft, LuChevronRight,
+     LuKeyboard, LuScroll, LuUsers
+ } from 'react-icons/lu';
++import { CreateLinkEvent } from '../../api';
+ 
+ // Left-edge side drawer for RP-specific actions. Matches
+ // .designs/client_ui.pen frame tW1BU: a narrow pull-tab handle that
+ // stays flush against the viewport's left edge, and an expandable
+ // panel of icon-only action buttons that slides out on click.
+ //
+-// Click handlers are deliberately no-ops for now — the RP backends
+-// (Gangs, Corps, Macros, Wanted) don't yet exist server-side. Swap
+-// in CreateLinkEvent(...) calls per-button as those ship.
++// Click handlers wire to per-feature link events as RP backends ship.
++// Buttons whose backends don't exist yet stay as no-ops (linkEvent omitted).
+ 
+-type DrawerButton = { key: string; label: string; Icon: typeof LuBackpack };
++type DrawerButton = { key: string; label: string; Icon: typeof LuBackpack; linkEvent?: string };
+ 
+ const BUTTONS: DrawerButton[] = [
+     { key: 'inventory', label: 'Inventory', Icon: LuBackpack },
+     { key: 'macros',    label: 'Macros',    Icon: LuKeyboard },
+     { key: 'gangs',     label: 'Gangs',     Icon: LuUsers },
+-    { key: 'corps',     label: 'Corps',     Icon: LuBuilding2 },
++    { key: 'corps',     label: 'Corps',     Icon: LuBuilding2, linkEvent: 'corporations-window/toggle' },
+     { key: 'wanted',    label: 'Wanted',    Icon: LuScroll },
+ ];
+ 
+@@ -31,13 +31,13 @@
+     return (
+         <div className={ 'pixeltower-drawer-hud' + (open ? ' pixeltower-drawer-hud--open' : '') }>
+             <div className="pixeltower-drawer-hud__panel">
+-                { BUTTONS.map(({ key, label, Icon }) => (
++                { BUTTONS.map(({ key, label, Icon, linkEvent }) => (
+                     <button
+                         key={ key }
+                         type="button"
+                         className="pixeltower-drawer-hud__button"
+                         title={ label }
+-                        onClick={ () => { /* placeholder — wire RP actions later */ } }>
++                        onClick={ () => { if(linkEvent) CreateLinkEvent(linkEvent); } }>
+                         <Icon />
+                     </button>
+                 )) }
+diff --git a/src/hooks/pixeltower/useCorporations.ts b/src/hooks/pixeltower/useCorporations.ts
+new file mode 100644
+--- /dev/null
++++ b/src/hooks/pixeltower/useCorporations.ts
+@@ -0,0 +1,28 @@
++import { useState } from 'react';
++import { useBetween } from 'use-between';
++import { CorporationsListCorp, CorporationsListEvent } from '../../api/pixeltower/PixeltowerSoundMessages';
++import { useMessageEvent } from '../events';
++
++export type Corporation = CorporationsListCorp;
++
++/**
++ * Public roster of every corp + every employee, replaced wholesale on each
++ * server snapshot (CorporationsListEvent / header 6505). The snapshot is
++ * requested by {@code CorporationsWindow} on open via
++ * {@code RequestCorporationsComposer}; useBetween keeps the result shared
++ * across components so future corp-related views (commands list, infostand
++ * extension, etc.) can read without a re-request.
++ */
++const useCorporationsState = () =>
++{
++    const [ corporations, setCorporations ] = useState<Corporation[]>([]);
++
++    useMessageEvent<CorporationsListEvent>(CorporationsListEvent, event =>
++    {
++        setCorporations(event.getParser().corporations);
++    });
++
++    return { corporations };
++}
++
++export const useCorporations = () => useBetween(useCorporationsState);
+diff --git a/src/components/pixeltower/CorporationsWindow.tsx b/src/components/pixeltower/CorporationsWindow.tsx
+new file mode 100644
+--- /dev/null
++++ b/src/components/pixeltower/CorporationsWindow.tsx
+@@ -0,0 +1,171 @@
++import { ILinkEventTracker } from '@nitrots/nitro-renderer';
++import { FC, useEffect, useMemo, useState } from 'react';
++import { LuPackage, LuUsers } from 'react-icons/lu';
++import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
++import { RequestCorporationsComposer } from '../../api/pixeltower/PixeltowerSoundMessages';
++import { LayoutAvatarImageView, LayoutBadgeImageView, NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
++import { Corporation, useCorporations } from '../../hooks/pixeltower';
++
++// Corporations Window — matches .designs/client_ui.pen frame qwlWN.
++// Triggered from the Drawer HUD "Corps" button via
++// CreateLinkEvent('corporations-window/show|hide|toggle'). Uses the
++// native Nitro card chrome (draggable header, red X close button) for
++// parity with every other in-game dialog. The roster snapshot is fetched
++// via RequestCorporationsComposer (header 6552) on each open and replied
++// to with a CorporationsListEvent (header 6505), shared across the app
++// via the useCorporations hook.
++
++const formatNumber = (value: number): string =>
++    value.toLocaleString('en-US');
++
++interface RankBucket
++{
++    rankNum: number;
++    title: string;
++    salary: number;
++    members: Corporation['members'];
++}
++
++const bucketMembersByRank = (corp: Corporation): RankBucket[] =>
++{
++    const ranksByNum = new Map<number, { title: string; salary: number; members: Corporation['members'] }>();
++    corp.ranks.forEach(r => ranksByNum.set(r.rankNum, { title: r.title, salary: r.salary, members: [] }));
++    corp.members.forEach(m =>
++    {
++        const bucket = ranksByNum.get(m.rankNum);
++        if(bucket) bucket.members.push(m);
++    });
++    return Array.from(ranksByNum.entries())
++        .filter(([ , v ]) => v.members.length > 0)
++        .map(([ rankNum, v ]) => ({ rankNum, ...v }))
++        .sort((a, b) => b.rankNum - a.rankNum);
++}
++
++export const CorporationsWindow: FC<{}> = () =>
++{
++    const [ isVisible, setIsVisible ] = useState(false);
++    const [ selectedCorpId, setSelectedCorpId ] = useState<number | null>(null);
++    const { corporations } = useCorporations();
++
++    useEffect(() =>
++    {
++        const linkTracker: ILinkEventTracker = {
++            linkReceived: (url: string) =>
++            {
++                const parts = url.split('/');
++                if(parts.length < 2) return;
++                switch(parts[1])
++                {
++                    case 'show':   setIsVisible(true); return;
++                    case 'hide':   setIsVisible(false); return;
++                    case 'toggle': setIsVisible(v => !v); return;
++                }
++            },
++            eventUrlPrefix: 'corporations-window/'
++        };
++        AddEventLinkTracker(linkTracker);
++        return () => RemoveLinkEventTracker(linkTracker);
++    }, []);
++
++    useEffect(() =>
++    {
++        if(!isVisible) return;
++        SendMessageComposer(new RequestCorporationsComposer());
++    }, [ isVisible ]);
++
++    useEffect(() =>
++    {
++        if(selectedCorpId !== null) return;
++        if(!corporations.length) return;
++        setSelectedCorpId(corporations[0].corpId);
++    }, [ corporations, selectedCorpId ]);
++
++    const selectedCorp = useMemo(
++        () => corporations.find(c => c.corpId === selectedCorpId) ?? null,
++        [ corporations, selectedCorpId ]);
++
++    const rankBuckets = useMemo(
++        () => selectedCorp ? bucketMembersByRank(selectedCorp) : [],
++        [ selectedCorp ]);
++
++    if(!isVisible) return null;
++
++    const close = () => setIsVisible(false);
++
++    return (
++        <NitroCardView uniqueKey="pixeltower-corporations" theme="primary" classNames={ [ 'pixeltower-corporations-window' ] }>
++            <NitroCardHeaderView headerText="Corporations" onCloseClick={ close } />
++            <NitroCardContentView classNames={ [ 'pixeltower-corporations-window__content' ] } overflow="hidden">
++                <div className="pixeltower-corporations-window__body">
++                    <div className="pixeltower-corporations-window__rail">
++                        { corporations.map(corp => (
++                            <button
++                                key={ corp.corpId }
++                                type="button"
++                                className={ 'pixeltower-corporations-window__badge' + (corp.corpId === selectedCorpId ? ' pixeltower-corporations-window__badge--active' : '') }
++                                title={ corp.corpName }
++                                onClick={ () => setSelectedCorpId(corp.corpId) }>
++                                { corp.badgeCode
++                                    ? <LayoutBadgeImageView badgeCode={ corp.badgeCode } isGroup={ false } />
++                                    : <span className="pixeltower-corporations-window__badge-fallback">{ corp.corpName.charAt(0) }</span>
++                                }
++                            </button>
++                        )) }
++                    </div>
++                    <div className="pixeltower-corporations-window__main">
++                        { !selectedCorp && (
++                            <div className="pixeltower-corporations-window__loading">Loading…</div>
++                        ) }
++                        { selectedCorp && (
++                            <>
++                                <div className="pixeltower-corporations-window__corp-header">
++                                    <div className="pixeltower-corporations-window__corp-name">{ selectedCorp.corpName }</div>
++                                    <div className="pixeltower-corporations-window__stats">
++                                        <div className="pixeltower-corporations-window__pill">
++                                            <LuUsers />
++                                            <span>{ formatNumber(selectedCorp.members.length) } { selectedCorp.members.length === 1 ? 'employee' : 'employees' }</span>
++                                        </div>
++                                        <div className="pixeltower-corporations-window__pill">
++                                            <LuPackage />
++                                            <span>{ formatNumber(selectedCorp.stockCapacity) } stock</span>
++                                        </div>
++                                    </div>
++                                </div>
++                                { rankBuckets.length === 0 && (
++                                    <div className="pixeltower-corporations-window__empty">No employees yet.</div>
++                                ) }
++                                { rankBuckets.map(bucket => (
++                                    <div key={ bucket.rankNum } className="pixeltower-corporations-window__rank">
++                                        <div className="pixeltower-corporations-window__rank-header">
++                                            <span className="pixeltower-corporations-window__rank-title">{ bucket.title }</span>
++                                            <span className="pixeltower-corporations-window__wage">${ formatNumber(bucket.salary) }</span>
++                                        </div>
++                                        <div className="pixeltower-corporations-window__rank-grid">
++                                            { bucket.members.map(member => (
++                                                <div key={ member.habboId } className="pixeltower-corporations-window__employee">
++                                                    <div className="pixeltower-corporations-window__avatar">
++                                                        { member.figure
++                                                            ? <LayoutAvatarImageView figure={ member.figure } direction={ 2 } headOnly={ true } />
++                                                            : null
++                                                        }
++                                                    </div>
++                                                    <div className="pixeltower-corporations-window__employee-text">
++                                                        <span className="pixeltower-corporations-window__employee-name">{ member.username }</span>
++                                                        <span className="pixeltower-corporations-window__employee-rank">{ bucket.title }</span>
++                                                    </div>
++                                                </div>
++                                            )) }
++                                            { bucket.members.length % 2 === 1 && (
++                                                <div className="pixeltower-corporations-window__employee pixeltower-corporations-window__employee--filler" />
++                                            ) }
++                                        </div>
++                                    </div>
++                                )) }
++                            </>
++                        ) }
++                    </div>
++                </div>
++            </NitroCardContentView>
++        </NitroCardView>
++    );
++}
+diff --git a/src/components/pixeltower/CorporationsWindow.scss b/src/components/pixeltower/CorporationsWindow.scss
+new file mode 100644
+--- /dev/null
++++ b/src/components/pixeltower/CorporationsWindow.scss
+@@ -0,0 +1,223 @@
++@use './tokens' as *;
++
++// Corporations Window — matches .designs/client_ui.pen frame qwlWN.
++// Outer chrome is NitroCardView (theme="primary") so it inherits the same
++// slate-blue draggable header + red X close button every other Pixeltower
++// dialog uses (Diamonds, Commands List). Body sits on the default $light
++// (#DFDFDF) .content-area background.
++
++$pt-corp-panel-bg:       #FFFFFF;
++$pt-corp-panel-border:   #A0A8B5;
++$pt-corp-text-strong:    #1F2C40;
++$pt-corp-text-muted:     #6B7280;
++$pt-corp-card-bg:        #FAFAFA;
++$pt-corp-pill-bg:        #EAEAEA;
++$pt-corp-wage-bg:        #E8F5EE;
++$pt-corp-wage-border:    #48C66B;
++$pt-corp-wage-text:      #1F6B36;
++$pt-corp-active-glow:    #FFD028;
++$pt-corp-active-stroke:  #1F2C40;
++
++.pixeltower-corporations-window {
++    width: 660px;
++    max-width: calc(100vw - 24px);
++    color: $pt-corp-text-strong;
++    font-family: $pt-font-family;
++
++    &__body {
++        display: flex;
++        gap: 12px;
++        padding: 12px;
++    }
++
++    &__rail {
++        display: flex;
++        flex-direction: column;
++        gap: 6px;
++        padding: 6px;
++        width: 60px;
++        background: $pt-corp-panel-bg;
++        border: 1px solid $pt-corp-panel-border;
++        border-radius: 3px;
++        flex-shrink: 0;
++    }
++
++    &__badge {
++        width: 48px;
++        height: 48px;
++        background: #E5E5E5;
++        border: 1px solid $pt-corp-panel-border;
++        border-radius: 3px;
++        cursor: pointer;
++        display: flex;
++        align-items: center;
++        justify-content: center;
++        padding: 0;
++
++        &:hover { filter: brightness(1.04); }
++
++        &--active {
++            border: 2px solid $pt-corp-active-stroke;
++            box-shadow: 0 0 0 2px $pt-corp-active-glow, 0 0 8px $pt-corp-active-glow;
++        }
++
++        .badge-image { transform: scale(1); }
++    }
++
++    &__badge-fallback {
++        font-family: $pt-font-family;
++        font-size: 20px;
++        font-weight: 900;
++        color: $pt-corp-text-muted;
++        text-transform: uppercase;
++    }
++
++    &__main {
++        display: flex;
++        flex-direction: column;
++        gap: 12px;
++        flex: 1;
++        min-width: 0;
++    }
++
++    &__loading,
++    &__empty {
++        background: $pt-corp-panel-bg;
++        border: 1px solid $pt-corp-panel-border;
++        border-radius: 3px;
++        padding: 16px;
++        text-align: center;
++        color: $pt-corp-text-muted;
++        font-size: 13px;
++    }
++
++    &__corp-header {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        gap: 12px;
++        background: $pt-corp-panel-bg;
++        border: 1px solid $pt-corp-panel-border;
++        border-radius: 3px;
++        padding: 10px 12px;
++    }
++
++    &__corp-name {
++        font-size: 18px;
++        font-weight: 900;
++        color: $pt-corp-text-strong;
++    }
++
++    &__stats {
++        display: flex;
++        gap: 6px;
++        flex-shrink: 0;
++    }
++
++    &__pill {
++        display: flex;
++        align-items: center;
++        gap: 6px;
++        padding: 4px 8px;
++        background: $pt-corp-pill-bg;
++        border: 1px solid $pt-corp-panel-border;
++        border-radius: 3px;
++        font-size: 12px;
++        font-weight: 700;
++        color: $pt-corp-text-strong;
++
++        svg { width: 12px; height: 12px; color: $pt-corp-text-muted; }
++    }
++
++    &__rank {
++        background: $pt-corp-panel-bg;
++        border: 1px solid $pt-corp-panel-border;
++        border-radius: 3px;
++        display: flex;
++        flex-direction: column;
++    }
++
++    &__rank-header {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        padding: 8px 12px;
++    }
++
++    &__rank-title {
++        font-size: 14px;
++        font-weight: 900;
++        color: $pt-corp-text-strong;
++    }
++
++    &__wage {
++        background: $pt-corp-wage-bg;
++        border: 1px solid $pt-corp-wage-border;
++        border-radius: 3px;
++        padding: 3px 8px;
++        font-size: 13px;
++        font-weight: 900;
++        color: $pt-corp-wage-text;
++    }
++
++    &__rank-grid {
++        display: grid;
++        grid-template-columns: 1fr 1fr;
++        gap: 8px;
++        padding: 0 12px 12px 12px;
++    }
++
++    &__employee {
++        display: flex;
++        align-items: center;
++        gap: 10px;
++        padding: 8px;
++        background: $pt-corp-card-bg;
++        border: 1px solid $pt-corp-panel-border;
++        border-radius: 3px;
++        min-width: 0;
++
++        &--filler {
++            background: transparent;
++            border: none;
++        }
++    }
++
++    &__avatar {
++        width: 36px;
++        height: 36px;
++        border-radius: 3px;
++        background: linear-gradient(180deg, #A0A8B5 0%, #A0A8B5 50%, #6B7280 50%, #6B7280 100%);
++        flex-shrink: 0;
++        overflow: hidden;
++        display: flex;
++        align-items: center;
++        justify-content: center;
++
++        .avatar-image {
++            transform: scale(0.65);
++            transform-origin: center top;
++        }
++    }
++
++    &__employee-text {
++        display: flex;
++        flex-direction: column;
++        min-width: 0;
++        overflow: hidden;
++    }
++
++    &__employee-name {
++        font-size: 14px;
++        font-weight: 700;
++        color: $pt-corp-text-strong;
++        text-overflow: ellipsis;
++        white-space: nowrap;
++        overflow: hidden;
++    }
++
++    &__employee-rank {
++        font-size: 12px;
++        color: $pt-corp-text-muted;
++    }
++}

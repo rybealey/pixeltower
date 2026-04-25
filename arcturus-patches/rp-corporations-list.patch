@@ -1,0 +1,69 @@
+diff --git a/src/main/java/com/eu/habbo/messages/PacketManager.java b/src/main/java/com/eu/habbo/messages/PacketManager.java
+--- a/src/main/java/com/eu/habbo/messages/PacketManager.java
++++ b/src/main/java/com/eu/habbo/messages/PacketManager.java
+@@ -322,6 +322,7 @@ public class PacketManager {
+         this.registerHandler(Incoming.UpdateUIFlagsEvent, UpdateUIFlagsEvent.class);
+         this.registerHandler(Incoming.PixeltowerSetTargetEvent, PixeltowerSetTargetEvent.class);
+         this.registerHandler(Incoming.RoleplayOfferResponseEvent, RoleplayOfferResponseEvent.class);
++        this.registerHandler(Incoming.PixeltowerRequestCorporationsEvent, PixeltowerRequestCorporationsEvent.class);
+     }
+
+     private void registerNavigator() throws Exception {
+diff --git a/src/main/java/com/eu/habbo/messages/incoming/Incoming.java b/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
+--- a/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
++++ b/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
+@@ -408,4 +408,8 @@ public class Incoming {
+     // pixeltower: target's response to a roleplay service offer (heal, repair,
+     // …). Emitted by the OfferHUD popup; handled by RoleplayOfferResponseEvent.
+     public static final int RoleplayOfferResponseEvent = 6551;
++
++    // pixeltower: client requests a fresh corporations + employee roster
++    // snapshot. Emitted by the CorporationsWindow on open.
++    public static final int PixeltowerRequestCorporationsEvent = 6552;
+ }
+diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerRequestCorporationsEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerRequestCorporationsEvent.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerRequestCorporationsEvent.java
+@@ -0,0 +1,21 @@
++package com.eu.habbo.messages.incoming.users;
++
++import com.eu.habbo.Emulator;
++import com.eu.habbo.messages.incoming.MessageHandler;
++import com.eu.habbo.plugin.events.users.UserCorporationsRequestedEvent;
++
++/**
++ * Pixeltower-custom incoming packet (header 6552). The patched Nitro
++ * CorporationsWindow emits this whenever it opens. Body is empty.
++ * The handler is a thin bridge — it just fires
++ * {@link UserCorporationsRequestedEvent} for the PixeltowerRP plugin to
++ * pick up and respond with a CorporationsListComposer snapshot.
++ */
++public class PixeltowerRequestCorporationsEvent extends MessageHandler {
++    @Override
++    public void handle() throws Exception {
++        if (this.client == null || this.client.getHabbo() == null) return;
++        Emulator.getPluginManager().fireEvent(
++                new UserCorporationsRequestedEvent(this.client.getHabbo()));
++    }
++}
+diff --git a/src/main/java/com/eu/habbo/plugin/events/users/UserCorporationsRequestedEvent.java b/src/main/java/com/eu/habbo/plugin/events/users/UserCorporationsRequestedEvent.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/plugin/events/users/UserCorporationsRequestedEvent.java
+@@ -0,0 +1,15 @@
++package com.eu.habbo.plugin.events.users;
++
++import com.eu.habbo.habbohotel.users.Habbo;
++
++/**
++ * Fired when a Habbo opens the Pixeltower CorporationsWindow — emitted
++ * by the {@code PixeltowerRequestCorporationsEvent} incoming handler. The
++ * {@code habbo} field on the super-class is the requester, who should
++ * receive the resulting CorporationsListComposer.
++ */
++public class UserCorporationsRequestedEvent extends UserEvent {
++    public UserCorporationsRequestedEvent(Habbo requester) {
++        super(requester);
++    }
++}

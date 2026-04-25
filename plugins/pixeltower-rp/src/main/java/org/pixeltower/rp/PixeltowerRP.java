@@ -26,6 +26,7 @@ import com.eu.habbo.plugin.events.users.UserSavedMottoEvent;
 import com.eu.habbo.plugin.events.users.UserTalkEvent;
 import com.eu.habbo.plugin.events.users.UserTargetSelectedEvent;
 import com.eu.habbo.plugin.events.users.UserOfferResponseEvent;
+import com.eu.habbo.plugin.events.users.UserCorporationsRequestedEvent;
 import org.pixeltower.rp.core.HomePositionStore;
 import org.pixeltower.rp.core.StaffGate;
 import org.pixeltower.rp.core.TargetService;
@@ -38,9 +39,11 @@ import org.pixeltower.rp.core.commands.social.HoldHandsCommand;
 import org.pixeltower.rp.core.commands.social.HugCommand;
 import org.pixeltower.rp.core.commands.social.KissCommand;
 import org.pixeltower.rp.corp.CorpBadgeBroadcaster;
+import org.pixeltower.rp.corp.Corporation;
 import org.pixeltower.rp.corp.CorporationManager;
 import org.pixeltower.rp.corp.ShiftManager;
 import org.pixeltower.rp.corp.WorkingMotto;
+import org.pixeltower.rp.corp.outgoing.CorporationsListComposer;
 import org.pixeltower.rp.corp.commands.FireCommand;
 import org.pixeltower.rp.corp.commands.HireCommand;
 import org.pixeltower.rp.corp.commands.PromoteCommand;
@@ -91,7 +94,13 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -336,6 +345,51 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
                             + " accepted your " + offer.serviceKey + " offer.",
                     RoomChatMessageBubbles.WIRED);
         }
+    }
+
+    /**
+     * Roster snapshot for the CorporationsWindow. Fired by the patched
+     * Arcturus {@code PixeltowerRequestCorporationsEvent} handler when the
+     * client opens the window. Public roster — no per-viewer filtering.
+     *
+     * Username + figure are pulled in a single SQL JOIN so offline
+     * employees are included; the in-memory {@link CorporationManager}
+     * only stores ids. Frequency is low (window-open only), so the
+     * extra read is fine.
+     */
+    @EventHandler
+    public void onUserCorporationsRequested(UserCorporationsRequestedEvent event) {
+        if (event.habbo == null) return;
+
+        List<Corporation> corps = new ArrayList<>();
+        for (Corporation c : CorporationManager.allCorps()) corps.add(c);
+        corps.sort(Comparator.comparingInt(Corporation::getId));
+
+        Map<Integer, List<CorporationsListComposer.MemberRow>> membersByCorp = new HashMap<>();
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT m.corp_id, m.habbo_id, m.rank_num, u.username, u.look "
+                             + "FROM rp_corporation_members m "
+                             + "JOIN users u ON u.id = m.habbo_id "
+                             + "ORDER BY m.corp_id, m.rank_num DESC, u.username");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                int corpId = rs.getInt("corp_id");
+                membersByCorp.computeIfAbsent(corpId, k -> new ArrayList<>())
+                        .add(new CorporationsListComposer.MemberRow(
+                                rs.getInt("habbo_id"),
+                                rs.getString("username"),
+                                rs.getString("look"),
+                                rs.getInt("rank_num")));
+            }
+        } catch (SQLException e) {
+            LOGGER.error("onUserCorporationsRequested roster query failed habbo={}",
+                    event.habbo.getHabboInfo().getId(), e);
+            return;
+        }
+
+        event.habbo.getClient().sendResponse(
+                new CorporationsListComposer(corps, membersByCorp));
     }
 
     /**
