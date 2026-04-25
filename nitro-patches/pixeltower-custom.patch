@@ -543,10 +543,10 @@ index b22a2f6..9d9ee64 100644
      }
 diff --git a/src/components/pixeltower/CommandsListView.scss b/src/components/pixeltower/CommandsListView.scss
 new file mode 100644
-index 0000000..023b264
+index 0000000..22f6f6a
 --- /dev/null
 +++ b/src/components/pixeltower/CommandsListView.scss
-@@ -0,0 +1,187 @@
+@@ -0,0 +1,194 @@
 +@use './tokens' as *;
 +
 +// Commands List window — .designs/client_ui.pen frame I2LwC. The outer
@@ -587,16 +587,19 @@ index 0000000..023b264
 +
 +    &__top-row {
 +        display: flex;
-+        flex-direction: column;
++        flex-direction: row;
++        align-items: stretch;
 +        gap: 12px;
 +    }
 +
 +    &__search {
 +        display: flex;
++        flex: 1 1 auto;
 +        align-items: center;
 +        gap: 8px;
 +        height: 36px;
 +        padding: 0 12px;
++        min-width: 0;
 +        border: 2px solid $pt-panel-stroke;
 +        border-radius: 3px;
 +        background: linear-gradient(180deg,
@@ -628,6 +631,7 @@ index 0000000..023b264
 +
 +    &__tabs {
 +        display: flex;
++        flex: 0 0 auto;
 +        height: 36px;
 +        border: 2px solid $pt-panel-stroke;
 +        border-radius: 3px;
@@ -636,7 +640,7 @@ index 0000000..023b264
 +    }
 +
 +    &__tab {
-+        flex: 1 1 0;
++        flex: 0 0 auto;
 +        background: linear-gradient(180deg,
 +            $pt-chip-top 0%, $pt-chip-top 50%,
 +            $pt-chip-bottom 50%, $pt-chip-bottom 100%);
@@ -690,7 +694,10 @@ index 0000000..023b264
 +    &__table-body {
 +        display: flex;
 +        flex-direction: column;
-+        max-height: 50vh;
++        // Fixed height keeps the dialog the same size across tabs no matter
++        // how many commands a tab has — so switching General (6) → Staff (9)
++        // doesn't resize the window.
++        height: 320px;
 +        overflow-y: auto;
 +    }
 +
