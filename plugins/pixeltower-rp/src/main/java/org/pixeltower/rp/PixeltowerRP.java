@@ -177,6 +177,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         // with defaults on first boot. Per-subsystem managers will read them
         // on init in later Tier 1 commits.
         Emulator.getConfig().register("rp.corp.paycheck_tick_s",  "600");
+        Emulator.getConfig().register("rp.corp.unemployed_badge", "ES03N");
         Emulator.getConfig().register("rp.stats.hp_regen_interval_s", "30");
         Emulator.getConfig().register("rp.stats.hp_regen_amount",     "2");
         Emulator.getConfig().register("rp.stats.default_hp",          "100");

@@ -15,24 +15,40 @@ import java.util.Map;
  * full refreshed map (idempotent) — there's no separate "remove" wire
  * format. Mirrors {@code RoomUsersGuildBadgesComposer}'s
  * send-the-whole-thing strategy.
+ *
+ * <p>Players without a corp receive the {@code rp.corp.unemployed_badge}
+ * fallback (default {@code ES03N}) instead of falling through to their
+ * actual favorite Habbo Group. Set the config to an empty string to
+ * disable the fallback and let unemployed players' real favorite group
+ * render again.</p>
  */
 public final class CorpBadgeBroadcaster {
 
     private CorpBadgeBroadcaster() {}
 
     /**
-     * Build a {@code {habboId -> badge code}} map of every corp-employed
-     * habbo currently in the room (whose corp has a {@code badge_code} set).
+     * Build a {@code {habboId -> badge code}} map for every habbo currently
+     * in the room. Employed habbos get their corp's {@code badge_code};
+     * the rest get the unemployed fallback (if configured).
      */
     public static Map<Integer, String> buildRoomMap(Room room) {
         Map<Integer, String> map = new HashMap<>();
         if (room == null) return map;
+        String unemployed = unemployedBadgeCode();
         for (Habbo habbo : room.getHabbos()) {
             if (habbo == null || habbo.getHabboInfo() == null) continue;
             int habboId = habbo.getHabboInfo().getId();
-            CorporationManager.getBadgeCodeFor(habboId).ifPresent(code -> map.put(habboId, code));
+            String code = CorporationManager.getBadgeCodeFor(habboId).orElse(unemployed);
+            if (code != null && !code.isEmpty()) {
+                map.put(habboId, code);
+            }
         }
         return map;
+    }
+
+    private static String unemployedBadgeCode() {
+        String code = Emulator.getConfig().getValue("rp.corp.unemployed_badge", "ES03N");
+        return code == null ? "" : code.trim();
     }
 
     /** Broadcast the room's corp-badge map to every habbo currently in it. */
