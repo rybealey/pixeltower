@@ -549,7 +549,7 @@ new file mode 100644
 index 0000000..22f6f6a
 --- /dev/null
 +++ b/src/components/pixeltower/CommandsListView.scss
-@@ -0,0 +1,201 @@
+@@ -0,0 +1,195 @@
 +@use './tokens' as *;
 +
 +// Commands List window — .designs/client_ui.pen frame I2LwC. The outer
@@ -558,34 +558,31 @@ index 0000000..22f6f6a
 +// close drawn in the .pen is intentionally disregarded for consistency
 +// with every other Habbo dialog in the client.
 +
-+$pt-cmd-search-top:    #1A2436;
-+$pt-cmd-search-bottom: #2B3A54;
-+$pt-cmd-search-icon:   #7A95B8;
-+$pt-cmd-search-hint:   #9FB3CC;
++// Body sits on the default $light (#DFDFDF) .content-area per .pen
++// frame I2LwC. Inner panels (search box, table) are white chips with
++// thin gray borders + dark navy text; tabs keep the pixeltower slate.
++
++$pt-cmd-panel-bg:     #FFFFFF;
++$pt-cmd-panel-border: #A0A8B5;
++$pt-cmd-text-strong:  #1F2C40;
++$pt-cmd-text-muted:   #6B7280;
 +
 +$pt-cmd-tab-label:         #C4D1E0;
 +$pt-cmd-tab-label-active:  #FFFFFF;
 +$pt-cmd-tab-underglow:     #9AB4D3;
 +
-+$pt-cmd-table-bg:              #2B3A54;
-+$pt-cmd-table-header-bg:       #1F2C40;
-+$pt-cmd-table-header-fg:       #9FB3CC;
-+$pt-cmd-table-row-desc:        #C4D1E0;
-+$pt-cmd-table-row-param:       #7A95B8;
-+$pt-cmd-table-row-placeholder: #FFD028;
++$pt-cmd-table-bg:              #FFFFFF;
++$pt-cmd-table-header-bg:       #EAEAEA;
++$pt-cmd-table-row-divider:     #D0D0D0;
++$pt-cmd-table-row-desc:        #2B3A54;
++$pt-cmd-table-row-param:       #6B7280;
++$pt-cmd-table-row-placeholder: #B8860B;
 +
 +.pixeltower-commands-list {
 +    width: 560px;
 +    max-width: calc(100vw - 24px);
-+    color: $pt-text;
++    color: $pt-cmd-text-strong;
 +    font-family: $pt-font-family;
-+
-+    // Opt this window into the slate body — native Habbo dialogs keep
-+    // their default $light .content-area background; the pixeltower
-+    // commands list reads as part of the HUD/toolbar slate family.
-+    .content-area {
-+        background: #3E4E6E;
-+    }
 +
 +    &__body {
 +        display: flex;
@@ -610,18 +607,15 @@ index 0000000..22f6f6a
 +        height: 36px;
 +        padding: 0 12px;
 +        min-width: 0;
-+        border: 2px solid $pt-panel-stroke;
++        border: 1px solid $pt-cmd-panel-border;
 +        border-radius: 3px;
-+        background: linear-gradient(180deg,
-+            $pt-cmd-search-top 0%, $pt-cmd-search-top 50%,
-+            $pt-cmd-search-bottom 50%, $pt-cmd-search-bottom 100%);
-+        box-shadow: 0 -1px 0 $pt-cmd-tab-underglow;
++        background: $pt-cmd-panel-bg;
 +    }
 +
 +    &__search-icon {
 +        width: 14px;
 +        height: 14px;
-+        color: $pt-cmd-search-icon;
++        color: $pt-cmd-text-muted;
 +        flex-shrink: 0;
 +    }
 +
@@ -631,12 +625,12 @@ index 0000000..22f6f6a
 +        background: transparent;
 +        border: 0;
 +        outline: none;
-+        color: $pt-text;
++        color: $pt-cmd-text-strong;
 +        font-family: inherit;
 +        font-size: 14px;
 +        font-weight: 700;
 +
-+        &::placeholder { color: $pt-cmd-search-hint; }
++        &::placeholder { color: $pt-cmd-text-muted; }
 +    }
 +
 +    &__tabs {
@@ -682,7 +676,7 @@ index 0000000..22f6f6a
 +    &__table {
 +        display: flex;
 +        flex-direction: column;
-+        border: 2px solid $pt-panel-stroke;
++        border: 1px solid $pt-cmd-panel-border;
 +        border-radius: 3px;
 +        background: $pt-cmd-table-bg;
 +        overflow: hidden;
@@ -697,7 +691,7 @@ index 0000000..22f6f6a
 +        font-size: 12px;
 +        font-weight: 700;
 +        letter-spacing: 1px;
-+        color: $pt-cmd-table-header-fg;
++        color: $pt-cmd-text-muted;
 +        text-transform: uppercase;
 +    }
 +
@@ -716,7 +710,7 @@ index 0000000..22f6f6a
 +        gap: 12px;
 +        padding: 10px 12px;
 +        align-items: center;
-+        border-bottom: 1px solid $pt-panel-stroke;
++        border-bottom: 1px solid $pt-cmd-table-row-divider;
 +
 +        &:last-child { border-bottom: 0; }
 +    }
@@ -726,7 +720,7 @@ index 0000000..22f6f6a
 +        flex-shrink: 0;
 +        font-size: 14px;
 +        font-weight: 700;
-+        color: $pt-text;
++        color: $pt-cmd-text-strong;
 +    }
 +
 +    &__col-params {
@@ -1806,7 +1800,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/src/components/pixeltower/DiamondsWindow.scss
-@@ -0,0 +1,207 @@
+@@ -0,0 +1,213 @@
 +@use './tokens' as *;
 +
 +// Diamonds Window — matches .designs/client_ui.pen frame 9Ax4A.
@@ -1816,19 +1810,27 @@ index 0000000..0000000
 +// `_app-overrides.scss` rules restyle the header into the slate chip
 +// gradient, so the design language matches without per-window CSS.
 +
++// Per .pen frame 9Ax4A: window body sits on the default $light (#DFDFDF)
++// .content-area background — same neutral gray every native Habbo dialog
++// uses. Inner panels (uses list, input field, cost panel) become white
++// chips with thin gray borders + dark navy text; the buy CTA is green.
++// The header and footer keep the pixeltower slate chrome.
++
++$pt-dia-panel-bg:     #FFFFFF;
++$pt-dia-panel-border: #A0A8B5;
++$pt-dia-text-strong:  #1F2C40;
++$pt-dia-text-muted:   #6B7280;
++$pt-dia-icon:         #0EA5E9;
++$pt-dia-icon-vip:     #D4A017;
++$pt-dia-buy-top:      #48C66B;
++$pt-dia-buy-bottom:   #1F6B36;
++$pt-dia-buy-glow:     #A0E8B4;
++
 +.pixeltower-diamonds-window {
 +    width: 440px;
 +    max-width: calc(100vw - 24px);
-+    color: $pt-text;
++    color: $pt-dia-text-strong;
 +    font-family: $pt-font-family;
-+
-+    // NitroCardContentView paints `.content-area` $light by default. Native
-+    // Habbo dialogs (Friends, Navigator, alerts) keep that gray; this window
-+    // opts in to the slate body specified by .pen frame 9Ax4A so the inner
-+    // dark uses-list / cost panel / footer all sit on the right base color.
-+    .content-area {
-+        background: #3E4E6E;
-+    }
 +
 +    &__body {
 +        display: flex;
@@ -1841,14 +1843,14 @@ index 0000000..0000000
 +        font-size: 12px;
 +        font-weight: 700;
 +        letter-spacing: 1px;
-+        color: #9FB3CC;
++        color: $pt-dia-text-muted;
 +    }
 +
 +    &__uses {
 +        display: flex;
 +        flex-direction: column;
-+        background: #2B3A54;
-+        border: 2px solid $pt-panel-stroke;
++        background: $pt-dia-panel-bg;
++        border: 1px solid $pt-dia-panel-border;
 +        border-radius: 3px;
 +    }
 +
@@ -1858,10 +1860,10 @@ index 0000000..0000000
 +        gap: 12px;
 +        padding: 10px 12px;
 +        font-size: 14px;
-+        color: #C4D1E0;
++        color: $pt-dia-text-strong;
 +
-+        svg { width: 18px; height: 18px; flex-shrink: 0; color: #7DD3FC; }
-+        &--vip svg { color: #FFD028; }
++        svg { width: 18px; height: 18px; flex-shrink: 0; color: $pt-dia-icon; }
++        &--vip svg { color: $pt-dia-icon-vip; }
 +    }
 +
 +    &__amount {
@@ -1895,22 +1897,19 @@ index 0000000..0000000
 +    &__input {
 +        flex: 1;
 +        height: 44px;
-+        border: 2px solid $pt-panel-stroke;
++        border: 1px solid $pt-dia-panel-border;
 +        border-radius: 3px;
-+        background: linear-gradient(180deg,
-+            #1A2436 0%, #1A2436 50%,
-+            #2B3A54 50%, #2B3A54 100%);
-+        box-shadow: 0 -1px 0 #9AB4D3;
++        background: $pt-dia-panel-bg;
 +        display: flex;
 +        align-items: center;
 +        justify-content: center;
 +        gap: 10px;
-+        color: $pt-text;
++        color: $pt-dia-text-strong;
 +        font-size: 22px;
 +        font-weight: 900;
 +        font-variant-numeric: tabular-nums;
 +
-+        svg { width: 18px; height: 18px; color: #7DD3FC; }
++        svg { width: 18px; height: 18px; color: $pt-dia-icon; }
 +    }
 +
 +    &__chips {
@@ -1943,8 +1942,8 @@ index 0000000..0000000
 +        display: flex;
 +        align-items: center;
 +        justify-content: space-between;
-+        background: #2B3A54;
-+        border: 2px solid $pt-panel-stroke;
++        background: $pt-dia-panel-bg;
++        border: 1px solid $pt-dia-panel-border;
 +        border-radius: 3px;
 +        padding: 10px 12px;
 +    }
@@ -1953,12 +1952,12 @@ index 0000000..0000000
 +        font-size: 12px;
 +        font-weight: 700;
 +        letter-spacing: 1px;
-+        color: #9FB3CC;
++        color: $pt-dia-text-muted;
 +    }
 +
 +    &__cost-rate {
 +        font-size: 12px;
-+        color: #7A95B8;
++        color: $pt-dia-text-muted;
 +    }
 +
 +    &__cost-value {
@@ -1967,13 +1966,14 @@ index 0000000..0000000
 +        gap: 6px;
 +        font-size: 24px;
 +        font-weight: 900;
++        color: $pt-dia-text-strong;
 +    }
 +
 +    &__cost-usd {
 +        font-size: 12px;
 +        font-weight: 900;
 +        letter-spacing: 1px;
-+        color: #9FB3CC;
++        color: $pt-dia-text-muted;
 +    }
 +
 +    // ──────────── footer ────────────
@@ -2007,10 +2007,10 @@ index 0000000..0000000
 +
 +        &--buy {
 +            background: linear-gradient(180deg,
-+                #4E85E0 0%, #4E85E0 50%,
-+                #143972 50%, #143972 100%);
-+            border-color: #050F22;
-+            box-shadow: 0 1px 0 #A8C4EE;
++                $pt-dia-buy-top 0%, $pt-dia-buy-top 50%,
++                $pt-dia-buy-bottom 50%, $pt-dia-buy-bottom 100%);
++            border-color: $pt-panel-stroke;
++            box-shadow: 0 1px 0 $pt-dia-buy-glow;
 +        }
 +    }
 +}
