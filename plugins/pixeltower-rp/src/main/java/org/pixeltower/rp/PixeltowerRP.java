@@ -32,6 +32,10 @@ import org.pixeltower.rp.core.TargetTracker;
 import org.pixeltower.rp.core.commands.DanceCommand;
 import org.pixeltower.rp.core.commands.TargetCommand;
 import org.pixeltower.rp.core.commands.WardrobeCommand;
+import org.pixeltower.rp.core.commands.social.BiteCommand;
+import org.pixeltower.rp.core.commands.social.HoldHandsCommand;
+import org.pixeltower.rp.core.commands.social.HugCommand;
+import org.pixeltower.rp.core.commands.social.KissCommand;
 import org.pixeltower.rp.corp.CorpBadgeBroadcaster;
 import org.pixeltower.rp.corp.CorporationManager;
 import org.pixeltower.rp.corp.ShiftManager;
@@ -247,6 +251,10 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         CommandHandler.addCommand(new HitCommand());
         CommandHandler.addCommand(new SetZoneCommand());
         CommandHandler.addCommand(new RespawnCommand());
+        CommandHandler.addCommand(new HugCommand());
+        CommandHandler.addCommand(new KissCommand());
+        CommandHandler.addCommand(new HoldHandsCommand());
+        CommandHandler.addCommand(new BiteCommand());
     }
 
     /**
