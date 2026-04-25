@@ -293,7 +293,7 @@ diff --git a/src/components/pixeltower/CorporationsWindow.tsx b/src/components/p
 new file mode 100644
 --- /dev/null
 +++ b/src/components/pixeltower/CorporationsWindow.tsx
-@@ -0,0 +1,169 @@
+@@ -0,0 +1,189 @@
 +import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 +import { FC, useEffect, useMemo, useState } from 'react';
 +import { LuPackage, LuUsers } from 'react-icons/lu';
@@ -322,6 +322,12 @@ new file mode 100644
 +    members: Corporation['members'];
 +}
 +
++// Drop a trailing roman numeral tier (e.g. "Paramedic V" → "Paramedic").
++// Five tiers of the same role collapse into one displayed rank — the
++// underlying rank_num ladder is preserved server-side for promotion logic.
++const stripTier = (title: string): string =>
++    title.replace(/\s+[IVX]+$/i, '').trim();
++
 +const bucketMembersByRank = (corp: Corporation): RankBucket[] =>
 +{
 +    const ranksByNum = new Map<number, { title: string; salary: number; members: Corporation['members'] }>();
@@ -331,9 +337,23 @@ new file mode 100644
 +        const bucket = ranksByNum.get(m.rankNum);
 +        if(bucket) bucket.members.push(m);
 +    });
-+    return Array.from(ranksByNum.entries())
-+        .map(([ rankNum, v ]) => ({ rankNum, ...v }))
-+        .sort((a, b) => b.rankNum - a.rankNum);
++
++    // Iterate senior→junior so the first encounter of each base title sets
++    // the group's wage + sort key (highest tier wins). Subsequent tiers
++    // contribute their members to the same bucket.
++    const groups = new Map<string, RankBucket>();
++    Array.from(ranksByNum.entries())
++        .sort((a, b) => b[0] - a[0])
++        .forEach(([ rankNum, v ]) =>
++        {
++            const stripped = stripTier(v.title);
++            if(!groups.has(stripped))
++            {
++                groups.set(stripped, { rankNum, title: stripped, salary: v.salary, members: [] });
++            }
++            groups.get(stripped).members.push(...v.members);
++        });
++    return Array.from(groups.values());
 +}
 +
 +export const CorporationsWindow: FC<{}> = () =>
@@ -467,7 +487,7 @@ diff --git a/src/components/pixeltower/CorporationsWindow.scss b/src/components/
 new file mode 100644
 --- /dev/null
 +++ b/src/components/pixeltower/CorporationsWindow.scss
-@@ -0,0 +1,232 @@
+@@ -0,0 +1,243 @@
 +@use './tokens' as *;
 +
 +// Corporations Window — matches .designs/client_ui.pen frame qwlWN.
@@ -494,10 +514,23 @@ new file mode 100644
 +    color: $pt-corp-text-strong;
 +    font-family: $pt-font-family;
 +
++    // Cap to ~75vh so the window never escapes the viewport. Body grows
++    // up to that limit and the right pane scrolls independently when the
++    // selected corp has more employees than fit.
++    max-height: 75vh;
++
++    &__content {
++        display: flex;
++        flex-direction: column;
++        min-height: 0;
++    }
++
 +    &__body {
 +        display: flex;
 +        gap: 12px;
 +        padding: 12px;
++        flex: 1;
++        min-height: 0;
 +    }
 +
 +    &__rail {
@@ -510,6 +543,7 @@ new file mode 100644
 +        border: 1px solid $pt-corp-panel-border;
 +        border-radius: 3px;
 +        flex-shrink: 0;
++        align-self: flex-start;
 +    }
 +
 +    &__badge {
@@ -548,6 +582,9 @@ new file mode 100644
 +        gap: 12px;
 +        flex: 1;
 +        min-width: 0;
++        min-height: 0;
++        overflow-y: auto;
++        padding-right: 4px;
 +    }
 +
 +    &__loading,
@@ -662,20 +699,14 @@ new file mode 100644
 +        flex-shrink: 0;
 +        overflow: hidden;
 +
-+        // LayoutAvatarImageView renders a bare <div class="avatar-image"> with
-+        // only backgroundImage set — no dimensions. Size it to the LARGE
-+        // full-body sprite (64x110) and crop down to just the head via
-+        // top:-12 + overflow:hidden on the parent. Mirrors StatsHUD.
++        // .avatar-image inherits width:90, height:130, background-position:
++        // center -8px from common/index.scss. We position it absolutely so
++        // overflow:hidden on the parent crops to head + shoulders. Same idea
++        // as GroupMembersView .avatar-head, tuned for a 36×36 slot.
 +        .avatar-image {
 +            position: absolute;
-+            top: -12px;
-+            left: 50%;
-+            transform: translateX(-50%);
-+            width: 64px;
-+            height: 110px;
-+            background-position: center top;
-+            background-repeat: no-repeat;
-+            image-rendering: pixelated;
++            top: -2px;
++            left: -27px;
 +        }
 +    }
 +
