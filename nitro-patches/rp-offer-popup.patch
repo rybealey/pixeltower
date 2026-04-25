@@ -1,0 +1,407 @@
+diff --git a/src/api/pixeltower/PixeltowerSoundMessages.ts b/src/api/pixeltower/PixeltowerSoundMessages.ts
+index fa5f4ba..3dea0c6 100644
+--- a/src/api/pixeltower/PixeltowerSoundMessages.ts
++++ b/src/api/pixeltower/PixeltowerSoundMessages.ts
+@@ -6,6 +6,9 @@ const PIXELTOWER_UPDATE_PLAYER_STATS = 6501;
+ const PIXELTOWER_UPDATE_TARGET_STATS = 6502;
+ const PIXELTOWER_OPEN_CLIENT_LINK = 6503;
+ const PIXELTOWER_UPDATE_CORP_BADGES = 6504;
++const PIXELTOWER_ROLEPLAY_OFFER = 6510;
++const PIXELTOWER_ROLEPLAY_OFFER_DISMISS = 6511;
++const PIXELTOWER_ROLEPLAY_OFFER_RESPONSE = 6551;
+ const PIXELTOWER_SET_TARGET = 6550;
+ 
+ // ──────────── PlaySound (header 6500) ────────────
+@@ -294,6 +297,129 @@ export class UpdateCorpBadgesEvent extends MessageEvent implements IMessageEvent
+     }
+ }
+ 
++// ──────────── RoleplayOffer (header 6510) ────────────
++//
++// Roleplay service offer popup (heal, repair, …) sent by the OfferManager
++// when one player offers a paid service to another. The OfferHUD listens
++// for this and slides a confirm/reject popup in below the player HUD.
++
++export class RoleplayOfferParser implements IMessageParser
++{
++    private _offerId: number;
++    private _serviceKey: string;
++    private _offererName: string;
++    private _title: string;
++    private _description: string;
++    private _iconResource: string;
++    private _price: number;
++    private _expirySeconds: number;
++
++    public flush(): boolean
++    {
++        this._offerId = 0;
++        this._serviceKey = '';
++        this._offererName = '';
++        this._title = '';
++        this._description = '';
++        this._iconResource = '';
++        this._price = 0;
++        this._expirySeconds = 0;
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++        this._offerId = wrapper.readInt();
++        this._serviceKey = wrapper.readString();
++        this._offererName = wrapper.readString();
++        this._title = wrapper.readString();
++        this._description = wrapper.readString();
++        this._iconResource = wrapper.readString();
++        this._price = wrapper.readInt();
++        this._expirySeconds = wrapper.readInt();
++        return true;
++    }
++
++    public get offerId(): number { return this._offerId; }
++    public get serviceKey(): string { return this._serviceKey; }
++    public get offererName(): string { return this._offererName; }
++    public get title(): string { return this._title; }
++    public get description(): string { return this._description; }
++    public get iconResource(): string { return this._iconResource; }
++    public get price(): number { return this._price; }
++    public get expirySeconds(): number { return this._expirySeconds; }
++}
++
++export class RoleplayOfferEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RoleplayOfferParser);
++    }
++
++    public getParser(): RoleplayOfferParser
++    {
++        return this.parser as RoleplayOfferParser;
++    }
++}
++
++// ──────────── RoleplayOfferDismiss (header 6511) ────────────
++//
++// Tells the client to drop the offer popup matching offerId. Sent on
++// server-side expiry (15s) and on offer replacement.
++
++export class RoleplayOfferDismissParser implements IMessageParser
++{
++    private _offerId: number;
++
++    public flush(): boolean
++    {
++        this._offerId = 0;
++        return true;
++    }
++
++    public parse(wrapper: IMessageDataWrapper): boolean
++    {
++        if(!wrapper) return false;
++        this._offerId = wrapper.readInt();
++        return true;
++    }
++
++    public get offerId(): number { return this._offerId; }
++}
++
++export class RoleplayOfferDismissEvent extends MessageEvent implements IMessageEvent
++{
++    constructor(callBack: Function)
++    {
++        super(callBack, RoleplayOfferDismissParser);
++    }
++
++    public getParser(): RoleplayOfferDismissParser
++    {
++        return this.parser as RoleplayOfferDismissParser;
++    }
++}
++
++// ──────────── RoleplayOfferResponse (header 6551, client→server) ────────────
++//
++// Target's accept/reject of a roleplay service offer. Wire format:
++// int offerId, boolean accepted.
++
++export class RoleplayOfferResponseComposer implements IMessageComposer<ConstructorParameters<typeof RoleplayOfferResponseComposer>>
++{
++    private _data: ConstructorParameters<typeof RoleplayOfferResponseComposer>;
++
++    constructor(offerId: number, accepted: boolean)
++    {
++        this._data = [ offerId, accepted ];
++    }
++
++    public getMessageArray() { return this._data; }
++    public dispose(): void { return; }
++}
++
+ // ──────────── SetTarget (header 6550, client→server) ────────────
+ //
+ // Emitted from the room InfoStand whenever the local player selects
+@@ -330,10 +456,13 @@ class PixeltowerMessages implements IMessageConfiguration
+         [ PIXELTOWER_UPDATE_PLAYER_STATS, UpdatePlayerStatsEvent ],
+         [ PIXELTOWER_UPDATE_TARGET_STATS, UpdateTargetStatsEvent ],
+         [ PIXELTOWER_OPEN_CLIENT_LINK, OpenClientLinkEvent ],
+-        [ PIXELTOWER_UPDATE_CORP_BADGES, UpdateCorpBadgesEvent ]
++        [ PIXELTOWER_UPDATE_CORP_BADGES, UpdateCorpBadgesEvent ],
++        [ PIXELTOWER_ROLEPLAY_OFFER, RoleplayOfferEvent ],
++        [ PIXELTOWER_ROLEPLAY_OFFER_DISMISS, RoleplayOfferDismissEvent ]
+     ]);
+     public composers: Map<number, Function> = new Map<number, Function>([
+-        [ PIXELTOWER_SET_TARGET, PixeltowerSetTargetComposer ]
++        [ PIXELTOWER_SET_TARGET, PixeltowerSetTargetComposer ],
++        [ PIXELTOWER_ROLEPLAY_OFFER_RESPONSE, RoleplayOfferResponseComposer ]
+     ]);
+ }
+ 
+diff --git a/src/components/index.scss b/src/components/index.scss
+index b9f4384..93d899b 100644
+--- a/src/components/index.scss
++++ b/src/components/index.scss
+@@ -23,6 +23,7 @@
+ @import './pixeltower/DiamondsWindow';
+ @import './pixeltower/DrawerHUD';
+ @import './pixeltower/ToolbarHUD';
++@import './pixeltower/OfferHUD';
+ @import './pixeltower/app-overrides';
+ @import './purse/PurseView';
+ @import './right-side/RightSideView';
+diff --git a/src/components/main/MainView.tsx b/src/components/main/MainView.tsx
+index d47c31b..7d3e8c9 100644
+--- a/src/components/main/MainView.tsx
++++ b/src/components/main/MainView.tsx
+@@ -22,6 +22,7 @@ import { CommandsListView } from '../pixeltower/CommandsListView';
+ import { CorpBadgesListener } from '../pixeltower/CorpBadgesListener';
+ import { DiamondsWindow } from '../pixeltower/DiamondsWindow';
+ import { DrawerHUD } from '../pixeltower/DrawerHUD';
++import { OfferHUD } from '../pixeltower/OfferHUD';
+ import { PixeltowerLinkListener } from '../pixeltower/PixeltowerLinkListener';
+ import { StatsHUD } from '../pixeltower/StatsHUD';
+ import { StatusHUD } from '../pixeltower/StatusHUD';
+@@ -100,6 +101,7 @@ export const MainView: FC<{}> = props =>
+             <TargetHUD />
+             <DrawerHUD />
+             <CommandsListView />
++            <OfferHUD />
+             <DiamondsWindow />
+             <ModToolsView />
+             <RoomView />
+diff --git a/src/components/pixeltower/OfferHUD.scss b/src/components/pixeltower/OfferHUD.scss
+new file mode 100644
+index 0000000..70612ac
+--- /dev/null
++++ b/src/components/pixeltower/OfferHUD.scss
+@@ -0,0 +1,87 @@
++@use './tokens' as *;
++
++// Roleplay service offer popup. Slides in below the Player HUD when a
++// hospital worker (or any future service-corp member) sends `:offer x heal`.
++// Auto-dismisses after 15s, on accept, or on reject.
++
++.pixeltower-offer-popup {
++    position: absolute;
++    // Player HUD is top:12px and ~120px tall — anchor below with a gap.
++    top: 152px;
++    left: 12px;
++    z-index: 1100;
++
++    width: 280px;
++    padding: 8px 10px;
++    color: $pt-text;
++    font-family: $pt-font-family;
++
++    @include pt-panel;
++
++    animation: pixeltower-offer-slide-in 280ms ease-out;
++
++    &__header {
++        display: flex;
++        flex-direction: column;
++        margin-bottom: 6px;
++    }
++
++    &__title {
++        font-weight: 700;
++        font-size: 13px;
++    }
++
++    &__from {
++        font-size: 11px;
++        opacity: 0.85;
++    }
++
++    &__description {
++        font-size: 12px;
++        margin-bottom: 8px;
++    }
++
++    &__price-row {
++        display: flex;
++        align-items: center;
++        gap: 6px;
++        margin-bottom: 8px;
++    }
++
++    &__coin-icon {
++        color: $pt-coin-yellow;
++        font-size: 14px;
++    }
++
++    &__price { font-weight: 700; }
++
++    &__expiry {
++        margin-left: auto;
++        opacity: 0.7;
++        font-size: 11px;
++    }
++
++    &__actions {
++        display: flex;
++        gap: 6px;
++    }
++
++    &__btn {
++        @include pt-chip;
++        flex: 1;
++        padding: 6px 10px;
++        color: $pt-text;
++        font-family: $pt-font-family;
++        font-weight: 700;
++        font-size: 12px;
++        cursor: pointer;
++
++        &:hover { filter: brightness(1.1); }
++        &:active { transform: translateY(1px); }
++    }
++}
++
++@keyframes pixeltower-offer-slide-in {
++    from { transform: translateY(-12px); opacity: 0; }
++    to   { transform: translateY(0);     opacity: 1; }
++}
+diff --git a/src/components/pixeltower/OfferHUD.tsx b/src/components/pixeltower/OfferHUD.tsx
+new file mode 100644
+index 0000000..1ae9807
+--- /dev/null
++++ b/src/components/pixeltower/OfferHUD.tsx
+@@ -0,0 +1,116 @@
++import { FC, useEffect, useState } from 'react';
++import { LuCoins } from 'react-icons/lu';
++import { SendMessageComposer } from '../../api';
++import {
++    RoleplayOfferDismissEvent,
++    RoleplayOfferEvent,
++    RoleplayOfferResponseComposer
++} from '../../api/pixeltower/PixeltowerSoundMessages';
++import { useMessageEvent } from '../../hooks';
++
++type ActiveOffer = {
++    offerId: number;
++    serviceKey: string;
++    offererName: string;
++    title: string;
++    description: string;
++    iconResource: string;
++    price: number;
++    expiresAt: number;
++};
++
++/**
++ * Listens for roleplay service offers and renders the slide-in popup
++ * below the Player HUD. One offer is shown at a time; arrival of a new
++ * offer replaces the visible one (server side also dismisses the prior).
++ * Auto-dismisses on the client when the expiry timestamp passes — the
++ * server pushes its own dismiss for hard correctness.
++ */
++export const OfferHUD: FC<{}> = () =>
++{
++    const [ offer, setOffer ] = useState<ActiveOffer | null>(null);
++    const [ now, setNow ] = useState<number>(() => Date.now());
++
++    useMessageEvent<RoleplayOfferEvent>(RoleplayOfferEvent, event =>
++    {
++        const parser = event.getParser();
++        if(!parser) return;
++        setOffer({
++            offerId: parser.offerId,
++            serviceKey: parser.serviceKey,
++            offererName: parser.offererName,
++            title: parser.title,
++            description: parser.description,
++            iconResource: parser.iconResource,
++            price: parser.price,
++            expiresAt: Date.now() + (parser.expirySeconds * 1000)
++        });
++    });
++
++    useMessageEvent<RoleplayOfferDismissEvent>(RoleplayOfferDismissEvent, event =>
++    {
++        const parser = event.getParser();
++        if(!parser) return;
++        setOffer(prev => (prev && prev.offerId === parser.offerId ? null : prev));
++    });
++
++    useEffect(() =>
++    {
++        if(!offer) return;
++        const remaining = offer.expiresAt - Date.now();
++        if(remaining <= 0)
++        {
++            setOffer(null);
++            return;
++        }
++        const timeoutId = window.setTimeout(
++            () => setOffer(prev => (prev && prev.offerId === offer.offerId ? null : prev)),
++            remaining
++        );
++        const tickId = window.setInterval(() => setNow(Date.now()), 1000);
++        return () =>
++        {
++            window.clearTimeout(timeoutId);
++            window.clearInterval(tickId);
++        };
++    }, [ offer ]);
++
++    if(!offer) return null;
++
++    const secondsLeft = Math.max(0, Math.ceil((offer.expiresAt - now) / 1000));
++
++    const respond = (accepted: boolean) =>
++    {
++        SendMessageComposer(new RoleplayOfferResponseComposer(offer.offerId, accepted));
++        setOffer(null);
++    };
++
++    return (
++        <div className="pixeltower-offer-popup">
++            <div className="pixeltower-offer-popup__header">
++                <div className="pixeltower-offer-popup__title">{ offer.title }</div>
++                <div className="pixeltower-offer-popup__from">from { offer.offererName }</div>
++            </div>
++            <div className="pixeltower-offer-popup__description">{ offer.description }</div>
++            <div className="pixeltower-offer-popup__price-row">
++                <LuCoins className="pixeltower-offer-popup__coin-icon" />
++                <span className="pixeltower-offer-popup__price">{ offer.price.toLocaleString() } coins</span>
++                <span className="pixeltower-offer-popup__expiry">{ secondsLeft }s</span>
++            </div>
++            <div className="pixeltower-offer-popup__actions">
++                <button
++                    type="button"
++                    className="pixeltower-offer-popup__btn pixeltower-offer-popup__btn--reject"
++                    onClick={ () => respond(false) }>
++                    Reject
++                </button>
++                <button
++                    type="button"
++                    className="pixeltower-offer-popup__btn pixeltower-offer-popup__btn--accept"
++                    onClick={ () => respond(true) }>
++                    Accept
++                </button>
++            </div>
++        </div>
++    );
++};

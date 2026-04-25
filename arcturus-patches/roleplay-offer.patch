@@ -1,0 +1,90 @@
+diff --git a/src/main/java/com/eu/habbo/messages/PacketManager.java b/src/main/java/com/eu/habbo/messages/PacketManager.java
+index 3c43c28..4c43d28 100644
+--- a/src/main/java/com/eu/habbo/messages/PacketManager.java
++++ b/src/main/java/com/eu/habbo/messages/PacketManager.java
+@@ -321,6 +321,7 @@ public class PacketManager {
+         this.registerHandler(Incoming.ChangeChatBubbleEvent, ChangeChatBubbleEvent.class);
+         this.registerHandler(Incoming.UpdateUIFlagsEvent, UpdateUIFlagsEvent.class);
+         this.registerHandler(Incoming.PixeltowerSetTargetEvent, PixeltowerSetTargetEvent.class);
++        this.registerHandler(Incoming.RoleplayOfferResponseEvent, RoleplayOfferResponseEvent.class);
+     }
+ 
+     private void registerNavigator() throws Exception {
+diff --git a/src/main/java/com/eu/habbo/messages/incoming/Incoming.java b/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
+index a87c8bc..b97c8bc 100644
+--- a/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
++++ b/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
+@@ -404,5 +404,9 @@ public class Incoming {
+ 
+     // pixeltower: avatar-sprite click sets the TargetHUD target. Emitted by
+     // the patched Nitro InfoStand widget; handled by PixeltowerSetTargetEvent.
+     public static final int PixeltowerSetTargetEvent = 6550;
++
++    // pixeltower: target's response to a roleplay service offer (heal, repair,
++    // …). Emitted by the OfferHUD popup; handled by RoleplayOfferResponseEvent.
++    public static final int RoleplayOfferResponseEvent = 6551;
+ }
+diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/RoleplayOfferResponseEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/RoleplayOfferResponseEvent.java
+new file mode 100644
+index 0000000..3d0a3b3
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/messages/incoming/users/RoleplayOfferResponseEvent.java
+@@ -0,0 +1,29 @@
++package com.eu.habbo.messages.incoming.users;
++
++import com.eu.habbo.Emulator;
++import com.eu.habbo.messages.incoming.MessageHandler;
++import com.eu.habbo.plugin.events.users.UserOfferResponseEvent;
++
++/**
++ * Pixeltower-custom incoming packet (header 6506). The patched Nitro
++ * OfferHUD popup emits this when the recipient of a roleplay service
++ * offer (heal, repair, …) clicks Accept or Reject. The handler is a
++ * thin bridge — it just fires {@link UserOfferResponseEvent} for the
++ * PixeltowerRP plugin to pick up and route to its OfferManager,
++ * keeping Arcturus core free of pixeltower game rules.
++ *
++ * Wire format: int offerId, boolean accepted.
++ */
++public class RoleplayOfferResponseEvent extends MessageHandler {
++    @Override
++    public void handle() throws Exception {
++        if (this.client == null || this.client.getHabbo() == null) return;
++        int offerId = this.packet.readInt();
++        boolean accepted = this.packet.readBoolean();
++        Emulator.getPluginManager().fireEvent(
++                new UserOfferResponseEvent(
++                        this.client.getHabbo(),
++                        offerId,
++                        accepted));
++    }
++}
+diff --git a/src/main/java/com/eu/habbo/plugin/events/users/UserOfferResponseEvent.java b/src/main/java/com/eu/habbo/plugin/events/users/UserOfferResponseEvent.java
+new file mode 100644
+index 0000000..4e1b4c4
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/plugin/events/users/UserOfferResponseEvent.java
+@@ -0,0 +1,23 @@
++package com.eu.habbo.plugin.events.users;
++
++import com.eu.habbo.habbohotel.users.Habbo;
++
++/**
++ * Fired when a Habbo accepts or rejects a roleplay service offer popup
++ * (heal, repair, …) — emitted by the {@code RoleplayOfferResponseEvent}
++ * incoming handler which the patched Nitro OfferHUD triggers on click.
++ * The {@code habbo} field on the super-class is the responder (target);
++ * {@code offerId} is the server-issued correlation id; {@code accepted}
++ * is true on Accept, false on Reject.
++ */
++public class UserOfferResponseEvent extends UserEvent {
++
++    public final int offerId;
++    public final boolean accepted;
++
++    public UserOfferResponseEvent(Habbo responder, int offerId, boolean accepted) {
++        super(responder);
++        this.offerId = offerId;
++        this.accepted = accepted;
++    }
++}

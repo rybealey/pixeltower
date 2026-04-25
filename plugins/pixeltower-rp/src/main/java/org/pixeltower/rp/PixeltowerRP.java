@@ -25,6 +25,7 @@ import com.eu.habbo.plugin.events.users.UserSavedLookEvent;
 import com.eu.habbo.plugin.events.users.UserSavedMottoEvent;
 import com.eu.habbo.plugin.events.users.UserTalkEvent;
 import com.eu.habbo.plugin.events.users.UserTargetSelectedEvent;
+import com.eu.habbo.plugin.events.users.UserOfferResponseEvent;
 import org.pixeltower.rp.core.HomePositionStore;
 import org.pixeltower.rp.core.StaffGate;
 import org.pixeltower.rp.core.TargetService;
@@ -68,6 +69,13 @@ import org.pixeltower.rp.functional.FunctionalFurnitureService;
 import org.pixeltower.rp.medical.RespawnScheduler;
 import org.pixeltower.rp.medical.commands.RespawnCommand;
 import org.pixeltower.rp.functional.InteractionRpFunctional;
+import org.pixeltower.rp.offer.OfferApplyException;
+import org.pixeltower.rp.offer.OfferManager;
+import org.pixeltower.rp.offer.OfferRegistry;
+import org.pixeltower.rp.offer.OfferService;
+import org.pixeltower.rp.offer.PendingOffer;
+import org.pixeltower.rp.offer.commands.OfferCommand;
+import org.pixeltower.rp.offer.services.HealOfferService;
 import org.pixeltower.rp.stats.PlayerStats;
 import org.pixeltower.rp.stats.StatsManager;
 import org.pixeltower.rp.stats.commands.KillCommand;
@@ -213,8 +221,11 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         Emulator.getConfig().register("rp.admin.min_rank",            "5");
         Emulator.getConfig().register("rp.spawn.default_room_id",     "58");
 
+        Emulator.getConfig().register("rp.offer.heal.price",          "100");
+
         CorporationManager.init();
         FunctionalFurnitureService.loadAll();
+        OfferRegistry.register(new HealOfferService());
         registerCommands();
         scheduleBankInterest();
         schedulePaycheck();
@@ -257,6 +268,7 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         CommandHandler.addCommand(new KissCommand());
         CommandHandler.addCommand(new HoldHandsCommand());
         CommandHandler.addCommand(new BiteCommand());
+        CommandHandler.addCommand(new OfferCommand());
     }
 
     /**
@@ -270,6 +282,58 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
     public void onUserTargetSelected(UserTargetSelectedEvent event) {
         if (event.habbo == null) return;
         TargetService.setAndPush(event.habbo, event.targetHabboId);
+    }
+
+    /**
+     * Roleplay offer accept/reject. Fired from the Arcturus
+     * {@code RoleplayOfferResponseEvent} handler when the patched Nitro
+     * OfferHUD popup posts the target's response. The pending offer is
+     * atomically consumed in {@link OfferManager}; if the offer expired
+     * before the response landed, this is a no-op.
+     */
+    @EventHandler
+    public void onUserOfferResponse(UserOfferResponseEvent event) {
+        if (event.habbo == null) return;
+        Habbo responder = event.habbo;
+        int responderId = responder.getHabboInfo().getId();
+
+        Optional<PendingOffer> consumed = OfferManager.consume(event.offerId, responderId);
+        if (consumed.isEmpty()) return;
+        PendingOffer offer = consumed.get();
+
+        OfferService service = OfferRegistry.lookup(offer.serviceKey).orElse(null);
+        if (service == null) return;
+
+        Habbo offerer = Emulator.getGameEnvironment().getHabboManager().getHabbo(offer.offererId);
+
+        if (!event.accepted) {
+            if (offerer != null) {
+                offerer.whisper(responder.getHabboInfo().getUsername()
+                                + " declined your " + offer.serviceKey + " offer.",
+                        RoomChatMessageBubbles.ALERT);
+            }
+            return;
+        }
+
+        try {
+            service.apply(offer.offererId, responder);
+        } catch (OfferApplyException e) {
+            responder.whisper(e.getMessage(), RoomChatMessageBubbles.ALERT);
+            if (offerer != null) {
+                offerer.whisper("Heal offer to " + responder.getHabboInfo().getUsername()
+                                + " failed: " + e.getMessage(),
+                        RoomChatMessageBubbles.ALERT);
+            }
+            return;
+        }
+
+        responder.whisper("You accepted the " + offer.serviceKey + " offer.",
+                RoomChatMessageBubbles.WIRED);
+        if (offerer != null) {
+            offerer.whisper(responder.getHabboInfo().getUsername()
+                            + " accepted your " + offer.serviceKey + " offer.",
+                    RoomChatMessageBubbles.WIRED);
+        }
     }
 
     /**

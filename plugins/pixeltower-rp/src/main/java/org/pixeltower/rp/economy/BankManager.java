@@ -290,6 +290,57 @@ public final class BankManager {
         }
     }
 
+    // ──────────── coins → corp treasury (service fees) ────────────
+
+    /**
+     * Debit {@code amount} coins from {@code payer}'s wallet credits and
+     * route them to {@code corpId}'s treasury, writing audit rows on both
+     * sides in a single DB transaction. The payer must be online — this is
+     * how the in-memory HabboInfo + top-bar credit counter stay in sync via
+     * {@link Habbo#giveCredits}, mirroring {@link MoneyLedger#transfer}.
+     *
+     * Use this for roleplay service fees (e.g. {@code :offer x heal}).
+     *
+     * @throws InsufficientFundsException if payer's wallet credits &lt; amount
+     */
+    public static void chargePlayerToTreasury(Habbo payer, int corpId, long amount, String reason)
+            throws InsufficientFundsException {
+        if (payer == null) throw new IllegalArgumentException("payer must not be null");
+        if (amount <= 0) throw new IllegalArgumentException("amount must be > 0");
+        if (amount > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("amount exceeds credits column range");
+        }
+        int intAmount = (int) amount;
+        int payerId = payer.getHabboInfo().getId();
+        int balance = payer.getHabboInfo().getCredits();
+        if (balance < intAmount) throw new InsufficientFundsException(payerId, intAmount);
+
+        long payerBalanceAfter = (long) balance - intAmount;
+
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                writePlayerLedger(conn, payerId, -intAmount, payerBalanceAfter, reason, (long) corpId);
+                long treasuryAfter = creditTreasuryInTx(conn, corpId, intAmount);
+                writeTreasuryLedger(conn, corpId, intAmount, treasuryAfter, reason, payerId);
+                conn.commit();
+                LOGGER.info("charge_to_treasury payer={} corp={} amount={} reason={} treasuryAfter={}",
+                        payerId, corpId, intAmount, reason, treasuryAfter);
+            } catch (SQLException inner) {
+                conn.rollback();
+                throw inner;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            LOGGER.error("chargePlayerToTreasury failed payer={} corp={} amount={}",
+                    payerId, corpId, intAmount, e);
+            throw new RuntimeException(e);
+        }
+
+        payer.giveCredits(-intAmount);
+    }
+
     // ──────────── SQL helpers (all assume an open transaction) ────────────
 
     private static long creditBankInTx(Connection conn, int habboId, long delta) throws SQLException {
