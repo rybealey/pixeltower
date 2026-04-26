@@ -1,20 +1,21 @@
 diff --git a/src/main/java/com/eu/habbo/messages/PacketManager.java b/src/main/java/com/eu/habbo/messages/PacketManager.java
 --- a/src/main/java/com/eu/habbo/messages/PacketManager.java
 +++ b/src/main/java/com/eu/habbo/messages/PacketManager.java
-@@ -323,6 +323,9 @@ public class PacketManager {
+@@ -323,6 +323,10 @@ public class PacketManager {
          this.registerHandler(Incoming.PixeltowerSetTargetEvent, PixeltowerSetTargetEvent.class);
          this.registerHandler(Incoming.RoleplayOfferResponseEvent, RoleplayOfferResponseEvent.class);
          this.registerHandler(Incoming.PixeltowerRequestCorporationsEvent, PixeltowerRequestCorporationsEvent.class);
 +        this.registerHandler(Incoming.PixeltowerRequestMacrosEvent, PixeltowerRequestMacrosEvent.class);
 +        this.registerHandler(Incoming.PixeltowerSaveMacroEvent, PixeltowerSaveMacroEvent.class);
 +        this.registerHandler(Incoming.PixeltowerDeleteMacroEvent, PixeltowerDeleteMacroEvent.class);
++        this.registerHandler(Incoming.PixeltowerReorderMacrosEvent, PixeltowerReorderMacrosEvent.class);
      }
 
      private void registerNavigator() throws Exception {
 diff --git a/src/main/java/com/eu/habbo/messages/incoming/Incoming.java b/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
 --- a/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
 +++ b/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
-@@ -412,4 +412,16 @@ public class Incoming {
+@@ -412,4 +412,20 @@ public class Incoming {
      // pixeltower: client requests a fresh corporations + employee roster
      // snapshot. Emitted by the CorporationsWindow on open.
      public static final int PixeltowerRequestCorporationsEvent = 6552;
@@ -30,6 +31,10 @@ diff --git a/src/main/java/com/eu/habbo/messages/incoming/Incoming.java b/src/ma
 +
 +    // pixeltower: client deletes a macro by id. Wire format: int macroId.
 +    public static final int PixeltowerDeleteMacroEvent = 6556;
++
++    // pixeltower: client drags macros into a new display order. Wire format:
++    // int count, then int[count] macroIds (top-of-list first).
++    public static final int PixeltowerReorderMacrosEvent = 6557;
  }
 diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerDeleteMacroEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerDeleteMacroEvent.java
 new file mode 100644
@@ -196,5 +201,61 @@ index 0000000..158f941
 +public class UserMacrosRequestedEvent extends UserEvent {
 +    public UserMacrosRequestedEvent(Habbo requester) {
 +        super(requester);
++    }
++}
+diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerReorderMacrosEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerReorderMacrosEvent.java
+new file mode 100644
+index 0000000..7bb7a42
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerReorderMacrosEvent.java
+@@ -0,0 +1,26 @@
++package com.eu.habbo.messages.incoming.users;
++
++import com.eu.habbo.Emulator;
++import com.eu.habbo.messages.incoming.MessageHandler;
++import com.eu.habbo.plugin.events.users.UserMacrosReorderRequestedEvent;
++
++/**
++ * Pixeltower-custom incoming packet (header 6557). Emitted by the
++ * MacrosWindow's drag-to-reorder UI. Wire format:
++ *   int macroCount
++ *   int[macroCount] orderedMacroIds  (top-of-list first)
++ * The plugin re-numbers sort_order = 0..N-1 from this sequence and
++ * replies with a fresh MacrosListEvent.
++ */
++public class PixeltowerReorderMacrosEvent extends MessageHandler {
++    @Override
++    public void handle() throws Exception {
++        if (this.client == null || this.client.getHabbo() == null) return;
++        int count = this.packet.readInt();
++        if (count < 0 || count > 1024) return;     // defensive cap
++        int[] ids = new int[count];
++        for (int i = 0; i < count; i++) ids[i] = this.packet.readInt();
++        Emulator.getPluginManager().fireEvent(
++                new UserMacrosReorderRequestedEvent(this.client.getHabbo(), ids));
++    }
++}
+diff --git a/src/main/java/com/eu/habbo/plugin/events/users/UserMacrosReorderRequestedEvent.java b/src/main/java/com/eu/habbo/plugin/events/users/UserMacrosReorderRequestedEvent.java
+new file mode 100644
+index 0000000..8df4951
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/plugin/events/users/UserMacrosReorderRequestedEvent.java
+@@ -0,0 +1,18 @@
++package com.eu.habbo.plugin.events.users;
++
++import com.eu.habbo.habbohotel.users.Habbo;
++
++/**
++ * Fired when a Habbo drags their macros into a new display order from
++ * the MacrosWindow. {@code orderedMacroIds} is top-of-list first; the
++ * plugin assigns sort_order = 0..N-1 in this sequence. Ownership is
++ * re-checked inside MacrosManager.reorder.
++ */
++public class UserMacrosReorderRequestedEvent extends UserEvent {
++    public final int[] orderedMacroIds;
++
++    public UserMacrosReorderRequestedEvent(Habbo requester, int[] orderedMacroIds) {
++        super(requester);
++        this.orderedMacroIds = orderedMacroIds;
 +    }
 +}

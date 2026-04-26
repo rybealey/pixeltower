@@ -102,10 +102,10 @@ index 0000000..32aa046
 +    return mods.length ? mods + '+' + body : body;
 +}
 diff --git a/src/api/pixeltower/PixeltowerSoundMessages.ts b/src/api/pixeltower/PixeltowerSoundMessages.ts
-index 553a7e7..894b66d 100644
+index 553a7e7..ab6a468 100644
 --- a/src/api/pixeltower/PixeltowerSoundMessages.ts
 +++ b/src/api/pixeltower/PixeltowerSoundMessages.ts
-@@ -12,6 +12,10 @@ const PIXELTOWER_ROLEPLAY_OFFER_DISMISS = 6511;
+@@ -12,6 +12,11 @@ const PIXELTOWER_ROLEPLAY_OFFER_DISMISS = 6511;
  const PIXELTOWER_ROLEPLAY_OFFER_RESPONSE = 6551;
  const PIXELTOWER_SET_TARGET = 6550;
  const PIXELTOWER_REQUEST_CORPORATIONS = 6552;
@@ -113,10 +113,11 @@ index 553a7e7..894b66d 100644
 +const PIXELTOWER_REQUEST_MACROS = 6554;
 +const PIXELTOWER_SAVE_MACRO = 6555;
 +const PIXELTOWER_DELETE_MACRO = 6556;
++const PIXELTOWER_REORDER_MACROS = 6557;
  
  // ──────────── PlaySound (header 6500) ────────────
  
-@@ -573,6 +577,116 @@ export class RequestCorporationsComposer implements IMessageComposer<Constructor
+@@ -573,6 +578,135 @@ export class RequestCorporationsComposer implements IMessageComposer<Constructor
      public dispose(): void { return; }
  }
  
@@ -230,10 +231,29 @@ index 553a7e7..894b66d 100644
 +    public dispose(): void { return; }
 +}
 +
++// ──────────── ReorderMacros (header 6557, client→server) ────────────
++//
++// Wire format: int macroCount, then one int per macroId in the desired
++// display order (top-of-list first). Server assigns sort_order = 0..N-1
++// from this sequence and replies with a fresh MacrosListEvent.
++
++export class ReorderMacrosComposer implements IMessageComposer<any>
++{
++    private _data: any[];
++
++    constructor(macroIds: number[])
++    {
++        this._data = [ macroIds.length, ...macroIds ];
++    }
++
++    public getMessageArray() { return this._data; }
++    public dispose(): void { return; }
++}
++
  // ──────────── registration ────────────
  
  class PixeltowerMessages implements IMessageConfiguration
-@@ -585,12 +699,16 @@ class PixeltowerMessages implements IMessageConfiguration
+@@ -585,12 +719,17 @@ class PixeltowerMessages implements IMessageConfiguration
          [ PIXELTOWER_UPDATE_CORP_BADGES, UpdateCorpBadgesEvent ],
          [ PIXELTOWER_CORPORATIONS_LIST, CorporationsListEvent ],
          [ PIXELTOWER_ROLEPLAY_OFFER, RoleplayOfferEvent ],
@@ -248,7 +268,8 @@ index 553a7e7..894b66d 100644
 +        [ PIXELTOWER_REQUEST_CORPORATIONS, RequestCorporationsComposer ],
 +        [ PIXELTOWER_REQUEST_MACROS, RequestMacrosComposer ],
 +        [ PIXELTOWER_SAVE_MACRO, SaveMacroComposer ],
-+        [ PIXELTOWER_DELETE_MACRO, DeleteMacroComposer ]
++        [ PIXELTOWER_DELETE_MACRO, DeleteMacroComposer ],
++        [ PIXELTOWER_REORDER_MACROS, ReorderMacrosComposer ]
      ]);
  }
  
@@ -554,7 +575,7 @@ index f9c6760..0ed0473 100644
      { key: 'wanted',    label: 'Wanted',    Icon: LuScroll },
 diff --git a/src/components/pixeltower/MacrosKeybindListener.tsx b/src/components/pixeltower/MacrosKeybindListener.tsx
 new file mode 100644
-index 0000000..71244cf
+index 0000000..b4c26e2
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosKeybindListener.tsx
 @@ -0,0 +1,137 @@
@@ -639,13 +660,13 @@ index 0000000..71244cf
 +            return true;
 +        };
 +
-+        // Holding Alt (Option on Mac) or Ctrl (Control) signals macro intent
-+        // even when the chat input is focused — those combos aren't valid
-+        // text input across either platform, so we treat them as a macro
-+        // attempt regardless of focus and at minimum keep the chat widget
-+        // from focus-stealing on the press.
++        // Holding Alt (Option on Mac), Ctrl/Control, or Meta (Cmd on Mac /
++        // Win key) signals macro intent even when the chat input is focused
++        // — those combos aren't valid text input across either platform, so
++        // we treat them as a macro attempt regardless of focus and at
++        // minimum keep the chat widget from focus-stealing on the press.
 +        const isMacroIntent = (event: KeyboardEvent | MouseEvent) =>
-+            event.altKey || event.ctrlKey;
++            event.altKey || event.ctrlKey || event.metaKey;
 +
 +        const onKey = (event: KeyboardEvent) =>
 +        {
@@ -697,10 +718,10 @@ index 0000000..71244cf
 +}
 diff --git a/src/components/pixeltower/MacrosWindow.scss b/src/components/pixeltower/MacrosWindow.scss
 new file mode 100644
-index 0000000..378e852
+index 0000000..37c7ba5
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosWindow.scss
-@@ -0,0 +1,244 @@
+@@ -0,0 +1,268 @@
 +@use './tokens' as *;
 +
 +// Macros Window — .designs/client_ui.pen frame 59QGF.
@@ -839,6 +860,7 @@ index 0000000..378e852
 +        gap: 12px;
 +        padding: 8px 12px;
 +        border-bottom: 1px solid $pt-macros-row-divider;
++        transition: background 120ms ease, opacity 120ms ease;
 +
 +        &:last-child { border-bottom: 0; }
 +
@@ -850,6 +872,15 @@ index 0000000..378e852
 +            letter-spacing: 1px;
 +            text-transform: uppercase;
 +        }
++
++        &--dragging {
++            opacity: 0.5;
++        }
++
++        &--drop-target {
++            background: rgba(94, 127, 163, 0.12);
++            box-shadow: inset 0 2px 0 $pt-panel-stroke;
++        }
 +    }
 +
 +    &__col {
@@ -858,6 +889,16 @@ index 0000000..378e852
 +        font-size: 14px;
 +        font-weight: 700;
 +        color: $pt-macros-text-strong;
++
++        &--grip {
++            width: 16px;
++            flex-shrink: 0;
++            justify-content: center;
++            color: $pt-macros-cmd-chip-edit;
++            cursor: grab;
++
++            svg { width: 16px; height: 16px; }
++        }
 +
 +        &--key {
 +            width: 140px;
@@ -871,8 +912,8 @@ index 0000000..378e852
 +
 +        &--action {
 +            flex-shrink: 0;
-+            width: 24px;
-+            justify-content: center;
++            width: 56px;
++            justify-content: flex-end;
 +        }
 +    }
 +
@@ -882,6 +923,10 @@ index 0000000..378e852
 +        font-weight: 700;
 +        color: $pt-macros-text-muted;
 +    }
++
++    // Drag handle column header is empty (grip is row-only) — keep the
++    // 16px slot reserved so columns line up between header + body.
++    &__row--header &__col--grip { cursor: default; }
 +
 +    &__cmd-chip {
 +        display: flex;
@@ -947,16 +992,16 @@ index 0000000..378e852
 +}
 diff --git a/src/components/pixeltower/MacrosWindow.tsx b/src/components/pixeltower/MacrosWindow.tsx
 new file mode 100644
-index 0000000..b811e0f
+index 0000000..1ed22dc
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosWindow.tsx
-@@ -0,0 +1,145 @@
+@@ -0,0 +1,197 @@
 +import { ILinkEventTracker } from '@nitrots/nitro-renderer';
-+import { FC, useEffect, useState } from 'react';
-+import { LuChevronDown, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
++import { DragEvent as ReactDragEvent, FC, useEffect, useState } from 'react';
++import { LuChevronDown, LuGripVertical, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 +import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 +import { formatBindingForDisplay } from '../../api/pixeltower/MacroBindingFormat';
-+import { DeleteMacroComposer, RequestMacrosComposer, SaveMacroComposer } from '../../api/pixeltower/PixeltowerSoundMessages';
++import { DeleteMacroComposer, ReorderMacrosComposer, RequestMacrosComposer, SaveMacroComposer } from '../../api/pixeltower/PixeltowerSoundMessages';
 +import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 +import { useMacros } from '../../hooks/pixeltower';
 +import { AddMacroDialog } from './AddMacroDialog';
@@ -978,7 +1023,9 @@ index 0000000..b811e0f
 +{
 +    const [ isVisible, setIsVisible ] = useState(false);
 +    const [ addOpen, setAddOpen ] = useState(false);
-+    const { macros } = useMacros();
++    const { macros, setMacros } = useMacros();
++    const [ dragIndex, setDragIndex ] = useState<number | null>(null);
++    const [ dropIndex, setDropIndex ] = useState<number | null>(null);
 +
 +    useEffect(() =>
 +    {
@@ -1025,6 +1072,43 @@ index 0000000..b811e0f
 +        SendMessageComposer(new DeleteMacroComposer(macroId));
 +    };
 +
++    const handleDragStart = (index: number) => (event: ReactDragEvent<HTMLDivElement>) =>
++    {
++        setDragIndex(index);
++        // Firefox requires setData to start a drag at all; Chromium tolerates
++        // an empty payload but matching them keeps cross-browser behavior.
++        event.dataTransfer.effectAllowed = 'move';
++        event.dataTransfer.setData('text/plain', String(index));
++    };
++
++    const handleDragOver = (index: number) => (event: ReactDragEvent<HTMLDivElement>) =>
++    {
++        if(dragIndex === null) return;
++        event.preventDefault();
++        event.dataTransfer.dropEffect = 'move';
++        if(index !== dropIndex) setDropIndex(index);
++    };
++
++    const handleDragEnd = () =>
++    {
++        setDragIndex(null);
++        setDropIndex(null);
++    };
++
++    const handleDrop = (index: number) => (event: ReactDragEvent<HTMLDivElement>) =>
++    {
++        event.preventDefault();
++        const from = dragIndex;
++        handleDragEnd();
++        if(from === null || from === index) return;
++
++        const next = macros.slice();
++        const [ moved ] = next.splice(from, 1);
++        next.splice(index, 0, moved);
++        setMacros(next);                                            // optimistic
++        SendMessageComposer(new ReorderMacrosComposer(next.map(m => m.macroId)));
++    };
++
 +    return (
 +        <>
 +            <NitroCardView uniqueKey="pixeltower-macros" theme="primary" classNames={ [ 'pixeltower-macros-window' ] }>
@@ -1054,6 +1138,7 @@ index 0000000..b811e0f
 +                    </div>
 +                    <div className="pixeltower-macros-window__table">
 +                        <div className="pixeltower-macros-window__row pixeltower-macros-window__row--header">
++                            <div className="pixeltower-macros-window__col pixeltower-macros-window__col--grip" />
 +                            <div className="pixeltower-macros-window__col pixeltower-macros-window__col--key">Keybinding</div>
 +                            <div className="pixeltower-macros-window__col pixeltower-macros-window__col--cmd">Command</div>
 +                            <div className="pixeltower-macros-window__col pixeltower-macros-window__col--action">Action</div>
@@ -1063,8 +1148,20 @@ index 0000000..b811e0f
 +                                No macros yet — click <strong>+ New Macro</strong> to bind a key.
 +                            </div>
 +                        ) }
-+                        { macros.map(macro => (
-+                            <div key={ macro.macroId } className="pixeltower-macros-window__row">
++                        { macros.map((macro, index) => (
++                            <div
++                                key={ macro.macroId }
++                                className={ 'pixeltower-macros-window__row'
++                                    + (dragIndex === index ? ' pixeltower-macros-window__row--dragging' : '')
++                                    + (dropIndex === index && dragIndex !== index ? ' pixeltower-macros-window__row--drop-target' : '') }
++                                draggable
++                                onDragStart={ handleDragStart(index) }
++                                onDragOver={ handleDragOver(index) }
++                                onDrop={ handleDrop(index) }
++                                onDragEnd={ handleDragEnd }>
++                                <div className="pixeltower-macros-window__col pixeltower-macros-window__col--grip" title="Drag to reorder">
++                                    <LuGripVertical />
++                                </div>
 +                                <div className="pixeltower-macros-window__col pixeltower-macros-window__col--key">
 +                                    { formatBindingForDisplay(macro.keybind) }
 +                                </div>
@@ -1195,10 +1292,10 @@ index 0000000..8047d53
 +}
 diff --git a/src/hooks/pixeltower/useMacros.ts b/src/hooks/pixeltower/useMacros.ts
 new file mode 100644
-index 0000000..d1f361a
+index 0000000..ba90086
 --- /dev/null
 +++ b/src/hooks/pixeltower/useMacros.ts
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,32 @@
 +import { useState } from 'react';
 +import { useBetween } from 'use-between';
 +import { MacrosListEvent, MacrosListItem } from '../../api/pixeltower/PixeltowerSoundMessages';
@@ -1213,6 +1310,10 @@ index 0000000..d1f361a
 + *
 + * Shared via useBetween so the window UI and the global keybind dispatcher
 + * read from the same source of truth — saving a macro updates both.
++ *
++ * setMacros is exposed for optimistic updates (e.g. drag-to-reorder) — the
++ * window applies the new order immediately, then sends a ReorderMacros
++ * composer; the server's reply replaces the snapshot.
 + */
 +const useMacrosState = () =>
 +{
@@ -1223,7 +1324,7 @@ index 0000000..d1f361a
 +        setMacros(event.getParser().macros);
 +    });
 +
-+    return { macros };
++    return { macros, setMacros };
 +}
 +
 +export const useMacros = () => useBetween(useMacrosState);

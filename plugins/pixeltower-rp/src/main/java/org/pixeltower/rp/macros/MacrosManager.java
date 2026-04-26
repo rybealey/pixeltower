@@ -36,7 +36,7 @@ public final class MacrosManager {
              PreparedStatement ps = conn.prepareStatement(
                      "SELECT id, habbo_id, keybind, command, category "
                              + "FROM rp_macros WHERE habbo_id = ? "
-                             + "ORDER BY category, id")) {
+                             + "ORDER BY category, sort_order, id")) {
             ps.setInt(1, habboId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -80,6 +80,35 @@ public final class MacrosManager {
             return true;
         } catch (SQLException e) {
             LOGGER.error("MacrosManager.save habbo={} keybind={} failed", habboId, keybind, e);
+            return false;
+        }
+    }
+
+    /**
+     * Apply a new display order. The list is the desired top-of-list-first
+     * sequence of macroIds; sort_order is assigned 0..N-1 in a single
+     * transaction. Ids that don't belong to {@code habboId} are silently
+     * skipped (defensive — the WHERE clause + bind ensures we only ever
+     * touch the requester's rows).
+     */
+    public static boolean reorder(int habboId, int[] orderedIds) {
+        if (habboId <= 0 || orderedIds == null || orderedIds.length == 0) return false;
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "UPDATE rp_macros SET sort_order = ? WHERE id = ? AND habbo_id = ?")) {
+                for (int i = 0; i < orderedIds.length; i++) {
+                    ps.setInt(1, i);
+                    ps.setInt(2, orderedIds[i]);
+                    ps.setInt(3, habboId);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            LOGGER.error("MacrosManager.reorder habbo={} failed", habboId, e);
             return false;
         }
     }

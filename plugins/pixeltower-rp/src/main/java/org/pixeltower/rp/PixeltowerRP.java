@@ -30,6 +30,7 @@ import com.eu.habbo.plugin.events.users.UserCorporationsRequestedEvent;
 import com.eu.habbo.plugin.events.users.UserMacroDeleteRequestedEvent;
 import com.eu.habbo.plugin.events.users.UserMacroSaveRequestedEvent;
 import com.eu.habbo.plugin.events.users.UserMacrosRequestedEvent;
+import com.eu.habbo.plugin.events.users.UserMacrosReorderRequestedEvent;
 import org.pixeltower.rp.core.HomePositionStore;
 import org.pixeltower.rp.core.StaffGate;
 import org.pixeltower.rp.core.TargetService;
@@ -438,6 +439,19 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         if (event.habbo == null) return;
         int habboId = event.habbo.getHabboInfo().getId();
         if (!MacrosManager.delete(habboId, event.macroId)) return;
+        sendMacrosList(event.habbo);
+    }
+
+    /**
+     * Apply the desired drag-to-reorder sequence and rebroadcast the
+     * full list. The client also updates its local state optimistically;
+     * this echo is the source of truth that wins any race.
+     */
+    @EventHandler
+    public void onUserMacrosReorderRequested(UserMacrosReorderRequestedEvent event) {
+        if (event.habbo == null) return;
+        int habboId = event.habbo.getHabboInfo().getId();
+        if (!MacrosManager.reorder(habboId, event.orderedMacroIds)) return;
         sendMacrosList(event.habbo);
     }
 
