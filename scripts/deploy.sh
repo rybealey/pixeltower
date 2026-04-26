@@ -100,6 +100,9 @@ if command -v python3 >/dev/null 2>&1; then
   # writes if content changed, so cache invalidation only happens on actual
   # diffs.
   python3 scripts/regen-figuredata-from-xml.py || echo "[deploy] WARN: regen-figuredata-from-xml.py failed"
+  # Then hide sets whose .nitro libraries aren't actually on disk, so the
+  # wardrobe doesn't show blank tiles. Must run AFTER the regen.
+  python3 scripts/hide-unrenderable-sets.py || echo "[deploy] WARN: hide-unrenderable-sets.py failed"
 else
   echo "[deploy] WARN: python3 not on host PATH — skipping gamedata overrides"
 fi
