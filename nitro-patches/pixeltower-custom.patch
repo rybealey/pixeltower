@@ -2019,7 +2019,7 @@ new file mode 100644
 index 0000000..0000000
 --- /dev/null
 +++ b/src/components/pixeltower/DiamondsWindow.tsx
-@@ -0,0 +1,168 @@
+@@ -0,0 +1,137 @@
 +import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 +import { FC, useEffect, useState } from 'react';
 +import { LuArrowRightLeft, LuCrown, LuGem, LuMinus, LuPlus, LuShirt, LuShoppingCart, LuStar } from 'react-icons/lu';
@@ -2046,7 +2046,6 @@ index 0000000..0000000
 +{
 +    const [ isVisible, setIsVisible ] = useState(false);
 +    const [ amount, setAmount ] = useState<number>(5000);
-+    const [ busy, setBusy ] = useState(false);
 +
 +    useEffect(() =>
 +    {
@@ -2072,36 +2071,6 @@ index 0000000..0000000
 +
 +    const close = () => setIsVisible(false);
 +    const cost  = amount * RATE_USD_PER_DIAMOND;
-+
-+    const handleBuy = async () =>
-+    {
-+        if(busy) return;
-+        setBusy(true);
-+        try
-+        {
-+            const res = await fetch('/shop/stripe/checkout', {
-+                method: 'POST',
-+                credentials: 'include',
-+                headers: {
-+                    'Content-Type': 'application/json',
-+                    'Accept': 'application/json',
-+                    'X-Requested-With': 'XMLHttpRequest'
-+                },
-+                body: JSON.stringify({ diamonds: amount })
-+            });
-+            if(!res.ok) throw new Error(`HTTP ${ res.status }`);
-+            const { url } = await res.json();
-+            if(url) window.open(url, '_blank', 'noopener,noreferrer');
-+        }
-+        catch(e)
-+        {
-+            console.error('[diamonds] checkout failed', e);
-+        }
-+        finally
-+        {
-+            setBusy(false);
-+        }
-+    };
 +
 +    return (
 +        <NitroCardView uniqueKey="pixeltower-diamonds" theme="primary" classNames={ [ 'pixeltower-diamonds-window' ] }>
@@ -2179,9 +2148,9 @@ index 0000000..0000000
 +                    <button type="button" className="pixeltower-diamonds-window__btn" onClick={ close }>
 +                        Cancel
 +                    </button>
-+                    <button type="button" className="pixeltower-diamonds-window__btn pixeltower-diamonds-window__btn--buy" onClick={ handleBuy } disabled={ busy }>
++                    <button type="button" className="pixeltower-diamonds-window__btn pixeltower-diamonds-window__btn--buy">
 +                        <LuShoppingCart />
-+                        <span>{ busy ? 'Opening…' : `Buy ${ formatNumber(amount) } Diamonds` }</span>
++                        <span>Buy { formatNumber(amount) } Diamonds</span>
 +                    </button>
 +                </div>
 +            </NitroCardContentView>

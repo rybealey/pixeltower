@@ -44,29 +44,6 @@ else
   echo "[deploy] rebuild needed: nitro=$need_nitro atom=$need_atom emu=$need_emu sql=$need_sql"
 fi
 
-# atomcms is a vendored fork (rybealey/atomcms) that lives gitignored at
-# atomcms/. Pull it on every deploy so atomcms-side changes ship via the
-# normal pixeltower push flow. Reset --hard is safe: atomcms/.env is
-# gitignored in the fork so prod env vars are preserved.
-need_atom_composer=0
-if [ -d atomcms/.git ]; then
-  PREV_COMPOSER=$(sha1sum atomcms/composer.lock 2>/dev/null | awk '{print $1}')
-  PREV_FRONTEND=$(sha1sum atomcms/yarn.lock atomcms/package.json 2>/dev/null | awk '{print $1}' | tr -d '\n')
-  echo "[deploy] pulling atomcms fork"
-  git -C atomcms fetch --quiet origin
-  git -C atomcms reset --hard origin/main --quiet
-  CURR_COMPOSER=$(sha1sum atomcms/composer.lock 2>/dev/null | awk '{print $1}')
-  CURR_FRONTEND=$(sha1sum atomcms/yarn.lock atomcms/package.json 2>/dev/null | awk '{print $1}' | tr -d '\n')
-  if [ "$PREV_COMPOSER" != "$CURR_COMPOSER" ] || [ -z "$PREV_SHA" ] || [ "${FORCE_REBUILD:-0}" = "1" ]; then
-    need_atom_composer=1
-    echo "[deploy] atomcms composer.lock changed → composer install will run"
-  fi
-  if [ "$PREV_FRONTEND" != "$CURR_FRONTEND" ]; then
-    need_atom=1
-    echo "[deploy] atomcms yarn.lock or package.json changed → atom theme will rebuild"
-  fi
-fi
-
 # Pre-deploy DB dump so a bad migration is easy to roll back. Skip if db
 # container isn't running yet (first-ever deploy on a fresh box).
 BACKUP_DIR="data/backups/pre-deploy"
@@ -146,16 +123,7 @@ fi
 echo "[deploy] up -d --remove-orphans (recreates containers for any rebuilt images)"
 docker compose --env-file "$ENV_FILE" up -d --remove-orphans
 
-# Install/update atomcms PHP deps if composer.lock changed (or first deploy).
-# Must run after `up -d` (php container needs to be running) and before
-# Laravel migrate (so any new packages used at boot are autoloadable).
-if [ "$need_atom_composer" = 1 ]; then
-  echo "[deploy] atomcms composer install"
-  docker compose --env-file "$ENV_FILE" exec -T php sh -c \
-    "cd /var/www/atomcms && composer install --no-interaction --prefer-dist"
-  docker compose --env-file "$ENV_FILE" exec -T php sh -c \
-    "cd /var/www/atomcms && php artisan config:clear"
-fi
+
 
 # Apply DB changes once containers are up.
 if [ "$need_sql" = 1 ]; then
