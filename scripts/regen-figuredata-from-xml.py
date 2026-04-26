@@ -96,12 +96,21 @@ def main() -> int:
             settype["sets"].append(s)
         out["setTypes"].append(settype)
 
+    new_body = json.dumps(out, ensure_ascii=False).encode("utf-8")
+
+    # Skip write if content is byte-identical — preserves mtime so nginx
+    # ETag/Last-Modified stay stable and don't bust client caches on every
+    # deploy (this script runs on every deploy via scripts/deploy.sh).
+    if JSON_PATH.exists() and JSON_PATH.read_bytes() == new_body:
+        print(f"[regen] {JSON_PATH.relative_to(ROOT)}: unchanged, skipping write")
+        return 0
+
     # Atomic write — same pattern as the old apply-figuredata-filter.py used,
     # since FigureData.json may be owned by root from prior converter runs.
     fd, tmp = tempfile.mkstemp(prefix=".figuredata-", suffix=".json.tmp", dir=str(JSON_PATH.parent))
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            json.dump(out, f, ensure_ascii=False)
+        with os.fdopen(fd, "wb") as f:
+            f.write(new_body)
         os.chmod(tmp, 0o644)
         os.replace(tmp, JSON_PATH)
     except Exception:

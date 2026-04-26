@@ -95,6 +95,11 @@ fi
 if command -v python3 >/dev/null 2>&1; then
   python3 scripts/apply-text-overrides.py || echo "[deploy] WARN: apply-text-overrides.py failed"
   python3 scripts/apply-custom-furni.py || echo "[deploy] WARN: apply-custom-furni.py failed"
+  # Regenerate FigureData.json from figuredata.xml so prod always reflects
+  # the source of truth (XML from the Morningstar pack). Idempotent — only
+  # writes if content changed, so cache invalidation only happens on actual
+  # diffs.
+  python3 scripts/regen-figuredata-from-xml.py || echo "[deploy] WARN: regen-figuredata-from-xml.py failed"
 else
   echo "[deploy] WARN: python3 not on host PATH — skipping gamedata overrides"
 fi
