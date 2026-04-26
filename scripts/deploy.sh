@@ -168,6 +168,16 @@ if [ "$need_sql" = 1 ]; then
   docker compose --env-file "$ENV_FILE" restart emulator
 fi
 
+# Wire catalog clothing → wardrobe unlock pipeline. Translates
+# catalog_clothing.setid from PART ids to figuredata SET ids and marks
+# the corresponding sets sellable=true in FigureData.json. Idempotent.
+# Must run after `up -d` (db must be up) and after any seed-db.sh re-import
+# (which would clobber our translated values).
+if command -v python3 >/dev/null 2>&1; then
+  ENV_FILE="$ENV_FILE" python3 scripts/sync-catalog-clothing.py || \
+    echo "[deploy] WARN: sync-catalog-clothing.py failed"
+fi
+
 echo "[deploy] Laravel migrate"
 docker compose --env-file "$ENV_FILE" exec -T php php artisan migrate --force
 
