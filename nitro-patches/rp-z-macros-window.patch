@@ -554,16 +554,16 @@ index f9c6760..0ed0473 100644
      { key: 'wanted',    label: 'Wanted',    Icon: LuScroll },
 diff --git a/src/components/pixeltower/MacrosKeybindListener.tsx b/src/components/pixeltower/MacrosKeybindListener.tsx
 new file mode 100644
-index 0000000..b1ed484
+index 0000000..ea40423
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosKeybindListener.tsx
-@@ -0,0 +1,90 @@
-+import { FC, useEffect } from 'react';
+@@ -0,0 +1,116 @@
++import { FC, useEffect, useRef } from 'react';
 +import { ChatMessageTypeEnum, SendMessageComposer } from '../../api';
 +import { encodeKeyEvent, encodeMouseEvent } from '../../api/pixeltower/MacroBindingFormat';
 +import { RequestMacrosComposer } from '../../api/pixeltower/PixeltowerSoundMessages';
 +import { useRoom } from '../../hooks';
-+import { useMacros } from '../../hooks/pixeltower';
++import { Macro, useMacros } from '../../hooks/pixeltower';
 +import { useChatInputWidget } from '../../hooks/rooms/widgets/useChatInputWidget';
 +
 +// Headless component — mounted once in MainView. Owns the global keydown +
@@ -581,12 +581,34 @@ index 0000000..b1ed484
 +// across instances so its internal state is parallel to the chat widget's,
 +// but only sendChat is read here, and sendChat reads roomSession from the
 +// shared useRoom() context.
++//
++// Why capture phase: the chat widget's keydown listener (bubble phase, on
++// document.body) calls setInputFocus() on every keystroke when no input is
++// focused. If we listened in bubble phase too, by the time we ran the chat
++// input would already be focused and our isInputActive() check would
++// always bail. Registering on document in capture phase fires us first,
++// then we stopPropagation() so the chat widget never sees a macro press.
++
++type SendChatFn = (text: string, chatType: number, recipientName?: string, styleId?: number) => void;
 +
 +export const MacrosKeybindListener: FC<{}> = () =>
 +{
 +    const { macros } = useMacros();
 +    const { sendChat } = useChatInputWidget();
 +    const { roomSession } = useRoom();
++
++    // Stash the latest references so the document listeners (attached once
++    // on mount) always see fresh state without tearing down each render.
++    // useChatInputWidget recreates sendChat on every render and roomSession
++    // updates whenever the user enters/exits a room — re-binding listeners
++    // on each change risks a window where neither old nor new is active.
++    const macrosRef = useRef<Macro[]>(macros);
++    const sendChatRef = useRef<SendChatFn | null>(sendChat ?? null);
++    const roomSessionRef = useRef(roomSession);
++
++    useEffect(() => { macrosRef.current = macros; }, [ macros ]);
++    useEffect(() => { sendChatRef.current = sendChat ?? null; }, [ sendChat ]);
++    useEffect(() => { roomSessionRef.current = roomSession; }, [ roomSession ]);
 +
 +    // Pull a fresh list once on mount. The window also requests on every
 +    // open, but mounting before the window is ever opened means saved macros
@@ -598,11 +620,6 @@ index 0000000..b1ed484
 +
 +    useEffect(() =>
 +    {
-+        if(!sendChat || !roomSession || macros.length === 0) return;
-+
-+        const map = new Map<string, string>();
-+        macros.forEach(m => map.set(m.keybind, m.command));
-+
 +        const isInputActive = () =>
 +        {
 +            const el = document.activeElement as HTMLElement | null;
@@ -615,9 +632,10 @@ index 0000000..b1ed484
 +
 +        const fire = (binding: string): boolean =>
 +        {
-+            const command = map.get(binding);
-+            if(!command) return false;
-+            sendChat(command, ChatMessageTypeEnum.CHAT_DEFAULT);
++            if(!roomSessionRef.current || !sendChatRef.current) return false;
++            const macro = macrosRef.current.find(m => m.keybind === binding);
++            if(!macro) return false;
++            sendChatRef.current(macro.command, ChatMessageTypeEnum.CHAT_DEFAULT);
 +            return true;
 +        };
 +
@@ -626,7 +644,11 @@ index 0000000..b1ed484
 +            if(isInputActive()) return;
 +            const binding = encodeKeyEvent(event);
 +            if(!binding) return;
-+            if(fire(binding)) event.preventDefault();
++            if(fire(binding))
++            {
++                event.preventDefault();
++                event.stopPropagation();
++            }
 +        };
 +
 +        const onMouse = (event: MouseEvent) =>
@@ -634,17 +656,21 @@ index 0000000..b1ed484
 +            if(isInputActive()) return;
 +            const binding = encodeMouseEvent(event);
 +            if(!binding) return;
-+            if(fire(binding)) event.preventDefault();
++            if(fire(binding))
++            {
++                event.preventDefault();
++                event.stopPropagation();
++            }
 +        };
 +
-+        document.addEventListener('keydown', onKey);
-+        document.addEventListener('mousedown', onMouse);
++        document.addEventListener('keydown', onKey, true);
++        document.addEventListener('mousedown', onMouse, true);
 +        return () =>
 +        {
-+            document.removeEventListener('keydown', onKey);
-+            document.removeEventListener('mousedown', onMouse);
++            document.removeEventListener('keydown', onKey, true);
++            document.removeEventListener('mousedown', onMouse, true);
 +        };
-+    }, [ macros, sendChat, roomSession ]);
++    }, []);
 +
 +    return null;
 +}
