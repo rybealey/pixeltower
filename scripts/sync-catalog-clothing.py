@@ -47,8 +47,16 @@ def db_query(sql: str) -> str:
     return subprocess.run(cmd, check=True, capture_output=True, text=True).stdout
 
 
+# Set to True by db_apply so we know whether to restart the emulator at the
+# end (Arcturus caches catalog_pages / catalog_items at boot — DB writes are
+# invisible to clients until the emulator process reloads).
+_db_dirty = False
+
+
 def db_apply(sql: str) -> None:
     """Pipe SQL into mariadb (UPDATEs, multi-statement)."""
+    global _db_dirty
+    _db_dirty = True
     cmd = DC + ["--env-file", ENV_FILE, "exec", "-T", "db", "sh", "-c",
                'mariadb -uroot -p"$MARIADB_ROOT_PASSWORD" "$MARIADB_DATABASE"']
     subprocess.run(cmd, input=sql, check=True, text=True)
@@ -96,6 +104,11 @@ def main() -> int:
     update_sql = []
     translated = unchanged = unknown_total = 0
     catalog_set_ids: set[int] = set()
+    # Names of catalog_clothing rows that have at least one figuredata SET id
+    # in their (post-translation) setid — i.e. clothing that will actually
+    # gate correctly through the wardrobe pipeline. Used downstream to route
+    # the matching catalog_items into the staff Clothing page.
+    wired_names: set[str] = set()
     for cid, name, setid_csv in catalog:
         old_values = []
         new_values: list[int] = []
@@ -119,6 +132,8 @@ def main() -> int:
                 new_values.append(v)
         new_csv = ",".join(str(x) for x in sorted(set(new_values)))
         catalog_set_ids.update(v for v in new_values if v in all_set_ids)
+        if any(v in all_set_ids for v in new_values):
+            wired_names.add(name)
         if unknown:
             unknown_total += len(unknown)
         if new_csv != setid_csv:
@@ -150,22 +165,83 @@ def main() -> int:
     new_body = json.dumps(fd, ensure_ascii=False).encode("utf-8")
     if FIGUREDATA_PATH.read_bytes() == new_body:
         print(f"[catalog-sync] figuredata: no changes ({len(catalog_set_ids)} sets already sellable)")
-        return 0
+    else:
+        fd_, tmp = tempfile.mkstemp(prefix=".figuredata-", suffix=".json.tmp", dir=str(FIGUREDATA_PATH.parent))
+        try:
+            with os.fdopen(fd_, "wb") as f:
+                f.write(new_body)
+            os.chmod(tmp, 0o644)
+            os.replace(tmp, FIGUREDATA_PATH)
+        except Exception:
+            if os.path.exists(tmp):
+                os.unlink(tmp)
+            raise
+        print(f"[catalog-sync] figuredata: marked {flipped} sets sellable=true "
+              f"({len(catalog_set_ids)} catalog-controlled sets total)")
 
-    fd_, tmp = tempfile.mkstemp(prefix=".figuredata-", suffix=".json.tmp", dir=str(FIGUREDATA_PATH.parent))
-    try:
-        with os.fdopen(fd_, "wb") as f:
-            f.write(new_body)
-        os.chmod(tmp, 0o644)
-        os.replace(tmp, FIGUREDATA_PATH)
-    except Exception:
-        if os.path.exists(tmp):
-            os.unlink(tmp)
-        raise
+    organize_staff_clothing_page(wired_names)
 
-    print(f"[catalog-sync] figuredata: marked {flipped} sets sellable=true "
-          f"({len(catalog_set_ids)} catalog-controlled sets total)")
+    if _db_dirty:
+        print("[catalog-sync] restarting emulator to reload catalog cache")
+        subprocess.run(DC + ["--env-file", ENV_FILE, "restart", "emulator"], check=False)
     return 0
+
+
+# Hardcoded staff parent. Created manually in catalog_pages and stable.
+STAFF_PIXELRP_PAGE_ID = 9001
+CLOTHING_PAGE_CAPTION_SAVE = "pixelrp_clothing"
+
+
+def organize_staff_clothing_page(wired_names: set[str]) -> None:
+    """Group every wired clothing catalog_item under Staff › PixelRP › Clothing.
+
+    Idempotent: creates the page if missing, and only UPDATEs catalog_items
+    whose page_id isn't already the target.
+    """
+    if not wired_names:
+        print("[catalog-sync] no wired clothing names — skipping staff page organize")
+        return
+
+    existing = db_query(
+        f"SELECT id FROM catalog_pages WHERE parent_id={STAFF_PIXELRP_PAGE_ID} "
+        f"AND caption_save='{CLOTHING_PAGE_CAPTION_SAVE}'"
+    ).strip()
+    if existing:
+        page_id = int(existing.splitlines()[0])
+    else:
+        # Match the styling of sibling staff pages (icon_image=65, min_rank=4).
+        # Auto-increment id; we re-SELECT after insert to capture it.
+        db_apply(
+            "INSERT INTO catalog_pages "
+            "(parent_id, caption_save, caption, page_layout, icon_color, icon_image, "
+            " min_rank, order_num, visible, enabled, club_only, vip_only, "
+            " page_headline, page_teaser, includes) VALUES "
+            f"({STAFF_PIXELRP_PAGE_ID}, '{CLOTHING_PAGE_CAPTION_SAVE}', 'Clothing', "
+            f"'default_3x3', 1, 65, 4, 2, '1', '1', '0', '0', '', '', '');\n"
+        )
+        page_id = int(db_query(
+            f"SELECT id FROM catalog_pages WHERE parent_id={STAFF_PIXELRP_PAGE_ID} "
+            f"AND caption_save='{CLOTHING_PAGE_CAPTION_SAVE}'"
+        ).strip().splitlines()[0])
+        print(f"[catalog-sync] created Staff › PixelRP › Clothing page (id={page_id})")
+
+    # Build the IN (...) list of wired names. catalog_clothing.name shouldn't
+    # contain quotes (it's an item_name), but escape defensively.
+    quoted = ",".join("'" + n.replace("'", "''") + "'" for n in sorted(wired_names))
+    moved_count_raw = db_query(
+        f"SELECT COUNT(*) FROM catalog_items "
+        f"WHERE catalog_name IN ({quoted}) AND page_id != {page_id}"
+    ).strip()
+    pending = int(moved_count_raw) if moved_count_raw.isdigit() else 0
+    if pending == 0:
+        print(f"[catalog-sync] staff Clothing page (id={page_id}): all {len(wired_names)} wired items already routed")
+        return
+
+    db_apply(
+        f"UPDATE catalog_items SET page_id={page_id} "
+        f"WHERE catalog_name IN ({quoted}) AND page_id != {page_id};\n"
+    )
+    print(f"[catalog-sync] moved {pending} wired clothing catalog_items into staff Clothing page (id={page_id})")
 
 
 if __name__ == "__main__":
