@@ -102,7 +102,7 @@ index 0000000..32aa046
 +    return mods.length ? mods + '+' + body : body;
 +}
 diff --git a/src/api/pixeltower/PixeltowerSoundMessages.ts b/src/api/pixeltower/PixeltowerSoundMessages.ts
-index 0eed99e..76609c4 100644
+index 553a7e7..894b66d 100644
 --- a/src/api/pixeltower/PixeltowerSoundMessages.ts
 +++ b/src/api/pixeltower/PixeltowerSoundMessages.ts
 @@ -12,6 +12,10 @@ const PIXELTOWER_ROLEPLAY_OFFER_DISMISS = 6511;
@@ -116,7 +116,7 @@ index 0eed99e..76609c4 100644
  
  // ──────────── PlaySound (header 6500) ────────────
  
-@@ -571,6 +575,116 @@ export class RequestCorporationsComposer implements IMessageComposer<Constructor
+@@ -573,6 +577,116 @@ export class RequestCorporationsComposer implements IMessageComposer<Constructor
      public dispose(): void { return; }
  }
  
@@ -233,7 +233,7 @@ index 0eed99e..76609c4 100644
  // ──────────── registration ────────────
  
  class PixeltowerMessages implements IMessageConfiguration
-@@ -583,12 +697,16 @@ class PixeltowerMessages implements IMessageConfiguration
+@@ -585,12 +699,16 @@ class PixeltowerMessages implements IMessageConfiguration
          [ PIXELTOWER_UPDATE_CORP_BADGES, UpdateCorpBadgesEvent ],
          [ PIXELTOWER_CORPORATIONS_LIST, CorporationsListEvent ],
          [ PIXELTOWER_ROLEPLAY_OFFER, RoleplayOfferEvent ],
@@ -289,26 +289,21 @@ index 898dd5f..5d25374 100644
              <ChatHistoryView />
 diff --git a/src/components/pixeltower/AddMacroDialog.scss b/src/components/pixeltower/AddMacroDialog.scss
 new file mode 100644
-index 0000000..bfbff16
+index 0000000..346779a
 --- /dev/null
 +++ b/src/components/pixeltower/AddMacroDialog.scss
-@@ -0,0 +1,206 @@
+@@ -0,0 +1,147 @@
 +@use './tokens' as *;
 +
-+// Add New Macro dialog — .designs/client_ui.pen frame X8ukF. Stand-alone
-+// floating window draggable by its title bar; opened by the "+ New Macro"
-+// button in the Macros window title bar.
++// Add New Macro dialog — .designs/client_ui.pen frame X8ukF.
++// Outer chrome is NitroCardView (theme="primary"); body styling matches
++// the inputs/buttons designed in the .pen.
 +
-+$pt-add-macro-shell-bg:    #3E4E6E;
-+$pt-add-macro-body-bg:     #DFDFDF;
 +$pt-add-macro-input-bg:    #FFFFFF;
 +$pt-add-macro-input-stroke: #A0A8B5;
 +$pt-add-macro-text-strong: #1F2C40;
 +$pt-add-macro-text-muted:  #6B7280;
-+
-+$pt-add-macro-title-top:    #5E7FA3;
-+$pt-add-macro-title-bottom: #2B3A54;
-+$pt-add-macro-title-glow:   #9AB4D3;
++$pt-add-macro-focus-stroke: #2B3A54;
 +
 +$pt-add-macro-red-top:      #E04848;
 +$pt-add-macro-red-bottom:   #7A1818;
@@ -321,68 +316,14 @@ index 0000000..bfbff16
 +.pixeltower-add-macro {
 +    width: 380px;
 +    max-width: calc(100vw - 24px);
-+    background: $pt-add-macro-shell-bg;
-+    border: 2px solid $pt-panel-stroke;
-+    border-radius: 3px;
-+    box-shadow:
-+        0 3px 0 rgba(0, 0, 0, 0.50),
-+        0 2px 0 #7A95B8;
 +    color: $pt-add-macro-text-strong;
 +    font-family: $pt-font-family;
-+    overflow: hidden;
-+    display: flex;
-+    flex-direction: column;
 +
-+    &__title-bar {
-+        display: flex;
-+        align-items: center;
-+        justify-content: space-between;
-+        height: 36px;
-+        padding: 0 8px 0 12px;
-+        background: linear-gradient(180deg,
-+            $pt-add-macro-title-top 0%, $pt-add-macro-title-top 50%,
-+            $pt-add-macro-title-bottom 50%, $pt-add-macro-title-bottom 100%);
-+        box-shadow:
-+            inset 0 -2px 0 $pt-panel-stroke,
-+            0 1px 0 $pt-add-macro-title-glow;
-+        cursor: move;
-+        user-select: none;
-+    }
-+
-+    &__title {
-+        color: #FFFFFF;
-+        font-weight: 700;
-+        font-size: 15px;
-+        letter-spacing: 0.5px;
-+        text-shadow: 0 1px 0 rgba(10, 20, 36, 0.50);
-+    }
-+
-+    &__close {
-+        display: flex;
-+        align-items: center;
-+        justify-content: center;
-+        width: 26px;
-+        height: 26px;
-+        padding: 0;
-+        border: 2px solid $pt-panel-stroke;
-+        border-radius: 3px;
-+        background: linear-gradient(180deg,
-+            $pt-add-macro-red-top 0%, $pt-add-macro-red-top 50%,
-+            $pt-add-macro-red-bottom 50%, $pt-add-macro-red-bottom 100%);
-+        color: #FFFFFF;
-+        cursor: pointer;
-+        box-shadow: 0 1px 0 $pt-add-macro-red-glow;
-+
-+        svg { width: 12px; height: 12px; }
-+        &:hover { filter: brightness(1.08); }
-+    }
-+
-+    &__body {
++    &__content {
 +        display: flex;
 +        flex-direction: column;
 +        gap: 12px;
 +        padding: 14px;
-+        background: $pt-add-macro-body-bg;
 +    }
 +
 +    &__field {
@@ -420,7 +361,7 @@ index 0000000..bfbff16
 +        }
 +
 +        &--capturing {
-+            border-color: $pt-add-macro-title-bottom;
++            border-color: $pt-add-macro-focus-stroke;
 +            box-shadow: 0 0 0 2px rgba(94, 127, 163, 0.30);
 +        }
 +
@@ -501,20 +442,21 @@ index 0000000..bfbff16
 +}
 diff --git a/src/components/pixeltower/AddMacroDialog.tsx b/src/components/pixeltower/AddMacroDialog.tsx
 new file mode 100644
-index 0000000..1840698
+index 0000000..61bd64d
 --- /dev/null
 +++ b/src/components/pixeltower/AddMacroDialog.tsx
-@@ -0,0 +1,103 @@
+@@ -0,0 +1,93 @@
 +import { FC, useEffect, useState } from 'react';
-+import { LuCheck, LuChevronDown, LuRotateCcw, LuX } from 'react-icons/lu';
++import { LuCheck, LuChevronDown, LuRotateCcw } from 'react-icons/lu';
 +import { formatBindingForDisplay } from '../../api/pixeltower/MacroBindingFormat';
-+import { DraggableWindow } from '../../common';
++import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 +import { useKeybindCapture } from '../../hooks/pixeltower';
 +
 +// .designs/client_ui.pen frame X8ukF — modal triggered by the
-+// "+ New Macro" button in the Macros window title bar. Owns local form
-+// state; on Add Macro, hands the captured binding + command back via
-+// onSave and the parent dispatches the SaveMacroComposer.
++// "+ New Macro" button on the Macros window's top action row. Owns local
++// form state; on Add Macro, hands the captured binding + command back via
++// onSave and the parent dispatches the SaveMacroComposer. Native Nitro
++// card chrome for parity with every other in-game dialog.
 +
 +interface AddMacroDialogProps
 +{
@@ -544,68 +486,57 @@ index 0000000..1840698
 +    const display = formatBindingForDisplay(captured);
 +
 +    return (
-+        <DraggableWindow uniqueKey="pixeltower-add-macro" handleSelector=".pixeltower-add-macro__drag-handle">
-+            <div className="pixeltower-add-macro">
-+                <div className="pixeltower-add-macro__title-bar pixeltower-add-macro__drag-handle">
-+                    <span className="pixeltower-add-macro__title">Add New Macro</span>
++        <NitroCardView uniqueKey="pixeltower-add-macro" theme="primary" classNames={ [ 'pixeltower-add-macro' ] }>
++            <NitroCardHeaderView headerText="Add New Macro" onCloseClick={ onClose } />
++            <NitroCardContentView classNames={ [ 'pixeltower-add-macro__content' ] }>
++                <div className="pixeltower-add-macro__field">
++                    <label className="pixeltower-add-macro__label">Keybinding</label>
 +                    <button
 +                        type="button"
-+                        className="pixeltower-add-macro__close"
-+                        title="Close"
-+                        onClick={ onClose }>
-+                        <LuX />
++                        className={ 'pixeltower-add-macro__input pixeltower-add-macro__input--key' + (isCapturing ? ' pixeltower-add-macro__input--capturing' : '') }
++                        onClick={ startCapture }>
++                        { display
++                            ? <span className="pixeltower-add-macro__value">{ display }</span>
++                            : <span className="pixeltower-add-macro__placeholder">{ wasCapturing ? placeholder : placeholder }</span>
++                        }
 +                    </button>
 +                </div>
-+                <div className="pixeltower-add-macro__body">
-+                    <div className="pixeltower-add-macro__field">
-+                        <label className="pixeltower-add-macro__label">Keybinding</label>
-+                        <button
-+                            type="button"
-+                            className={ 'pixeltower-add-macro__input pixeltower-add-macro__input--key' + (isCapturing ? ' pixeltower-add-macro__input--capturing' : '') }
-+                            onClick={ startCapture }>
-+                            { display
-+                                ? <span className="pixeltower-add-macro__value">{ display }</span>
-+                                : <span className="pixeltower-add-macro__placeholder">{ wasCapturing ? placeholder : placeholder }</span>
-+                            }
-+                        </button>
-+                    </div>
-+                    <div className="pixeltower-add-macro__field">
-+                        <label className="pixeltower-add-macro__label">Category</label>
-+                        <div className="pixeltower-add-macro__input pixeltower-add-macro__input--select pixeltower-add-macro__input--readonly">
-+                            <span className="pixeltower-add-macro__value">Default</span>
-+                            <LuChevronDown className="pixeltower-add-macro__chevron" />
-+                        </div>
-+                    </div>
-+                    <div className="pixeltower-add-macro__field">
-+                        <label className="pixeltower-add-macro__label">Command</label>
-+                        <input
-+                            type="text"
-+                            className="pixeltower-add-macro__input pixeltower-add-macro__input--text"
-+                            placeholder="Enter macro command"
-+                            value={ command }
-+                            onChange={ e => setCommand(e.target.value) }
-+                            maxLength={ 128 } />
-+                    </div>
-+                    <div className="pixeltower-add-macro__buttons">
-+                        <button
-+                            type="button"
-+                            className="pixeltower-add-macro__btn pixeltower-add-macro__btn--reset"
-+                            onClick={ reset }>
-+                            <LuRotateCcw />
-+                            <span>Reset Keys</span>
-+                        </button>
-+                        <button
-+                            type="button"
-+                            className="pixeltower-add-macro__btn pixeltower-add-macro__btn--add"
-+                            disabled={ !canSave }
-+                            onClick={ handleSave }>
-+                            <LuCheck />
-+                            <span>Add Macro</span>
-+                        </button>
++                <div className="pixeltower-add-macro__field">
++                    <label className="pixeltower-add-macro__label">Category</label>
++                    <div className="pixeltower-add-macro__input pixeltower-add-macro__input--select pixeltower-add-macro__input--readonly">
++                        <span className="pixeltower-add-macro__value">Default</span>
++                        <LuChevronDown className="pixeltower-add-macro__chevron" />
 +                    </div>
 +                </div>
-+            </div>
-+        </DraggableWindow>
++                <div className="pixeltower-add-macro__field">
++                    <label className="pixeltower-add-macro__label">Command</label>
++                    <input
++                        type="text"
++                        className="pixeltower-add-macro__input pixeltower-add-macro__input--text"
++                        placeholder="Enter macro command"
++                        value={ command }
++                        onChange={ e => setCommand(e.target.value) }
++                        maxLength={ 128 } />
++                </div>
++                <div className="pixeltower-add-macro__buttons">
++                    <button
++                        type="button"
++                        className="pixeltower-add-macro__btn pixeltower-add-macro__btn--reset"
++                        onClick={ reset }>
++                        <LuRotateCcw />
++                        <span>Reset Keys</span>
++                    </button>
++                    <button
++                        type="button"
++                        className="pixeltower-add-macro__btn pixeltower-add-macro__btn--add"
++                        disabled={ !canSave }
++                        onClick={ handleSave }>
++                        <LuCheck />
++                        <span>Add Macro</span>
++                    </button>
++                </div>
++            </NitroCardContentView>
++        </NitroCardView>
 +    );
 +}
 diff --git a/src/components/pixeltower/DrawerHUD.tsx b/src/components/pixeltower/DrawerHUD.tsx
@@ -719,28 +650,26 @@ index 0000000..b1ed484
 +}
 diff --git a/src/components/pixeltower/MacrosWindow.scss b/src/components/pixeltower/MacrosWindow.scss
 new file mode 100644
-index 0000000..22f925b
+index 0000000..8f9d9b9
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosWindow.scss
-@@ -0,0 +1,312 @@
+@@ -0,0 +1,254 @@
 +@use './tokens' as *;
 +
-+// Macros window — .designs/client_ui.pen frame 59QGF. Custom title bar
-+// because the design needs both a green "+ New Macro" button and a red
-+// close X side-by-side, which NitroCardHeaderView doesn't accommodate.
++// Macros Window — .designs/client_ui.pen frame 59QGF.
++// Outer chrome is NitroCardView (theme="primary"), so the title bar +
++// red X close button match every other Pixeltower dialog. The "+ New
++// Macro" green action chip is rendered inside the body next to the tab
++// strip rather than embedded in the title bar.
 +
-+$pt-macros-shell-bg:    #3E4E6E;
-+$pt-macros-body-bg:     #DFDFDF;
 +$pt-macros-text-strong: #1F2C40;
 +$pt-macros-text-muted:  #6B7280;
 +
-+$pt-macros-title-top:    #5E7FA3;
-+$pt-macros-title-bottom: #2B3A54;
-+$pt-macros-title-glow:   #9AB4D3;
++$pt-macros-title-glow:  #9AB4D3;
 +
-+$pt-macros-red-top:      #E04848;
-+$pt-macros-red-bottom:   #7A1818;
-+$pt-macros-red-glow:     #FF9090;
++$pt-macros-red-top:     #E04848;
++$pt-macros-red-bottom:  #7A1818;
++$pt-macros-red-glow:    #FF9090;
 +
 +$pt-macros-green-top:    #48C66B;
 +$pt-macros-green-bottom: #1F6B36;
@@ -759,95 +688,22 @@ index 0000000..22f925b
 +.pixeltower-macros-window {
 +    width: 520px;
 +    max-width: calc(100vw - 24px);
-+    background: $pt-macros-shell-bg;
-+    border: 2px solid $pt-panel-stroke;
-+    border-radius: 3px;
-+    box-shadow:
-+        0 3px 0 rgba(0, 0, 0, 0.50),
-+        0 2px 0 #7A95B8;
 +    color: $pt-macros-text-strong;
 +    font-family: $pt-font-family;
-+    overflow: hidden;
-+    display: flex;
-+    flex-direction: column;
 +
-+    &__title-bar {
++    &__content {
++        display: flex;
++        flex-direction: column;
++        gap: 12px;
++        padding: 12px 16px 16px 16px;
++        min-height: 0;
++    }
++
++    &__action-row {
 +        display: flex;
 +        align-items: center;
 +        justify-content: space-between;
-+        height: 36px;
-+        padding: 0 8px 0 12px;
-+        background: linear-gradient(180deg,
-+            $pt-macros-title-top 0%, $pt-macros-title-top 50%,
-+            $pt-macros-title-bottom 50%, $pt-macros-title-bottom 100%);
-+        box-shadow:
-+            inset 0 -2px 0 $pt-panel-stroke,
-+            0 1px 0 $pt-macros-title-glow;
-+        cursor: move;
-+        user-select: none;
-+    }
-+
-+    &__title {
-+        color: #FFFFFF;
-+        font-weight: 700;
-+        font-size: 15px;
-+        letter-spacing: 0.5px;
-+        text-shadow: 0 1px 0 rgba(10, 20, 36, 0.50);
-+    }
-+
-+    &__title-buttons {
-+        display: flex;
-+        align-items: center;
-+        gap: 6px;
-+    }
-+
-+    &__new-btn {
-+        display: inline-flex;
-+        align-items: center;
-+        gap: 6px;
-+        height: 26px;
-+        padding: 0 10px;
-+        border: 2px solid $pt-panel-stroke;
-+        border-radius: 3px;
-+        background: linear-gradient(180deg,
-+            $pt-macros-green-top 0%, $pt-macros-green-top 50%,
-+            $pt-macros-green-bottom 50%, $pt-macros-green-bottom 100%);
-+        box-shadow: 0 1px 0 $pt-macros-green-glow;
-+        color: #FFFFFF;
-+        font-family: inherit;
-+        font-weight: 700;
-+        font-size: 12px;
-+        letter-spacing: 0.4px;
-+        text-shadow: 0 1px 0 rgba(10, 20, 36, 0.50);
-+        cursor: pointer;
-+
-+        svg { width: 12px; height: 12px; }
-+        &:hover { filter: brightness(1.08); }
-+    }
-+
-+    &__close {
-+        display: flex;
-+        align-items: center;
-+        justify-content: center;
-+        width: 26px;
-+        height: 26px;
-+        padding: 0;
-+        border: 2px solid $pt-panel-stroke;
-+        border-radius: 3px;
-+        background: linear-gradient(180deg,
-+            $pt-macros-red-top 0%, $pt-macros-red-top 50%,
-+            $pt-macros-red-bottom 50%, $pt-macros-red-bottom 100%);
-+        box-shadow: 0 1px 0 $pt-macros-red-glow;
-+        color: #FFFFFF;
-+        cursor: pointer;
-+
-+        svg { width: 12px; height: 12px; }
-+        &:hover { filter: brightness(1.08); }
-+    }
-+
-+    &__tab-strip {
-+        background: $pt-macros-body-bg;
-+        padding: 8px 12px 0 12px;
++        gap: 12px;
 +    }
 +
 +    &__tabs {
@@ -865,8 +721,8 @@ index 0000000..22f925b
 +        justify-content: center;
 +        padding: 0 16px;
 +        background: linear-gradient(180deg,
-+            $pt-macros-title-top 0%, $pt-macros-title-top 50%,
-+            $pt-macros-title-bottom 50%, $pt-macros-title-bottom 100%);
++            $pt-chip-top 0%, $pt-chip-top 50%,
++            $pt-chip-bottom 50%, $pt-chip-bottom 100%);
 +        border: 0;
 +        color: #C4D1E0;
 +        font-family: inherit;
@@ -880,8 +736,8 @@ index 0000000..22f925b
 +
 +        &--active {
 +            background: linear-gradient(180deg,
-+                $pt-macros-title-bottom 0%, $pt-macros-title-bottom 50%,
-+                $pt-macros-title-top 50%, $pt-macros-title-top 100%);
++                $pt-chip-bottom 0%, $pt-chip-bottom 50%,
++                $pt-chip-top 50%, $pt-chip-top 100%);
 +            color: #FFFFFF;
 +            font-weight: 900;
 +        }
@@ -906,12 +762,29 @@ index 0000000..22f925b
 +        flex-shrink: 0;
 +    }
 +
-+    &__body {
-+        background: $pt-macros-body-bg;
-+        padding: 12px 16px 16px 16px;
-+        display: flex;
-+        flex-direction: column;
-+        gap: 12px;
++    &__new-btn {
++        display: inline-flex;
++        align-items: center;
++        gap: 6px;
++        height: 30px;
++        padding: 0 12px;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++        background: linear-gradient(180deg,
++            $pt-macros-green-top 0%, $pt-macros-green-top 50%,
++            $pt-macros-green-bottom 50%, $pt-macros-green-bottom 100%);
++        box-shadow: 0 1px 0 $pt-macros-green-glow;
++        color: #FFFFFF;
++        font-family: inherit;
++        font-weight: 700;
++        font-size: 13px;
++        letter-spacing: 0.4px;
++        text-shadow: 0 1px 0 rgba(10, 20, 36, 0.50);
++        cursor: pointer;
++        flex-shrink: 0;
++
++        svg { width: 13px; height: 13px; }
++        &:hover { filter: brightness(1.08); }
 +    }
 +
 +    &__table {
@@ -966,8 +839,8 @@ index 0000000..22f925b
 +        }
 +    }
 +
-+    &__row--header &__col--cmd,
 +    &__row--header &__col--key,
++    &__row--header &__col--cmd,
 +    &__row--header &__col--action {
 +        font-weight: 700;
 +        color: $pt-macros-text-muted;
@@ -1037,26 +910,27 @@ index 0000000..22f925b
 +}
 diff --git a/src/components/pixeltower/MacrosWindow.tsx b/src/components/pixeltower/MacrosWindow.tsx
 new file mode 100644
-index 0000000..7d2d3d1
+index 0000000..24f2274
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosWindow.tsx
-@@ -0,0 +1,160 @@
+@@ -0,0 +1,148 @@
 +import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 +import { FC, useEffect, useState } from 'react';
-+import { LuPencil, LuPlus, LuTrash2, LuX } from 'react-icons/lu';
++import { LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 +import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 +import { formatBindingForDisplay } from '../../api/pixeltower/MacroBindingFormat';
 +import { DeleteMacroComposer, RequestMacrosComposer, SaveMacroComposer } from '../../api/pixeltower/PixeltowerSoundMessages';
-+import { DraggableWindow } from '../../common';
++import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 +import { useMacros } from '../../hooks/pixeltower';
 +import { AddMacroDialog } from './AddMacroDialog';
 +
 +// Macros Window — .designs/client_ui.pen frame 59QGF.
 +// Triggered from the Drawer HUD "Macros" button via
-+// CreateLinkEvent('macros-window/show|hide|toggle'). The .pen design has a
-+// custom title bar with both a green "+ New Macro" button and a red close X,
-+// so we render our own chrome (DraggableWindow + custom title bar) instead
-+// of using NitroCardView/NitroCardHeaderView like the other RP dialogs.
++// CreateLinkEvent('macros-window/show|hide|toggle'). Uses native Nitro card
++// chrome (draggable header, red X close button) for parity with every other
++// in-game dialog. The "+ New Macro" action lives in a top action row above
++// the tab strip rather than inside the title bar — moving it out keeps the
++// header consistent with Habbo's standard chrome.
 +//
 +// The roster is fetched via RequestMacrosComposer (header 6554) on each
 +// open and replied to with a MacrosListEvent (header 6553), shared across
@@ -1116,29 +990,10 @@ index 0000000..7d2d3d1
 +
 +    return (
 +        <>
-+            <DraggableWindow uniqueKey="pixeltower-macros" handleSelector=".pixeltower-macros-window__drag-handle">
-+                <div className="pixeltower-macros-window">
-+                    <div className="pixeltower-macros-window__title-bar pixeltower-macros-window__drag-handle">
-+                        <span className="pixeltower-macros-window__title">Macros</span>
-+                        <div className="pixeltower-macros-window__title-buttons">
-+                            <button
-+                                type="button"
-+                                className="pixeltower-macros-window__new-btn"
-+                                title="New macro"
-+                                onClick={ () => setAddOpen(true) }>
-+                                <LuPlus />
-+                                <span>New Macro</span>
-+                            </button>
-+                            <button
-+                                type="button"
-+                                className="pixeltower-macros-window__close"
-+                                title="Close"
-+                                onClick={ close }>
-+                                <LuX />
-+                            </button>
-+                        </div>
-+                    </div>
-+                    <div className="pixeltower-macros-window__tab-strip">
++            <NitroCardView uniqueKey="pixeltower-macros" theme="primary" classNames={ [ 'pixeltower-macros-window' ] }>
++                <NitroCardHeaderView headerText="Macros" onCloseClick={ close } />
++                <NitroCardContentView classNames={ [ 'pixeltower-macros-window__content' ] } overflow="hidden">
++                    <div className="pixeltower-macros-window__action-row">
 +                        <div className="pixeltower-macros-window__tabs">
 +                            <button
 +                                type="button"
@@ -1154,45 +1009,51 @@ index 0000000..7d2d3d1
 +                                <LuPlus />
 +                            </button>
 +                        </div>
++                        <button
++                            type="button"
++                            className="pixeltower-macros-window__new-btn"
++                            title="New macro"
++                            onClick={ () => setAddOpen(true) }>
++                            <LuPlus />
++                            <span>New Macro</span>
++                        </button>
 +                    </div>
-+                    <div className="pixeltower-macros-window__body">
-+                        <div className="pixeltower-macros-window__table">
-+                            <div className="pixeltower-macros-window__row pixeltower-macros-window__row--header">
-+                                <div className="pixeltower-macros-window__col pixeltower-macros-window__col--key">Keybinding</div>
-+                                <div className="pixeltower-macros-window__col pixeltower-macros-window__col--cmd">Command</div>
-+                                <div className="pixeltower-macros-window__col pixeltower-macros-window__col--action">Action</div>
-+                            </div>
-+                            { macros.length === 0 && (
-+                                <div className="pixeltower-macros-window__empty">
-+                                    No macros yet — click <strong>+ New Macro</strong> to bind a key.
-+                                </div>
-+                            ) }
-+                            { macros.map(macro => (
-+                                <div key={ macro.macroId } className="pixeltower-macros-window__row">
-+                                    <div className="pixeltower-macros-window__col pixeltower-macros-window__col--key">
-+                                        { formatBindingForDisplay(macro.keybind) }
-+                                    </div>
-+                                    <div className="pixeltower-macros-window__col pixeltower-macros-window__col--cmd">
-+                                        <div className="pixeltower-macros-window__cmd-chip">
-+                                            <span className="pixeltower-macros-window__cmd-text">{ macro.command }</span>
-+                                            <LuPencil className="pixeltower-macros-window__cmd-edit" />
-+                                        </div>
-+                                    </div>
-+                                    <div className="pixeltower-macros-window__col pixeltower-macros-window__col--action">
-+                                        <button
-+                                            type="button"
-+                                            className="pixeltower-macros-window__delete"
-+                                            title="Delete macro"
-+                                            onClick={ () => handleDelete(macro.macroId) }>
-+                                            <LuTrash2 />
-+                                        </button>
-+                                    </div>
-+                                </div>
-+                            )) }
++                    <div className="pixeltower-macros-window__table">
++                        <div className="pixeltower-macros-window__row pixeltower-macros-window__row--header">
++                            <div className="pixeltower-macros-window__col pixeltower-macros-window__col--key">Keybinding</div>
++                            <div className="pixeltower-macros-window__col pixeltower-macros-window__col--cmd">Command</div>
++                            <div className="pixeltower-macros-window__col pixeltower-macros-window__col--action">Action</div>
 +                        </div>
++                        { macros.length === 0 && (
++                            <div className="pixeltower-macros-window__empty">
++                                No macros yet — click <strong>+ New Macro</strong> to bind a key.
++                            </div>
++                        ) }
++                        { macros.map(macro => (
++                            <div key={ macro.macroId } className="pixeltower-macros-window__row">
++                                <div className="pixeltower-macros-window__col pixeltower-macros-window__col--key">
++                                    { formatBindingForDisplay(macro.keybind) }
++                                </div>
++                                <div className="pixeltower-macros-window__col pixeltower-macros-window__col--cmd">
++                                    <div className="pixeltower-macros-window__cmd-chip">
++                                        <span className="pixeltower-macros-window__cmd-text">{ macro.command }</span>
++                                        <LuPencil className="pixeltower-macros-window__cmd-edit" />
++                                    </div>
++                                </div>
++                                <div className="pixeltower-macros-window__col pixeltower-macros-window__col--action">
++                                    <button
++                                        type="button"
++                                        className="pixeltower-macros-window__delete"
++                                        title="Delete macro"
++                                        onClick={ () => handleDelete(macro.macroId) }>
++                                        <LuTrash2 />
++                                    </button>
++                                </div>
++                            </div>
++                        )) }
 +                    </div>
-+                </div>
-+            </DraggableWindow>
++                </NitroCardContentView>
++            </NitroCardView>
 +            { addOpen && (
 +                <AddMacroDialog
 +                    onClose={ () => setAddOpen(false) }
