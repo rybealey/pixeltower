@@ -554,10 +554,10 @@ index f9c6760..0ed0473 100644
      { key: 'wanted',    label: 'Wanted',    Icon: LuScroll },
 diff --git a/src/components/pixeltower/MacrosKeybindListener.tsx b/src/components/pixeltower/MacrosKeybindListener.tsx
 new file mode 100644
-index 0000000..ea40423
+index 0000000..71244cf
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosKeybindListener.tsx
-@@ -0,0 +1,116 @@
+@@ -0,0 +1,137 @@
 +import { FC, useEffect, useRef } from 'react';
 +import { ChatMessageTypeEnum, SendMessageComposer } from '../../api';
 +import { encodeKeyEvent, encodeMouseEvent } from '../../api/pixeltower/MacroBindingFormat';
@@ -639,9 +639,18 @@ index 0000000..ea40423
 +            return true;
 +        };
 +
++        // Holding Alt (Option on Mac) or Ctrl (Control) signals macro intent
++        // even when the chat input is focused — those combos aren't valid
++        // text input across either platform, so we treat them as a macro
++        // attempt regardless of focus and at minimum keep the chat widget
++        // from focus-stealing on the press.
++        const isMacroIntent = (event: KeyboardEvent | MouseEvent) =>
++            event.altKey || event.ctrlKey;
++
 +        const onKey = (event: KeyboardEvent) =>
 +        {
-+            if(isInputActive()) return;
++            const intent = isMacroIntent(event);
++            if(!intent && isInputActive()) return;
 +            const binding = encodeKeyEvent(event);
 +            if(!binding) return;
 +            if(fire(binding))
@@ -649,16 +658,28 @@ index 0000000..ea40423
 +                event.preventDefault();
 +                event.stopPropagation();
 +            }
++            else if(intent)
++            {
++                // Modifier press with no matching macro: don't preventDefault
++                // (could be a legitimate browser shortcut) but stop propagation
++                // so the chat widget doesn't grab focus on the press.
++                event.stopPropagation();
++            }
 +        };
 +
 +        const onMouse = (event: MouseEvent) =>
 +        {
-+            if(isInputActive()) return;
++            const intent = isMacroIntent(event);
++            if(!intent && isInputActive()) return;
 +            const binding = encodeMouseEvent(event);
 +            if(!binding) return;
 +            if(fire(binding))
 +            {
 +                event.preventDefault();
++                event.stopPropagation();
++            }
++            else if(intent)
++            {
 +                event.stopPropagation();
 +            }
 +        };
