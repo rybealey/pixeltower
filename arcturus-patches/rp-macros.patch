@@ -1,7 +1,7 @@
 diff --git a/src/main/java/com/eu/habbo/messages/PacketManager.java b/src/main/java/com/eu/habbo/messages/PacketManager.java
 --- a/src/main/java/com/eu/habbo/messages/PacketManager.java
 +++ b/src/main/java/com/eu/habbo/messages/PacketManager.java
-@@ -323,6 +323,10 @@ public class PacketManager {
+@@ -323,6 +323,13 @@ public class PacketManager {
          this.registerHandler(Incoming.PixeltowerSetTargetEvent, PixeltowerSetTargetEvent.class);
          this.registerHandler(Incoming.RoleplayOfferResponseEvent, RoleplayOfferResponseEvent.class);
          this.registerHandler(Incoming.PixeltowerRequestCorporationsEvent, PixeltowerRequestCorporationsEvent.class);
@@ -9,13 +9,16 @@ diff --git a/src/main/java/com/eu/habbo/messages/PacketManager.java b/src/main/j
 +        this.registerHandler(Incoming.PixeltowerSaveMacroEvent, PixeltowerSaveMacroEvent.class);
 +        this.registerHandler(Incoming.PixeltowerDeleteMacroEvent, PixeltowerDeleteMacroEvent.class);
 +        this.registerHandler(Incoming.PixeltowerReorderMacrosEvent, PixeltowerReorderMacrosEvent.class);
++        this.registerHandler(Incoming.PixeltowerSetActiveMacroCategoryEvent, PixeltowerSetActiveMacroCategoryEvent.class);
++        this.registerHandler(Incoming.PixeltowerCreateMacroCategoryEvent, PixeltowerCreateMacroCategoryEvent.class);
++        this.registerHandler(Incoming.PixeltowerDeleteMacroCategoryEvent, PixeltowerDeleteMacroCategoryEvent.class);
      }
 
      private void registerNavigator() throws Exception {
 diff --git a/src/main/java/com/eu/habbo/messages/incoming/Incoming.java b/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
 --- a/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
 +++ b/src/main/java/com/eu/habbo/messages/incoming/Incoming.java
-@@ -412,4 +412,20 @@ public class Incoming {
+@@ -412,4 +412,32 @@ public class Incoming {
      // pixeltower: client requests a fresh corporations + employee roster
      // snapshot. Emitted by the CorporationsWindow on open.
      public static final int PixeltowerRequestCorporationsEvent = 6552;
@@ -35,6 +38,18 @@ diff --git a/src/main/java/com/eu/habbo/messages/incoming/Incoming.java b/src/ma
 +    // pixeltower: client drags macros into a new display order. Wire format:
 +    // int count, then int[count] macroIds (top-of-list first).
 +    public static final int PixeltowerReorderMacrosEvent = 6557;
++
++    // pixeltower: client switches active macro category. Wire format:
++    // int categoryId.
++    public static final int PixeltowerSetActiveMacroCategoryEvent = 6558;
++
++    // pixeltower: client creates a new macro category. Wire format:
++    // string name.
++    public static final int PixeltowerCreateMacroCategoryEvent = 6559;
++
++    // pixeltower: client deletes a macro category (and every macro
++    // inside it). Default is rejected. Wire format: int categoryId.
++    public static final int PixeltowerDeleteMacroCategoryEvent = 6560;
  }
 diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerDeleteMacroEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerDeleteMacroEvent.java
 new file mode 100644
@@ -257,5 +272,153 @@ index 0000000..8df4951
 +    public UserMacrosReorderRequestedEvent(Habbo requester, int[] orderedMacroIds) {
 +        super(requester);
 +        this.orderedMacroIds = orderedMacroIds;
++    }
++}
+diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerCreateMacroCategoryEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerCreateMacroCategoryEvent.java
+new file mode 100644
+index 0000000..f3238e6
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerCreateMacroCategoryEvent.java
+@@ -0,0 +1,20 @@
++package com.eu.habbo.messages.incoming.users;
++
++import com.eu.habbo.Emulator;
++import com.eu.habbo.messages.incoming.MessageHandler;
++import com.eu.habbo.plugin.events.users.UserMacroCategoryCreateRequestedEvent;
++
++/**
++ * Pixeltower-custom incoming packet (header 6559). Emitted by the
++ * "Add New Macro Category" modal. Wire format: string name.
++ * Validation lives inside MacrosManager.createCategory.
++ */
++public class PixeltowerCreateMacroCategoryEvent extends MessageHandler {
++    @Override
++    public void handle() throws Exception {
++        if (this.client == null || this.client.getHabbo() == null) return;
++        String name = this.packet.readString();
++        Emulator.getPluginManager().fireEvent(
++                new UserMacroCategoryCreateRequestedEvent(this.client.getHabbo(), name));
++    }
++}
+diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerDeleteMacroCategoryEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerDeleteMacroCategoryEvent.java
+new file mode 100644
+index 0000000..d7252c8
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerDeleteMacroCategoryEvent.java
+@@ -0,0 +1,21 @@
++package com.eu.habbo.messages.incoming.users;
++
++import com.eu.habbo.Emulator;
++import com.eu.habbo.messages.incoming.MessageHandler;
++import com.eu.habbo.plugin.events.users.UserMacroCategoryDeleteRequestedEvent;
++
++/**
++ * Pixeltower-custom incoming packet (header 6560). Emitted by the
++ * trash icon next to a non-Default category in the dropdown. Wire
++ * format: int categoryId. Hard-deletes the category + every macro
++ * underneath; Default is rejected server-side.
++ */
++public class PixeltowerDeleteMacroCategoryEvent extends MessageHandler {
++    @Override
++    public void handle() throws Exception {
++        if (this.client == null || this.client.getHabbo() == null) return;
++        int categoryId = this.packet.readInt();
++        Emulator.getPluginManager().fireEvent(
++                new UserMacroCategoryDeleteRequestedEvent(this.client.getHabbo(), categoryId));
++    }
++}
+diff --git a/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerSetActiveMacroCategoryEvent.java b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerSetActiveMacroCategoryEvent.java
+new file mode 100644
+index 0000000..eb4ce3e
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/messages/incoming/users/PixeltowerSetActiveMacroCategoryEvent.java
+@@ -0,0 +1,20 @@
++package com.eu.habbo.messages.incoming.users;
++
++import com.eu.habbo.Emulator;
++import com.eu.habbo.messages.incoming.MessageHandler;
++import com.eu.habbo.plugin.events.users.UserMacroCategoryActiveRequestedEvent;
++
++/**
++ * Pixeltower-custom incoming packet (header 6558). Emitted by the
++ * MacrosWindow's category dropdown when the user picks a different
++ * category. Wire format: int categoryId.
++ */
++public class PixeltowerSetActiveMacroCategoryEvent extends MessageHandler {
++    @Override
++    public void handle() throws Exception {
++        if (this.client == null || this.client.getHabbo() == null) return;
++        int categoryId = this.packet.readInt();
++        Emulator.getPluginManager().fireEvent(
++                new UserMacroCategoryActiveRequestedEvent(this.client.getHabbo(), categoryId));
++    }
++}
+diff --git a/src/main/java/com/eu/habbo/plugin/events/users/UserMacroCategoryActiveRequestedEvent.java b/src/main/java/com/eu/habbo/plugin/events/users/UserMacroCategoryActiveRequestedEvent.java
+new file mode 100644
+index 0000000..e0e476d
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/plugin/events/users/UserMacroCategoryActiveRequestedEvent.java
+@@ -0,0 +1,17 @@
++package com.eu.habbo.plugin.events.users;
++
++import com.eu.habbo.habbohotel.users.Habbo;
++
++/**
++ * Fired when a Habbo selects a different macro category from the
++ * MacrosWindow dropdown. Ownership is re-checked inside
++ * MacrosManager.setActiveCategory.
++ */
++public class UserMacroCategoryActiveRequestedEvent extends UserEvent {
++    public final int categoryId;
++
++    public UserMacroCategoryActiveRequestedEvent(Habbo requester, int categoryId) {
++        super(requester);
++        this.categoryId = categoryId;
++    }
++}
+diff --git a/src/main/java/com/eu/habbo/plugin/events/users/UserMacroCategoryCreateRequestedEvent.java b/src/main/java/com/eu/habbo/plugin/events/users/UserMacroCategoryCreateRequestedEvent.java
+new file mode 100644
+index 0000000..f10cb98
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/plugin/events/users/UserMacroCategoryCreateRequestedEvent.java
+@@ -0,0 +1,17 @@
++package com.eu.habbo.plugin.events.users;
++
++import com.eu.habbo.habbohotel.users.Habbo;
++
++/**
++ * Fired when a Habbo submits the "Add New Macro Category" modal. The
++ * name is trimmed + length-validated server-side; rejection is silent
++ * (the snapshot echo lets the modal close cleanly either way).
++ */
++public class UserMacroCategoryCreateRequestedEvent extends UserEvent {
++    public final String name;
++
++    public UserMacroCategoryCreateRequestedEvent(Habbo requester, String name) {
++        super(requester);
++        this.name = name;
++    }
++}
+diff --git a/src/main/java/com/eu/habbo/plugin/events/users/UserMacroCategoryDeleteRequestedEvent.java b/src/main/java/com/eu/habbo/plugin/events/users/UserMacroCategoryDeleteRequestedEvent.java
+new file mode 100644
+index 0000000..8c3aa58
+--- /dev/null
++++ b/src/main/java/com/eu/habbo/plugin/events/users/UserMacroCategoryDeleteRequestedEvent.java
+@@ -0,0 +1,17 @@
++package com.eu.habbo.plugin.events.users;
++
++import com.eu.habbo.habbohotel.users.Habbo;
++
++/**
++ * Fired when a Habbo deletes a non-Default macro category. Server-side
++ * delete cascades to every macro inside the category; Default is
++ * rejected by MacrosManager.deleteCategory.
++ */
++public class UserMacroCategoryDeleteRequestedEvent extends UserEvent {
++    public final int categoryId;
++
++    public UserMacroCategoryDeleteRequestedEvent(Habbo requester, int categoryId) {
++        super(requester);
++        this.categoryId = categoryId;
 +    }
 +}

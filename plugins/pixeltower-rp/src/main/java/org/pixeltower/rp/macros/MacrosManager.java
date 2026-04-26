@@ -27,6 +27,7 @@ public final class MacrosManager {
     private static final int MAX_KEYBIND_LEN = 64;
     private static final int MAX_COMMAND_LEN = 128;
     private static final int MAX_CATEGORY_LEN = 32;
+    private static final String DEFAULT_CATEGORY = "Default";
 
     private MacrosManager() {}
 
@@ -80,6 +81,169 @@ public final class MacrosManager {
             return true;
         } catch (SQLException e) {
             LOGGER.error("MacrosManager.save habbo={} keybind={} failed", habboId, keybind, e);
+            return false;
+        }
+    }
+
+    /**
+     * Returns the player's category list, seeding a "Default" row with
+     * is_active=1 if none exist yet. Pre-existing macros' category VARCHAR
+     * already reads "Default", so they bind to the seeded row by name.
+     */
+    public static List<MacroCategory> loadCategoriesFor(int habboId) {
+        List<MacroCategory> out = readCategories(habboId);
+        if (!out.isEmpty()) return out;
+
+        // First time we've seen this habbo — seed Default + return.
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "INSERT IGNORE INTO rp_macro_categories "
+                             + "(habbo_id, name, sort_order, is_active) "
+                             + "VALUES (?, ?, 0, 1)")) {
+            ps.setInt(1, habboId);
+            ps.setString(2, DEFAULT_CATEGORY);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            LOGGER.error("MacrosManager.loadCategoriesFor seed habbo={} failed", habboId, e);
+            return Collections.emptyList();
+        }
+        return readCategories(habboId);
+    }
+
+    private static List<MacroCategory> readCategories(int habboId) {
+        List<MacroCategory> out = new ArrayList<>();
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT id, habbo_id, name, sort_order, is_active "
+                             + "FROM rp_macro_categories WHERE habbo_id = ? "
+                             + "ORDER BY sort_order, id")) {
+            ps.setInt(1, habboId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(new MacroCategory(
+                            rs.getInt("id"),
+                            rs.getInt("habbo_id"),
+                            rs.getString("name"),
+                            rs.getInt("sort_order"),
+                            rs.getBoolean("is_active")));
+                }
+            }
+        } catch (SQLException e) {
+            LOGGER.error("MacrosManager.readCategories habbo={} failed", habboId, e);
+            return Collections.emptyList();
+        }
+        return out;
+    }
+
+    /**
+     * Mark exactly one category active for the requester. Refuses if the
+     * id doesn't belong to {@code habboId} (the SET-WHERE-AND-id check
+     * handles that without an extra select).
+     */
+    public static boolean setActiveCategory(int habboId, int categoryId) {
+        if (habboId <= 0 || categoryId <= 0) return false;
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection()) {
+            conn.setAutoCommit(false);
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "UPDATE rp_macro_categories SET is_active = (id = ?) WHERE habbo_id = ?")) {
+                ps.setInt(1, categoryId);
+                ps.setInt(2, habboId);
+                int updated = ps.executeUpdate();
+                conn.commit();
+                return updated > 0;
+            }
+        } catch (SQLException e) {
+            LOGGER.error("MacrosManager.setActiveCategory habbo={} cat={} failed",
+                    habboId, categoryId, e);
+            return false;
+        }
+    }
+
+    /**
+     * Insert a new category for the requester. Name is trimmed, length
+     * 1..32, deduped case-insensitive against existing names. Returns 0 on
+     * any rejection (empty/too-long/duplicate/SQL error).
+     */
+    public static int createCategory(int habboId, String name) {
+        if (habboId <= 0 || name == null) return 0;
+        String trimmed = name.trim();
+        if (trimmed.isEmpty() || trimmed.length() > MAX_CATEGORY_LEN) return 0;
+
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "INSERT INTO rp_macro_categories "
+                             + "(habbo_id, name, sort_order, is_active) "
+                             + "SELECT ?, ?, COALESCE(MAX(sort_order), -1) + 1, 0 "
+                             + "FROM rp_macro_categories WHERE habbo_id = ?",
+                     Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, habboId);
+            ps.setString(2, trimmed);
+            ps.setInt(3, habboId);
+            int inserted = ps.executeUpdate();
+            if (inserted == 0) return 0;
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                if (keys.next()) return keys.getInt(1);
+            }
+        } catch (SQLException e) {
+            // Likely duplicate name (uniq_habbo_name) — quiet to keep the
+            // log clean; UI surfaces this by simply not adding the row.
+            LOGGER.debug("MacrosManager.createCategory habbo={} name='{}' rejected: {}",
+                    habboId, trimmed, e.getMessage());
+        }
+        return 0;
+    }
+
+    /**
+     * Hard-delete a category and every macro inside it. Refuses to touch
+     * the "Default" row (UI hides the trash there too). If the deleted
+     * row was active, Default becomes active before the row is gone.
+     */
+    public static boolean deleteCategory(int habboId, int categoryId) {
+        if (habboId <= 0 || categoryId <= 0) return false;
+        try (Connection conn = Emulator.getDatabase().getDataSource().getConnection()) {
+            conn.setAutoCommit(false);
+
+            String name;
+            boolean wasActive;
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT name, is_active FROM rp_macro_categories "
+                            + "WHERE id = ? AND habbo_id = ?")) {
+                ps.setInt(1, categoryId);
+                ps.setInt(2, habboId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) { conn.rollback(); return false; }
+                    name = rs.getString("name");
+                    wasActive = rs.getBoolean("is_active");
+                }
+            }
+            if (DEFAULT_CATEGORY.equalsIgnoreCase(name)) { conn.rollback(); return false; }
+
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "DELETE FROM rp_macros WHERE habbo_id = ? AND category = ?")) {
+                ps.setInt(1, habboId);
+                ps.setString(2, name);
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "DELETE FROM rp_macro_categories WHERE id = ? AND habbo_id = ?")) {
+                ps.setInt(1, categoryId);
+                ps.setInt(2, habboId);
+                ps.executeUpdate();
+            }
+            if (wasActive) {
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "UPDATE rp_macro_categories SET is_active = 1 "
+                                + "WHERE habbo_id = ? AND name = ?")) {
+                    ps.setInt(1, habboId);
+                    ps.setString(2, DEFAULT_CATEGORY);
+                    ps.executeUpdate();
+                }
+            }
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            LOGGER.error("MacrosManager.deleteCategory habbo={} cat={} failed",
+                    habboId, categoryId, e);
             return false;
         }
     }

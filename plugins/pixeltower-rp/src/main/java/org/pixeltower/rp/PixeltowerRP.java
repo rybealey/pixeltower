@@ -27,6 +27,9 @@ import com.eu.habbo.plugin.events.users.UserTalkEvent;
 import com.eu.habbo.plugin.events.users.UserTargetSelectedEvent;
 import com.eu.habbo.plugin.events.users.UserOfferResponseEvent;
 import com.eu.habbo.plugin.events.users.UserCorporationsRequestedEvent;
+import com.eu.habbo.plugin.events.users.UserMacroCategoryActiveRequestedEvent;
+import com.eu.habbo.plugin.events.users.UserMacroCategoryCreateRequestedEvent;
+import com.eu.habbo.plugin.events.users.UserMacroCategoryDeleteRequestedEvent;
 import com.eu.habbo.plugin.events.users.UserMacroDeleteRequestedEvent;
 import com.eu.habbo.plugin.events.users.UserMacroSaveRequestedEvent;
 import com.eu.habbo.plugin.events.users.UserMacrosRequestedEvent;
@@ -74,6 +77,7 @@ import org.pixeltower.rp.fight.commands.SetZoneCommand;
 import org.pixeltower.rp.fight.commands.SlapCommand;
 import org.pixeltower.rp.functional.FunctionalFurnitureService;
 import org.pixeltower.rp.macros.Macro;
+import org.pixeltower.rp.macros.MacroCategory;
 import org.pixeltower.rp.macros.MacrosManager;
 import org.pixeltower.rp.macros.outgoing.MacrosListComposer;
 import org.pixeltower.rp.medical.RespawnScheduler;
@@ -455,9 +459,52 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         sendMacrosList(event.habbo);
     }
 
+    /**
+     * Switch the active category. Server enforces single-active-per-habbo
+     * via UPDATE rp_macro_categories SET is_active = (id = ?) and echoes
+     * the snapshot so client-side filters refresh.
+     */
+    @EventHandler
+    public void onUserMacroCategoryActiveRequested(UserMacroCategoryActiveRequestedEvent event) {
+        if (event.habbo == null) return;
+        int habboId = event.habbo.getHabboInfo().getId();
+        if (!MacrosManager.setActiveCategory(habboId, event.categoryId)) return;
+        sendMacrosList(event.habbo);
+    }
+
+    /**
+     * Add a new category. Trim/length/dup-name validation lives in the
+     * manager; on rejection we still echo the current snapshot so the UI
+     * can quietly close the modal without leaving stale state.
+     */
+    @EventHandler
+    public void onUserMacroCategoryCreateRequested(UserMacroCategoryCreateRequestedEvent event) {
+        if (event.habbo == null) return;
+        int habboId = event.habbo.getHabboInfo().getId();
+        MacrosManager.createCategory(habboId, event.name);
+        sendMacrosList(event.habbo);
+    }
+
+    /**
+     * Hard-delete a category and every macro inside it. Server refuses
+     * to delete "Default" (UI hides the trash there too).
+     */
+    @EventHandler
+    public void onUserMacroCategoryDeleteRequested(UserMacroCategoryDeleteRequestedEvent event) {
+        if (event.habbo == null) return;
+        int habboId = event.habbo.getHabboInfo().getId();
+        if (!MacrosManager.deleteCategory(habboId, event.categoryId)) return;
+        sendMacrosList(event.habbo);
+    }
+
     private static void sendMacrosList(Habbo habbo) {
-        List<Macro> macros = MacrosManager.loadFor(habbo.getHabboInfo().getId());
-        habbo.getClient().sendResponse(new MacrosListComposer(macros));
+        int habboId = habbo.getHabboInfo().getId();
+        // Categories first so loadCategoriesFor seeds Default before the
+        // macro load runs — keeps the snapshot consistent on first ever
+        // open (pre-existing macros all sit on category="Default").
+        List<MacroCategory> categories = MacrosManager.loadCategoriesFor(habboId);
+        List<Macro> macros = MacrosManager.loadFor(habboId);
+        habbo.getClient().sendResponse(new MacrosListComposer(macros, categories));
     }
 
     /**

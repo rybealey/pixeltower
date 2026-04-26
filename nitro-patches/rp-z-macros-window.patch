@@ -102,10 +102,10 @@ index 0000000..32aa046
 +    return mods.length ? mods + '+' + body : body;
 +}
 diff --git a/src/api/pixeltower/PixeltowerSoundMessages.ts b/src/api/pixeltower/PixeltowerSoundMessages.ts
-index 553a7e7..ab6a468 100644
+index 553a7e7..704e00b 100644
 --- a/src/api/pixeltower/PixeltowerSoundMessages.ts
 +++ b/src/api/pixeltower/PixeltowerSoundMessages.ts
-@@ -12,6 +12,11 @@ const PIXELTOWER_ROLEPLAY_OFFER_DISMISS = 6511;
+@@ -12,6 +12,14 @@ const PIXELTOWER_ROLEPLAY_OFFER_DISMISS = 6511;
  const PIXELTOWER_ROLEPLAY_OFFER_RESPONSE = 6551;
  const PIXELTOWER_SET_TARGET = 6550;
  const PIXELTOWER_REQUEST_CORPORATIONS = 6552;
@@ -114,10 +114,13 @@ index 553a7e7..ab6a468 100644
 +const PIXELTOWER_SAVE_MACRO = 6555;
 +const PIXELTOWER_DELETE_MACRO = 6556;
 +const PIXELTOWER_REORDER_MACROS = 6557;
++const PIXELTOWER_SET_ACTIVE_MACRO_CATEGORY = 6558;
++const PIXELTOWER_CREATE_MACRO_CATEGORY = 6559;
++const PIXELTOWER_DELETE_MACRO_CATEGORY = 6560;
  
  // ──────────── PlaySound (header 6500) ────────────
  
-@@ -573,6 +578,135 @@ export class RequestCorporationsComposer implements IMessageComposer<Constructor
+@@ -573,6 +581,206 @@ export class RequestCorporationsComposer implements IMessageComposer<Constructor
      public dispose(): void { return; }
  }
  
@@ -136,13 +139,23 @@ index 553a7e7..ab6a468 100644
 +    category: string;
 +}
 +
++export interface MacroCategoryItem
++{
++    id: number;
++    name: string;
++    sortOrder: number;
++    isActive: boolean;
++}
++
 +export class MacrosListParser implements IMessageParser
 +{
 +    private _macros: MacrosListItem[];
++    private _categories: MacroCategoryItem[];
 +
 +    public flush(): boolean
 +    {
 +        this._macros = [];
++        this._categories = [];
 +        return true;
 +    }
 +
@@ -150,6 +163,7 @@ index 553a7e7..ab6a468 100644
 +    {
 +        if(!wrapper) return false;
 +        this._macros = [];
++        this._categories = [];
 +        const count = wrapper.readInt();
 +        for(let i = 0; i < count; i++)
 +        {
@@ -160,12 +174,27 @@ index 553a7e7..ab6a468 100644
 +                category: wrapper.readString()
 +            });
 +        }
++        const catCount = wrapper.readInt();
++        for(let i = 0; i < catCount; i++)
++        {
++            this._categories.push({
++                id: wrapper.readInt(),
++                name: wrapper.readString(),
++                sortOrder: wrapper.readInt(),
++                isActive: wrapper.readBoolean()
++            });
++        }
 +        return true;
 +    }
 +
 +    public get macros(): MacrosListItem[]
 +    {
 +        return this._macros;
++    }
++
++    public get categories(): MacroCategoryItem[]
++    {
++        return this._categories;
 +    }
 +}
 +
@@ -250,10 +279,55 @@ index 553a7e7..ab6a468 100644
 +    public dispose(): void { return; }
 +}
 +
++// ──────────── SetActiveMacroCategory (header 6558, client→server) ────────────
++
++export class SetActiveMacroCategoryComposer implements IMessageComposer<ConstructorParameters<typeof SetActiveMacroCategoryComposer>>
++{
++    private _data: ConstructorParameters<typeof SetActiveMacroCategoryComposer>;
++
++    constructor(categoryId: number)
++    {
++        this._data = [ categoryId ];
++    }
++
++    public getMessageArray() { return this._data; }
++    public dispose(): void { return; }
++}
++
++// ──────────── CreateMacroCategory (header 6559, client→server) ────────────
++
++export class CreateMacroCategoryComposer implements IMessageComposer<ConstructorParameters<typeof CreateMacroCategoryComposer>>
++{
++    private _data: ConstructorParameters<typeof CreateMacroCategoryComposer>;
++
++    constructor(name: string)
++    {
++        this._data = [ name ];
++    }
++
++    public getMessageArray() { return this._data; }
++    public dispose(): void { return; }
++}
++
++// ──────────── DeleteMacroCategory (header 6560, client→server) ────────────
++
++export class DeleteMacroCategoryComposer implements IMessageComposer<ConstructorParameters<typeof DeleteMacroCategoryComposer>>
++{
++    private _data: ConstructorParameters<typeof DeleteMacroCategoryComposer>;
++
++    constructor(categoryId: number)
++    {
++        this._data = [ categoryId ];
++    }
++
++    public getMessageArray() { return this._data; }
++    public dispose(): void { return; }
++}
++
  // ──────────── registration ────────────
  
  class PixeltowerMessages implements IMessageConfiguration
-@@ -585,12 +719,17 @@ class PixeltowerMessages implements IMessageConfiguration
+@@ -585,12 +793,20 @@ class PixeltowerMessages implements IMessageConfiguration
          [ PIXELTOWER_UPDATE_CORP_BADGES, UpdateCorpBadgesEvent ],
          [ PIXELTOWER_CORPORATIONS_LIST, CorporationsListEvent ],
          [ PIXELTOWER_ROLEPLAY_OFFER, RoleplayOfferEvent ],
@@ -269,20 +343,24 @@ index 553a7e7..ab6a468 100644
 +        [ PIXELTOWER_REQUEST_MACROS, RequestMacrosComposer ],
 +        [ PIXELTOWER_SAVE_MACRO, SaveMacroComposer ],
 +        [ PIXELTOWER_DELETE_MACRO, DeleteMacroComposer ],
-+        [ PIXELTOWER_REORDER_MACROS, ReorderMacrosComposer ]
++        [ PIXELTOWER_REORDER_MACROS, ReorderMacrosComposer ],
++        [ PIXELTOWER_SET_ACTIVE_MACRO_CATEGORY, SetActiveMacroCategoryComposer ],
++        [ PIXELTOWER_CREATE_MACRO_CATEGORY, CreateMacroCategoryComposer ],
++        [ PIXELTOWER_DELETE_MACRO_CATEGORY, DeleteMacroCategoryComposer ]
      ]);
  }
  
 diff --git a/src/components/index.scss b/src/components/index.scss
-index c81d479..429b70b 100644
+index c81d479..0e0a9e3 100644
 --- a/src/components/index.scss
 +++ b/src/components/index.scss
-@@ -22,6 +22,8 @@
+@@ -22,6 +22,9 @@
  @import './pixeltower/StatusHUD';
  @import './pixeltower/DiamondsWindow';
  @import './pixeltower/CorporationsWindow';
 +@import './pixeltower/MacrosWindow';
 +@import './pixeltower/AddMacroDialog';
++@import './pixeltower/AddMacroCategoryDialog';
  @import './pixeltower/DrawerHUD';
  @import './pixeltower/ToolbarHUD';
  @import './pixeltower/OfferHUD';
@@ -308,12 +386,199 @@ index 898dd5f..5d25374 100644
              <ModToolsView />
              <RoomView />
              <ChatHistoryView />
+diff --git a/src/components/pixeltower/AddMacroCategoryDialog.scss b/src/components/pixeltower/AddMacroCategoryDialog.scss
+new file mode 100644
+index 0000000..3f8682c
+--- /dev/null
++++ b/src/components/pixeltower/AddMacroCategoryDialog.scss
+@@ -0,0 +1,107 @@
++@use './tokens' as *;
++
++// Add New Macro Category dialog — .designs/client_ui.pen frame mY6Az.
++// Outer chrome is NitroCardView (theme="primary"); body matches the
++// .pen single-input + Cancel/Add Category buttons row.
++
++$pt-cat-input-bg:     #FFFFFF;
++$pt-cat-input-stroke: #A0A8B5;
++$pt-cat-text-strong:  #1F2C40;
++$pt-cat-text-muted:   #6B7280;
++
++$pt-cat-cancel-top:    #5E7FA3;
++$pt-cat-cancel-bottom: #2B3A54;
++$pt-cat-cancel-glow:   #9AB4D3;
++
++$pt-cat-add-top:    #48C66B;
++$pt-cat-add-bottom: #1F6B36;
++$pt-cat-add-glow:   #9AE3B0;
++
++.pixeltower-add-macro-cat {
++    width: 380px;
++    max-width: calc(100vw - 24px);
++    color: $pt-cat-text-strong;
++    font-family: $pt-font-family;
++
++    &__content {
++        display: flex;
++        flex-direction: column;
++        gap: 12px;
++        padding: 14px;
++    }
++
++    &__field {
++        display: flex;
++        flex-direction: column;
++        gap: 5px;
++    }
++
++    &__label {
++        font-size: 12px;
++        font-weight: 700;
++        letter-spacing: 0.4px;
++        color: $pt-cat-text-strong;
++    }
++
++    &__input {
++        height: 34px;
++        padding: 0 10px;
++        background: $pt-cat-input-bg;
++        border: 1px solid $pt-cat-input-stroke;
++        border-radius: 2px;
++        font-family: inherit;
++        font-size: 13px;
++        color: $pt-cat-text-strong;
++        outline: none;
++        width: 100%;
++        box-sizing: border-box;
++
++        &::placeholder { color: $pt-cat-text-muted; }
++        &:focus {
++            border-color: $pt-cat-cancel-bottom;
++            box-shadow: 0 0 0 2px rgba(94, 127, 163, 0.30);
++        }
++    }
++
++    &__buttons {
++        display: flex;
++        justify-content: flex-end;
++        gap: 8px;
++        margin-top: 4px;
++    }
++
++    &__btn {
++        display: inline-flex;
++        align-items: center;
++        gap: 6px;
++        height: 32px;
++        padding: 0 14px;
++        border: 2px solid $pt-panel-stroke;
++        border-radius: 3px;
++        color: #FFFFFF;
++        font-family: inherit;
++        font-weight: 700;
++        font-size: 13px;
++        letter-spacing: 0.5px;
++        cursor: pointer;
++        text-shadow: 0 1px 0 rgba(10, 20, 36, 0.50);
++
++        svg { width: 13px; height: 13px; }
++        &:hover { filter: brightness(1.08); }
++        &:disabled { filter: grayscale(0.6) brightness(0.85); cursor: not-allowed; }
++
++        &--cancel {
++            background: linear-gradient(180deg,
++                $pt-cat-cancel-top 0%, $pt-cat-cancel-top 50%,
++                $pt-cat-cancel-bottom 50%, $pt-cat-cancel-bottom 100%);
++            box-shadow: 0 1px 0 $pt-cat-cancel-glow;
++        }
++
++        &--add {
++            background: linear-gradient(180deg,
++                $pt-cat-add-top 0%, $pt-cat-add-top 50%,
++                $pt-cat-add-bottom 50%, $pt-cat-add-bottom 100%);
++            box-shadow: 0 1px 0 $pt-cat-add-glow;
++        }
++    }
++}
+diff --git a/src/components/pixeltower/AddMacroCategoryDialog.tsx b/src/components/pixeltower/AddMacroCategoryDialog.tsx
+new file mode 100644
+index 0000000..543f2d3
+--- /dev/null
++++ b/src/components/pixeltower/AddMacroCategoryDialog.tsx
+@@ -0,0 +1,68 @@
++import { FC, useState } from 'react';
++import { LuCheck } from 'react-icons/lu';
++import { SendMessageComposer } from '../../api';
++import { CreateMacroCategoryComposer } from '../../api/pixeltower/PixeltowerSoundMessages';
++import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
++
++// .designs/client_ui.pen frame mY6Az — modal triggered by the amber
++// "+ New Category" button on the Macros window's action row. Single
++// Category Name input + Cancel / Add Category buttons. Server-side
++// MacrosManager.createCategory trims, length-checks, and dedups; on
++// any rejection the snapshot echo lets the modal close cleanly.
++
++interface AddMacroCategoryDialogProps
++{
++    onClose: () => void;
++}
++
++const MAX_NAME_LEN = 32;
++
++export const AddMacroCategoryDialog: FC<AddMacroCategoryDialogProps> = ({ onClose }) =>
++{
++    const [ name, setName ] = useState('');
++    const trimmed = name.trim();
++    const canSubmit = trimmed.length > 0 && trimmed.length <= MAX_NAME_LEN;
++
++    const handleSubmit = () =>
++    {
++        if(!canSubmit) return;
++        SendMessageComposer(new CreateMacroCategoryComposer(trimmed));
++        onClose();
++    };
++
++    return (
++        <NitroCardView uniqueKey="pixeltower-add-macro-category" theme="primary" classNames={ [ 'pixeltower-add-macro-cat' ] }>
++            <NitroCardHeaderView headerText="Add New Macro Category" onCloseClick={ onClose } />
++            <NitroCardContentView classNames={ [ 'pixeltower-add-macro-cat__content' ] }>
++                <div className="pixeltower-add-macro-cat__field">
++                    <label className="pixeltower-add-macro-cat__label">Category Name</label>
++                    <input
++                        type="text"
++                        className="pixeltower-add-macro-cat__input"
++                        placeholder="Enter category name"
++                        value={ name }
++                        autoFocus
++                        onChange={ e => setName(e.target.value) }
++                        onKeyDown={ e => { if(e.key === 'Enter') handleSubmit(); else if(e.key === 'Escape') onClose(); } }
++                        maxLength={ MAX_NAME_LEN } />
++                </div>
++                <div className="pixeltower-add-macro-cat__buttons">
++                    <button
++                        type="button"
++                        className="pixeltower-add-macro-cat__btn pixeltower-add-macro-cat__btn--cancel"
++                        onClick={ onClose }>
++                        <span>Cancel</span>
++                    </button>
++                    <button
++                        type="button"
++                        className="pixeltower-add-macro-cat__btn pixeltower-add-macro-cat__btn--add"
++                        disabled={ !canSubmit }
++                        onClick={ handleSubmit }>
++                        <LuCheck />
++                        <span>Add Category</span>
++                    </button>
++                </div>
++            </NitroCardContentView>
++        </NitroCardView>
++    );
++}
 diff --git a/src/components/pixeltower/AddMacroDialog.scss b/src/components/pixeltower/AddMacroDialog.scss
 new file mode 100644
-index 0000000..346779a
+index 0000000..537fb4f
 --- /dev/null
 +++ b/src/components/pixeltower/AddMacroDialog.scss
-@@ -0,0 +1,147 @@
+@@ -0,0 +1,171 @@
 +@use './tokens' as *;
 +
 +// Add New Macro dialog — .designs/client_ui.pen frame X8ukF.
@@ -389,6 +654,8 @@ index 0000000..346779a
 +        &--select {
 +            justify-content: space-between;
 +            font-weight: 700;
++            position: relative;
++            padding: 0;
 +        }
 +
 +        &--readonly {
@@ -400,6 +667,23 @@ index 0000000..346779a
 +        }
 +
 +        &::placeholder { color: $pt-add-macro-text-muted; }
++    }
++
++    &__select {
++        appearance: none;
++        -webkit-appearance: none;
++        -moz-appearance: none;
++        flex: 1 1 auto;
++        height: 100%;
++        padding: 0 32px 0 10px;
++        background: transparent;
++        border: 0;
++        outline: none;
++        font-family: inherit;
++        font-size: 13px;
++        font-weight: 700;
++        color: $pt-add-macro-text-strong;
++        cursor: pointer;
 +    }
 +
 +    &__placeholder {
@@ -417,6 +701,11 @@ index 0000000..346779a
 +        width: 14px;
 +        height: 14px;
 +        color: $pt-add-macro-text-strong;
++        position: absolute;
++        right: 10px;
++        top: 50%;
++        transform: translateY(-50%);
++        pointer-events: none;
 +    }
 +
 +    &__buttons {
@@ -463,21 +752,24 @@ index 0000000..346779a
 +}
 diff --git a/src/components/pixeltower/AddMacroDialog.tsx b/src/components/pixeltower/AddMacroDialog.tsx
 new file mode 100644
-index 0000000..61bd64d
+index 0000000..8ce79f8
 --- /dev/null
 +++ b/src/components/pixeltower/AddMacroDialog.tsx
-@@ -0,0 +1,93 @@
-+import { FC, useEffect, useState } from 'react';
+@@ -0,0 +1,110 @@
++import { FC, useEffect, useMemo, useState } from 'react';
 +import { LuCheck, LuChevronDown, LuRotateCcw } from 'react-icons/lu';
 +import { formatBindingForDisplay } from '../../api/pixeltower/MacroBindingFormat';
 +import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
-+import { useKeybindCapture } from '../../hooks/pixeltower';
++import { useKeybindCapture, useMacros } from '../../hooks/pixeltower';
 +
 +// .designs/client_ui.pen frame X8ukF — modal triggered by the
 +// "+ New Macro" button on the Macros window's top action row. Owns local
 +// form state; on Add Macro, hands the captured binding + command back via
 +// onSave and the parent dispatches the SaveMacroComposer. Native Nitro
 +// card chrome for parity with every other in-game dialog.
++//
++// Category select pulls from the same useMacros snapshot that drives the
++// list; default selection is whichever category is currently active.
 +
 +interface AddMacroDialogProps
 +{
@@ -490,6 +782,13 @@ index 0000000..61bd64d
 +    const { isCapturing, captured, startCapture, reset } = useKeybindCapture();
 +    const [ command, setCommand ] = useState('');
 +    const [ wasCapturing, setWasCapturing ] = useState(false);
++    const { categories } = useMacros();
++    const initialCategory = useMemo(
++        () => (categories.find(c => c.isActive) ?? categories[0])?.name ?? 'Default',
++        // Run once on mount; category selection is local-only after that.
++        // eslint-disable-next-line react-hooks/exhaustive-deps
++        []);
++    const [ category, setCategory ] = useState<string>(initialCategory);
 +
 +    // Track once we've left capture mode so the placeholder swap doesn't flash
 +    // back to "Press a key…" between presses.
@@ -500,7 +799,7 @@ index 0000000..61bd64d
 +    const handleSave = () =>
 +    {
 +        if(!canSave) return;
-+        onSave(captured, command.trim(), 'Default');
++        onSave(captured, command.trim(), category);
 +    };
 +
 +    const placeholder = isCapturing ? 'Press a key or mouse button…' : 'Click to record a keybinding';
@@ -524,8 +823,15 @@ index 0000000..61bd64d
 +                </div>
 +                <div className="pixeltower-add-macro__field">
 +                    <label className="pixeltower-add-macro__label">Category</label>
-+                    <div className="pixeltower-add-macro__input pixeltower-add-macro__input--select pixeltower-add-macro__input--readonly">
-+                        <span className="pixeltower-add-macro__value">Default</span>
++                    <div className="pixeltower-add-macro__input pixeltower-add-macro__input--select">
++                        <select
++                            className="pixeltower-add-macro__select"
++                            value={ category }
++                            onChange={ e => setCategory(e.target.value) }>
++                            { categories.map(c => (
++                                <option key={ c.id } value={ c.name }>{ c.name }</option>
++                            )) }
++                        </select>
 +                        <LuChevronDown className="pixeltower-add-macro__chevron" />
 +                    </div>
 +                </div>
@@ -718,10 +1024,10 @@ index 0000000..b4c26e2
 +}
 diff --git a/src/components/pixeltower/MacrosWindow.scss b/src/components/pixeltower/MacrosWindow.scss
 new file mode 100644
-index 0000000..37c7ba5
+index 0000000..8ef4db5
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosWindow.scss
-@@ -0,0 +1,268 @@
+@@ -0,0 +1,360 @@
 +@use './tokens' as *;
 +
 +// Macros Window — .designs/client_ui.pen frame 59QGF.
@@ -821,15 +1127,29 @@ index 0000000..37c7ba5
 +        box-shadow: 0 1px 0 $pt-macros-green-glow;
 +    }
 +
++    &__cat-dd-wrap {
++        position: relative;
++
++        &--open .pixeltower-macros-window__cat-dd-chev {
++            transform: rotate(180deg);
++        }
++    }
++
 +    &__cat-dd {
 +        display: flex;
 +        align-items: center;
 +        justify-content: space-between;
++        width: 100%;
 +        height: 32px;
 +        padding: 0 10px;
 +        background: $pt-macros-input-bg;
 +        border: 1px solid $pt-macros-input-stroke;
 +        border-radius: 2px;
++        cursor: pointer;
++        font-family: inherit;
++        text-align: left;
++
++        &:hover { filter: brightness(0.98); }
 +    }
 +
 +    &__cat-dd-label {
@@ -843,6 +1163,68 @@ index 0000000..37c7ba5
 +        width: 14px;
 +        height: 14px;
 +        color: $pt-macros-text-strong;
++        transition: transform 120ms ease;
++    }
++
++    &__cat-menu {
++        position: absolute;
++        top: calc(100% + 2px);
++        left: 0;
++        right: 0;
++        z-index: 5;
++        background: $pt-macros-input-bg;
++        border: 1px solid $pt-macros-input-stroke;
++        border-radius: 2px;
++        box-shadow: 0 4px 8px rgba(10, 20, 36, 0.25);
++        max-height: 240px;
++        overflow-y: auto;
++    }
++
++    &__cat-item {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        gap: 8px;
++        height: 30px;
++        padding: 0 10px;
++        cursor: pointer;
++        font-size: 13px;
++        font-weight: 700;
++        color: $pt-macros-text-strong;
++
++        &:hover { background: rgba(94, 127, 163, 0.12); }
++
++        &--active {
++            background: rgba(94, 127, 163, 0.18);
++        }
++    }
++
++    &__cat-item-name {
++        flex: 1 1 auto;
++        min-width: 0;
++        text-overflow: ellipsis;
++        white-space: nowrap;
++        overflow: hidden;
++    }
++
++    &__cat-item-del {
++        display: inline-flex;
++        align-items: center;
++        justify-content: center;
++        width: 22px;
++        height: 22px;
++        padding: 0;
++        border: 1px solid $pt-panel-stroke;
++        border-radius: 3px;
++        background: linear-gradient(180deg,
++            $pt-macros-red-top 0%, $pt-macros-red-top 50%,
++            $pt-macros-red-bottom 50%, $pt-macros-red-bottom 100%);
++        color: #FFFFFF;
++        cursor: pointer;
++        opacity: 0.85;
++
++        svg { width: 11px; height: 11px; }
++        &:hover { opacity: 1; filter: brightness(1.05); }
 +    }
 +
 +    &__table {
@@ -931,7 +1313,7 @@ index 0000000..37c7ba5
 +    &__cmd-chip {
 +        display: flex;
 +        align-items: center;
-+        justify-content: space-between;
++        justify-content: flex-start;
 +        gap: 6px;
 +        height: 28px;
 +        padding: 0 8px;
@@ -940,6 +1322,14 @@ index 0000000..37c7ba5
 +        border: 1px solid $pt-macros-cmd-chip-stroke;
 +        border-radius: 3px;
 +        min-width: 0;
++        cursor: text;
++        font-family: inherit;
++        text-align: left;
++
++        &:hover {
++            background: #FFFFFF;
++            border-color: $pt-macros-text-muted;
++        }
 +    }
 +
 +    &__cmd-text {
@@ -954,11 +1344,19 @@ index 0000000..37c7ba5
 +        min-width: 0;
 +    }
 +
-+    &__cmd-edit {
-+        width: 11px;
-+        height: 11px;
-+        color: $pt-macros-cmd-chip-edit;
-+        flex-shrink: 0;
++    &__cmd-input {
++        width: 100%;
++        height: 28px;
++        padding: 0 8px;
++        background: #FFFFFF;
++        border: 1px solid $pt-macros-text-muted;
++        border-radius: 3px;
++        font-family: 'Ubuntu Mono', Ubuntu, monospace;
++        font-size: 13px;
++        font-weight: normal;
++        color: $pt-macros-cmd-chip-text;
++        outline: none;
++        box-shadow: 0 0 0 2px rgba(94, 127, 163, 0.30);
 +    }
 +
 +    &__delete {
@@ -992,40 +1390,61 @@ index 0000000..37c7ba5
 +}
 diff --git a/src/components/pixeltower/MacrosWindow.tsx b/src/components/pixeltower/MacrosWindow.tsx
 new file mode 100644
-index 0000000..1ed22dc
+index 0000000..4f50fdb
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosWindow.tsx
-@@ -0,0 +1,197 @@
+@@ -0,0 +1,324 @@
 +import { ILinkEventTracker } from '@nitrots/nitro-renderer';
-+import { DragEvent as ReactDragEvent, FC, useEffect, useState } from 'react';
-+import { LuChevronDown, LuGripVertical, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
++import { DragEvent as ReactDragEvent, FC, useEffect, useMemo, useRef, useState } from 'react';
++import { LuChevronDown, LuGripVertical, LuPlus, LuTrash2 } from 'react-icons/lu';
 +import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 +import { formatBindingForDisplay } from '../../api/pixeltower/MacroBindingFormat';
-+import { DeleteMacroComposer, ReorderMacrosComposer, RequestMacrosComposer, SaveMacroComposer } from '../../api/pixeltower/PixeltowerSoundMessages';
++import { DeleteMacroCategoryComposer, DeleteMacroComposer, ReorderMacrosComposer, RequestMacrosComposer, SaveMacroComposer, SetActiveMacroCategoryComposer } from '../../api/pixeltower/PixeltowerSoundMessages';
 +import { NitroCardContentView, NitroCardHeaderView, NitroCardView } from '../../common';
 +import { useMacros } from '../../hooks/pixeltower';
++import { AddMacroCategoryDialog } from './AddMacroCategoryDialog';
 +import { AddMacroDialog } from './AddMacroDialog';
 +
 +// Macros Window — .designs/client_ui.pen frame 59QGF.
 +// Triggered from the Drawer HUD "Macros" button via
 +// CreateLinkEvent('macros-window/show|hide|toggle'). Uses native Nitro card
 +// chrome (draggable header, red X close button) for parity with every other
-+// in-game dialog. The "+ New Macro" action lives in a top action row above
-+// the tab strip rather than inside the title bar — moving it out keeps the
-+// header consistent with Habbo's standard chrome.
++// in-game dialog. Two action chips (amber "+ New Category", green "+ New
++// Macro") sit in a body action row, with a full-width category dropdown
++// below acting as the active filter for the table.
 +//
 +// The roster is fetched via RequestMacrosComposer (header 6554) on each
 +// open and replied to with a MacrosListEvent (header 6553), shared across
 +// the app via the useMacros hook. The MacrosKeybindListener consumes the
 +// same hook to dispatch saved bindings against the global key/mouse stream.
++//
++// Active category is server-side state — switching dispatches
++// SetActiveMacroCategoryComposer (header 6558); the resulting MacrosListEvent
++// echo flips is_active on the matching row.
++
++const DEFAULT_CATEGORY = 'Default';
 +
 +export const MacrosWindow: FC<{}> = () =>
 +{
 +    const [ isVisible, setIsVisible ] = useState(false);
 +    const [ addOpen, setAddOpen ] = useState(false);
-+    const { macros, setMacros } = useMacros();
++    const [ addCatOpen, setAddCatOpen ] = useState(false);
++    const [ ddOpen, setDdOpen ] = useState(false);
++    const [ editing, setEditing ] = useState<{ macroId: number; draft: string } | null>(null);
 +    const [ dragIndex, setDragIndex ] = useState<number | null>(null);
 +    const [ dropIndex, setDropIndex ] = useState<number | null>(null);
++    const ddRef = useRef<HTMLDivElement>(null);
++    const editInputRef = useRef<HTMLInputElement>(null);
++
++    const { macros, setMacros, categories } = useMacros();
++
++    const activeCategory = useMemo(
++        () => categories.find(c => c.isActive) ?? categories[0] ?? null,
++        [ categories ]);
++
++    const visibleMacros = useMemo(
++        () => activeCategory ? macros.filter(m => m.category === activeCategory.name) : [],
++        [ macros, activeCategory ]);
 +
 +    useEffect(() =>
 +    {
@@ -1053,11 +1472,31 @@ index 0000000..1ed22dc
 +        SendMessageComposer(new RequestMacrosComposer());
 +    }, [ isVisible ]);
 +
++    useEffect(() =>
++    {
++        if(!ddOpen) return;
++        const onDocClick = (event: MouseEvent) =>
++        {
++            if(!ddRef.current) return;
++            if(!ddRef.current.contains(event.target as Node)) setDdOpen(false);
++        };
++        document.addEventListener('mousedown', onDocClick);
++        return () => document.removeEventListener('mousedown', onDocClick);
++    }, [ ddOpen ]);
++
++    // Active category just changed (or the user moved the macro between
++    // categories) — drop any in-flight edit so we don't accidentally save
++    // into the wrong row.
++    useEffect(() => { setEditing(null); }, [ activeCategory?.id ]);
++
 +    if(!isVisible) return null;
 +
 +    const close = () =>
 +    {
 +        setAddOpen(false);
++        setAddCatOpen(false);
++        setDdOpen(false);
++        setEditing(null);
 +        setIsVisible(false);
 +    };
 +
@@ -1072,11 +1511,42 @@ index 0000000..1ed22dc
 +        SendMessageComposer(new DeleteMacroComposer(macroId));
 +    };
 +
++    const handlePickCategory = (categoryId: number) =>
++    {
++        setDdOpen(false);
++        if(activeCategory && categoryId === activeCategory.id) return;
++        SendMessageComposer(new SetActiveMacroCategoryComposer(categoryId));
++    };
++
++    const handleDeleteCategory = (categoryId: number) =>
++    {
++        SendMessageComposer(new DeleteMacroCategoryComposer(categoryId));
++    };
++
++    const beginEdit = (macroId: number, current: string) =>
++    {
++        setEditing({ macroId, draft: current });
++        // Focus + select on next tick so the rendered input exists.
++        setTimeout(() => editInputRef.current?.select(), 0);
++    };
++
++    const commitEdit = () =>
++    {
++        if(!editing) return;
++        const target = macros.find(m => m.macroId === editing.macroId);
++        const draft = editing.draft.trim();
++        setEditing(null);
++        if(!target || !draft || draft === target.command) return;
++        SendMessageComposer(new SaveMacroComposer(target.macroId, target.keybind, draft, target.category));
++    };
++
++    const cancelEdit = () => setEditing(null);
++
 +    const handleDragStart = (index: number) => (event: ReactDragEvent<HTMLDivElement>) =>
 +    {
++        // Don't start a drag from inside the inline edit input.
++        if(editing) { event.preventDefault(); return; }
 +        setDragIndex(index);
-+        // Firefox requires setData to start a drag at all; Chromium tolerates
-+        // an empty payload but matching them keeps cross-browser behavior.
 +        event.dataTransfer.effectAllowed = 'move';
 +        event.dataTransfer.setData('text/plain', String(index));
 +    };
@@ -1100,13 +1570,18 @@ index 0000000..1ed22dc
 +        event.preventDefault();
 +        const from = dragIndex;
 +        handleDragEnd();
-+        if(from === null || from === index) return;
++        if(from === null || from === index || !activeCategory) return;
 +
-+        const next = macros.slice();
-+        const [ moved ] = next.splice(from, 1);
-+        next.splice(index, 0, moved);
-+        setMacros(next);                                            // optimistic
-+        SendMessageComposer(new ReorderMacrosComposer(next.map(m => m.macroId)));
++        // Reorder the visible (filtered) slice; keep other categories' rows
++        // in place. The composer sends the new ordering for just the
++        // visible category, so server-side sort_order updates only those.
++        const visible = visibleMacros.slice();
++        const [ moved ] = visible.splice(from, 1);
++        visible.splice(index, 0, moved);
++
++        const others = macros.filter(m => m.category !== activeCategory.name);
++        setMacros(others.concat(visible));
++        SendMessageComposer(new ReorderMacrosComposer(visible.map(m => m.macroId)));
 +    };
 +
 +    return (
@@ -1118,8 +1593,8 @@ index 0000000..1ed22dc
 +                        <button
 +                            type="button"
 +                            className="pixeltower-macros-window__new-cat-btn"
-+                            title="More categories coming soon"
-+                            disabled>
++                            title="New category"
++                            onClick={ () => setAddCatOpen(true) }>
 +                            <LuPlus />
 +                            <span>New Category</span>
 +                        </button>
@@ -1132,9 +1607,37 @@ index 0000000..1ed22dc
 +                            <span>New Macro</span>
 +                        </button>
 +                    </div>
-+                    <div className="pixeltower-macros-window__cat-dd">
-+                        <span className="pixeltower-macros-window__cat-dd-label">Default</span>
-+                        <LuChevronDown className="pixeltower-macros-window__cat-dd-chev" />
++                    <div ref={ ddRef } className={ 'pixeltower-macros-window__cat-dd-wrap' + (ddOpen ? ' pixeltower-macros-window__cat-dd-wrap--open' : '') }>
++                        <button
++                            type="button"
++                            className="pixeltower-macros-window__cat-dd"
++                            onClick={ () => setDdOpen(o => !o) }>
++                            <span className="pixeltower-macros-window__cat-dd-label">{ activeCategory?.name ?? DEFAULT_CATEGORY }</span>
++                            <LuChevronDown className="pixeltower-macros-window__cat-dd-chev" />
++                        </button>
++                        { ddOpen && (
++                            <div className="pixeltower-macros-window__cat-menu" role="listbox">
++                                { categories.map(cat => (
++                                    <div
++                                        key={ cat.id }
++                                        className={ 'pixeltower-macros-window__cat-item' + (cat.isActive ? ' pixeltower-macros-window__cat-item--active' : '') }
++                                        role="option"
++                                        aria-selected={ cat.isActive }
++                                        onClick={ () => handlePickCategory(cat.id) }>
++                                        <span className="pixeltower-macros-window__cat-item-name">{ cat.name }</span>
++                                        { cat.name !== DEFAULT_CATEGORY && (
++                                            <button
++                                                type="button"
++                                                className="pixeltower-macros-window__cat-item-del"
++                                                title={ `Delete "${ cat.name }" and all its macros` }
++                                                onClick={ e => { e.stopPropagation(); handleDeleteCategory(cat.id); } }>
++                                                <LuTrash2 />
++                                            </button>
++                                        ) }
++                                    </div>
++                                )) }
++                            </div>
++                        ) }
 +                    </div>
 +                    <div className="pixeltower-macros-window__table">
 +                        <div className="pixeltower-macros-window__row pixeltower-macros-window__row--header">
@@ -1143,18 +1646,18 @@ index 0000000..1ed22dc
 +                            <div className="pixeltower-macros-window__col pixeltower-macros-window__col--cmd">Command</div>
 +                            <div className="pixeltower-macros-window__col pixeltower-macros-window__col--action">Action</div>
 +                        </div>
-+                        { macros.length === 0 && (
++                        { visibleMacros.length === 0 && (
 +                            <div className="pixeltower-macros-window__empty">
-+                                No macros yet — click <strong>+ New Macro</strong> to bind a key.
++                                No macros in <strong>{ activeCategory?.name ?? DEFAULT_CATEGORY }</strong> yet — click <strong>+ New Macro</strong> to bind a key.
 +                            </div>
 +                        ) }
-+                        { macros.map((macro, index) => (
++                        { visibleMacros.map((macro, index) => (
 +                            <div
 +                                key={ macro.macroId }
 +                                className={ 'pixeltower-macros-window__row'
 +                                    + (dragIndex === index ? ' pixeltower-macros-window__row--dragging' : '')
 +                                    + (dropIndex === index && dragIndex !== index ? ' pixeltower-macros-window__row--drop-target' : '') }
-+                                draggable
++                                draggable={ editing?.macroId !== macro.macroId }
 +                                onDragStart={ handleDragStart(index) }
 +                                onDragOver={ handleDragOver(index) }
 +                                onDrop={ handleDrop(index) }
@@ -1166,10 +1669,28 @@ index 0000000..1ed22dc
 +                                    { formatBindingForDisplay(macro.keybind) }
 +                                </div>
 +                                <div className="pixeltower-macros-window__col pixeltower-macros-window__col--cmd">
-+                                    <div className="pixeltower-macros-window__cmd-chip">
-+                                        <span className="pixeltower-macros-window__cmd-text">{ macro.command }</span>
-+                                        <LuPencil className="pixeltower-macros-window__cmd-edit" />
-+                                    </div>
++                                    { editing?.macroId === macro.macroId
++                                        ? <input
++                                            ref={ editInputRef }
++                                            type="text"
++                                            className="pixeltower-macros-window__cmd-input"
++                                            value={ editing.draft }
++                                            maxLength={ 128 }
++                                            onChange={ e => setEditing({ macroId: macro.macroId, draft: e.target.value }) }
++                                            onBlur={ commitEdit }
++                                            onKeyDown={ e =>
++                                            {
++                                                if(e.key === 'Enter') { e.preventDefault(); commitEdit(); }
++                                                else if(e.key === 'Escape') { e.preventDefault(); cancelEdit(); }
++                                            } } />
++                                        : <button
++                                            type="button"
++                                            className="pixeltower-macros-window__cmd-chip"
++                                            title="Click to edit"
++                                            onClick={ () => beginEdit(macro.macroId, macro.command) }>
++                                            <span className="pixeltower-macros-window__cmd-text">{ macro.command }</span>
++                                        </button>
++                                    }
 +                                </div>
 +                                <div className="pixeltower-macros-window__col pixeltower-macros-window__col--action">
 +                                    <button
@@ -1189,6 +1710,10 @@ index 0000000..1ed22dc
 +                <AddMacroDialog
 +                    onClose={ () => setAddOpen(false) }
 +                    onSave={ handleSave } />
++            ) }
++            { addCatOpen && (
++                <AddMacroCategoryDialog
++                    onClose={ () => setAddCatOpen(false) } />
 +            ) }
 +        </>
 +    );
@@ -1292,24 +1817,26 @@ index 0000000..8047d53
 +}
 diff --git a/src/hooks/pixeltower/useMacros.ts b/src/hooks/pixeltower/useMacros.ts
 new file mode 100644
-index 0000000..ba90086
+index 0000000..e7b18af
 --- /dev/null
 +++ b/src/hooks/pixeltower/useMacros.ts
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,37 @@
 +import { useState } from 'react';
 +import { useBetween } from 'use-between';
-+import { MacrosListEvent, MacrosListItem } from '../../api/pixeltower/PixeltowerSoundMessages';
++import { MacroCategoryItem, MacrosListEvent, MacrosListItem } from '../../api/pixeltower/PixeltowerSoundMessages';
 +import { useMessageEvent } from '../events';
 +
 +export type Macro = MacrosListItem;
++export type MacroCategory = MacroCategoryItem;
 +
 +/**
-+ * Local player's saved macros, replaced wholesale on every MacrosListEvent
-+ * (header 6553). Requested via {@code RequestMacrosComposer} from the
-+ * MacrosWindow on open and on initial mount of MacrosKeybindListener.
++ * Local player's saved macros + categories, replaced wholesale on every
++ * MacrosListEvent (header 6553). Requested via {@code RequestMacrosComposer}
++ * from the MacrosWindow on open and on initial mount of MacrosKeybindListener.
 + *
 + * Shared via useBetween so the window UI and the global keybind dispatcher
-+ * read from the same source of truth — saving a macro updates both.
++ * read from the same source of truth — saving / reordering / switching
++ * categories updates both.
 + *
 + * setMacros is exposed for optimistic updates (e.g. drag-to-reorder) — the
 + * window applies the new order immediately, then sends a ReorderMacros
@@ -1318,13 +1845,16 @@ index 0000000..ba90086
 +const useMacrosState = () =>
 +{
 +    const [ macros, setMacros ] = useState<Macro[]>([]);
++    const [ categories, setCategories ] = useState<MacroCategory[]>([]);
 +
 +    useMessageEvent<MacrosListEvent>(MacrosListEvent, event =>
 +    {
-+        setMacros(event.getParser().macros);
++        const parser = event.getParser();
++        setMacros(parser.macros);
++        setCategories(parser.categories);
 +    });
 +
-+    return { macros, setMacros };
++    return { macros, setMacros, categories };
 +}
 +
 +export const useMacros = () => useBetween(useMacrosState);
