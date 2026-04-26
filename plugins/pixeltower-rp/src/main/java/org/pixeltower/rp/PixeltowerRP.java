@@ -381,12 +381,17 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 int corpId = rs.getInt("corp_id");
+                int habboId = rs.getInt("habbo_id");
+                // getHabbo returns the in-memory Habbo if currently in-game, null otherwise.
+                // The pen design uses this flag client-side to grayscale offline avatars.
+                boolean online = Emulator.getGameEnvironment().getHabboManager().getHabbo(habboId) != null;
                 membersByCorp.computeIfAbsent(corpId, k -> new ArrayList<>())
                         .add(new CorporationsListComposer.MemberRow(
-                                rs.getInt("habbo_id"),
+                                habboId,
                                 rs.getString("username"),
                                 rs.getString("look"),
-                                rs.getInt("rank_num")));
+                                rs.getInt("rank_num"),
+                                online));
             }
         } catch (SQLException e) {
             LOGGER.error("onUserCorporationsRequested roster query failed habbo={}",

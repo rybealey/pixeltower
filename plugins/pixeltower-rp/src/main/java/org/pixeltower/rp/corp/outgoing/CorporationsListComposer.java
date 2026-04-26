@@ -43,6 +43,7 @@ import java.util.Map;
  *         string username
  *         string figure
  *         int rankNum
+ *         boolean isOnline   // true if the Habbo is currently in-game
  * </pre>
  */
 public class CorporationsListComposer extends MessageComposer {
@@ -86,6 +87,7 @@ public class CorporationsListComposer extends MessageComposer {
                 this.response.appendString(m.username);
                 this.response.appendString(m.figure);
                 this.response.appendInt(m.rankNum);
+                this.response.appendBoolean(m.isOnline);
             }
         }
         return this.response;
@@ -97,12 +99,14 @@ public class CorporationsListComposer extends MessageComposer {
         public final String username;
         public final String figure;
         public final int rankNum;
+        public final boolean isOnline;
 
-        public MemberRow(int habboId, String username, String figure, int rankNum) {
+        public MemberRow(int habboId, String username, String figure, int rankNum, boolean isOnline) {
             this.habboId = habboId;
             this.username = username;
             this.figure = figure;
             this.rankNum = rankNum;
+            this.isOnline = isOnline;
         }
     }
 }
