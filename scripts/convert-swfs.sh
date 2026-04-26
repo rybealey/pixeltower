@@ -67,8 +67,4 @@ print(f'  rebuilt with {len(d)} keys')
   fi
 done
 
-# Re-apply the canonical-wardrobe filter — the converter may have rewritten
-# FigureData.json from source, undoing previous filter passes. Idempotent.
-python3 scripts/apply-figuredata-filter.py
-
 echo "[done] gamedata/ populated with .nitro bundles"
