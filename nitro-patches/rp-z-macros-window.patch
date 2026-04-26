@@ -881,16 +881,16 @@ index f9c6760..0ed0473 100644
      { key: 'wanted',    label: 'Wanted',    Icon: LuScroll },
 diff --git a/src/components/pixeltower/MacrosKeybindListener.tsx b/src/components/pixeltower/MacrosKeybindListener.tsx
 new file mode 100644
-index 0000000..b4c26e2
+index 0000000..de3ded4
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosKeybindListener.tsx
-@@ -0,0 +1,137 @@
+@@ -0,0 +1,145 @@
 +import { FC, useEffect, useRef } from 'react';
 +import { ChatMessageTypeEnum, SendMessageComposer } from '../../api';
 +import { encodeKeyEvent, encodeMouseEvent } from '../../api/pixeltower/MacroBindingFormat';
 +import { RequestMacrosComposer } from '../../api/pixeltower/PixeltowerSoundMessages';
 +import { useRoom } from '../../hooks';
-+import { Macro, useMacros } from '../../hooks/pixeltower';
++import { Macro, MacroCategory, useMacros } from '../../hooks/pixeltower';
 +import { useChatInputWidget } from '../../hooks/rooms/widgets/useChatInputWidget';
 +
 +// Headless component — mounted once in MainView. Owns the global keydown +
@@ -920,7 +920,7 @@ index 0000000..b4c26e2
 +
 +export const MacrosKeybindListener: FC<{}> = () =>
 +{
-+    const { macros } = useMacros();
++    const { macros, categories } = useMacros();
 +    const { sendChat } = useChatInputWidget();
 +    const { roomSession } = useRoom();
 +
@@ -930,10 +930,12 @@ index 0000000..b4c26e2
 +    // updates whenever the user enters/exits a room — re-binding listeners
 +    // on each change risks a window where neither old nor new is active.
 +    const macrosRef = useRef<Macro[]>(macros);
++    const categoriesRef = useRef<MacroCategory[]>(categories);
 +    const sendChatRef = useRef<SendChatFn | null>(sendChat ?? null);
 +    const roomSessionRef = useRef(roomSession);
 +
 +    useEffect(() => { macrosRef.current = macros; }, [ macros ]);
++    useEffect(() => { categoriesRef.current = categories; }, [ categories ]);
 +    useEffect(() => { sendChatRef.current = sendChat ?? null; }, [ sendChat ]);
 +    useEffect(() => { roomSessionRef.current = roomSession; }, [ roomSession ]);
 +
@@ -960,7 +962,13 @@ index 0000000..b4c26e2
 +        const fire = (binding: string): boolean =>
 +        {
 +            if(!roomSessionRef.current || !sendChatRef.current) return false;
-+            const macro = macrosRef.current.find(m => m.keybind === binding);
++            // Only the active category's macros are live — same key bound
++            // in another category is intentionally inert until the user
++            // switches sets in the Macros window.
++            const active = categoriesRef.current.find(c => c.isActive);
++            if(!active) return false;
++            const macro = macrosRef.current.find(
++                m => m.keybind === binding && m.category === active.name);
 +            if(!macro) return false;
 +            sendChatRef.current(macro.command, ChatMessageTypeEnum.CHAT_DEFAULT);
 +            return true;
@@ -1817,7 +1825,7 @@ index 0000000..8047d53
 +}
 diff --git a/src/hooks/pixeltower/useMacros.ts b/src/hooks/pixeltower/useMacros.ts
 new file mode 100644
-index 0000000..b0fb94c
+index 0000000..e7b18af
 --- /dev/null
 +++ b/src/hooks/pixeltower/useMacros.ts
 @@ -0,0 +1,37 @@
