@@ -5631,6 +5631,94 @@
               "children": [
                 {
                   "type": "frame",
+                  "id": "RMy2Y",
+                  "name": "newCatBtn",
+                  "height": 26,
+                  "fill": {
+                    "type": "gradient",
+                    "gradientType": "linear",
+                    "enabled": true,
+                    "rotation": 180,
+                    "size": {
+                      "height": 1
+                    },
+                    "colors": [
+                      {
+                        "color": "#C8941A",
+                        "position": 0
+                      },
+                      {
+                        "color": "#C8941A",
+                        "position": 0.5
+                      },
+                      {
+                        "color": "#5C3D00",
+                        "position": 0.5
+                      },
+                      {
+                        "color": "#5C3D00",
+                        "position": 1
+                      }
+                    ]
+                  },
+                  "cornerRadius": 3,
+                  "stroke": {
+                    "align": "outside",
+                    "thickness": 2,
+                    "fill": "#0A1424"
+                  },
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "#E8B83A",
+                    "offset": {
+                      "x": 0,
+                      "y": 1
+                    }
+                  },
+                  "gap": 6,
+                  "padding": [
+                    0,
+                    10
+                  ],
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "B3glK",
+                      "name": "newCatIcon",
+                      "width": 12,
+                      "height": 12,
+                      "iconFontName": "plus",
+                      "iconFontFamily": "lucide",
+                      "weight": 700,
+                      "fill": "#FFFFFF"
+                    },
+                    {
+                      "type": "text",
+                      "id": "KeKwV",
+                      "name": "newCatLabel",
+                      "fill": "#FFFFFF",
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "#0A142480",
+                        "offset": {
+                          "x": 0,
+                          "y": 1
+                        }
+                      },
+                      "content": "New Category",
+                      "fontFamily": "Ubuntu Condensed",
+                      "fontSize": 12,
+                      "fontWeight": "700",
+                      "letterSpacing": 0.4
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
                   "id": "wbYbg",
                   "name": "newBtn",
                   "height": 26,
@@ -5801,134 +5889,45 @@
           "children": [
             {
               "type": "frame",
-              "id": "bR83u",
-              "name": "tabs",
-              "fill": "#00000000",
-              "cornerRadius": 3,
+              "id": "Sb9Oo",
+              "name": "catDD",
+              "width": "fill_container",
+              "height": 32,
+              "fill": "#FFFFFF",
+              "cornerRadius": 2,
               "stroke": {
-                "align": "outside",
-                "thickness": 2,
-                "fill": "#0A1424"
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#A0A8B5"
               },
-              "effect": {
-                "type": "shadow",
-                "shadowType": "outer",
-                "color": "#9AB4D3",
-                "offset": {
-                  "x": 0,
-                  "y": 1
-                }
-              },
+              "padding": [
+                0,
+                10
+              ],
+              "justifyContent": "space_between",
               "alignItems": "center",
               "children": [
                 {
-                  "type": "frame",
-                  "id": "pChHA",
-                  "name": "tabActive",
-                  "height": 30,
-                  "fill": {
-                    "type": "gradient",
-                    "gradientType": "linear",
-                    "enabled": true,
-                    "rotation": 180,
-                    "size": {
-                      "height": 1
-                    },
-                    "colors": [
-                      {
-                        "color": "#2B3A54",
-                        "position": 0
-                      },
-                      {
-                        "color": "#2B3A54",
-                        "position": 0.5
-                      },
-                      {
-                        "color": "#5E7FA3",
-                        "position": 0.5
-                      },
-                      {
-                        "color": "#5E7FA3",
-                        "position": 1
-                      }
-                    ]
-                  },
-                  "padding": [
-                    0,
-                    16
-                  ],
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "bayMR",
-                      "name": "tabActiveText",
-                      "fill": "#FFFFFF",
-                      "content": "Default",
-                      "fontFamily": "Ubuntu Condensed",
-                      "fontSize": 13,
-                      "fontWeight": "900",
-                      "letterSpacing": 0.5
-                    }
-                  ]
+                  "type": "text",
+                  "id": "t02e0",
+                  "name": "catDDLabel",
+                  "fill": "#1F2C40",
+                  "content": "Default",
+                  "fontFamily": "Ubuntu Condensed",
+                  "fontSize": 13,
+                  "fontWeight": "700",
+                  "letterSpacing": 0.4
                 },
                 {
-                  "type": "rectangle",
-                  "id": "M7u1a",
-                  "name": "tabDiv",
-                  "fill": "#0A1424",
-                  "width": 2,
-                  "height": 30
-                },
-                {
-                  "type": "frame",
-                  "id": "Gv0X4",
-                  "name": "tabPlus",
-                  "width": 32,
-                  "height": 30,
-                  "fill": {
-                    "type": "gradient",
-                    "gradientType": "linear",
-                    "enabled": true,
-                    "rotation": 180,
-                    "size": {
-                      "height": 1
-                    },
-                    "colors": [
-                      {
-                        "color": "#5E7FA3",
-                        "position": 0
-                      },
-                      {
-                        "color": "#5E7FA3",
-                        "position": 0.5
-                      },
-                      {
-                        "color": "#2B3A54",
-                        "position": 0.5
-                      },
-                      {
-                        "color": "#2B3A54",
-                        "position": 1
-                      }
-                    ]
-                  },
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "icon_font",
-                      "id": "U1cOW",
-                      "name": "tabPlusIcon",
-                      "width": 14,
-                      "height": 14,
-                      "iconFontName": "plus",
-                      "iconFontFamily": "lucide",
-                      "weight": 700,
-                      "fill": "#FFFFFF"
-                    }
-                  ]
+                  "type": "icon_font",
+                  "id": "r5Qpl",
+                  "name": "catDDChev",
+                  "width": 14,
+                  "height": 14,
+                  "iconFontName": "chevron-down",
+                  "iconFontFamily": "lucide",
+                  "weight": 700,
+                  "fill": "#1F2C40"
                 }
               ]
             }

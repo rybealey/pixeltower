@@ -650,22 +650,20 @@ index 0000000..b1ed484
 +}
 diff --git a/src/components/pixeltower/MacrosWindow.scss b/src/components/pixeltower/MacrosWindow.scss
 new file mode 100644
-index 0000000..8f9d9b9
+index 0000000..378e852
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosWindow.scss
-@@ -0,0 +1,254 @@
+@@ -0,0 +1,244 @@
 +@use './tokens' as *;
 +
 +// Macros Window — .designs/client_ui.pen frame 59QGF.
 +// Outer chrome is NitroCardView (theme="primary"), so the title bar +
-+// red X close button match every other Pixeltower dialog. The "+ New
-+// Macro" green action chip is rendered inside the body next to the tab
-+// strip rather than embedded in the title bar.
++// red X close button match every other Pixeltower dialog. Both action
++// chips (amber "+ New Category", green "+ New Macro") sit in a body
++// action row above the full-width category dropdown.
 +
 +$pt-macros-text-strong: #1F2C40;
 +$pt-macros-text-muted:  #6B7280;
-+
-+$pt-macros-title-glow:  #9AB4D3;
 +
 +$pt-macros-red-top:     #E04848;
 +$pt-macros-red-bottom:  #7A1818;
@@ -674,6 +672,13 @@ index 0000000..8f9d9b9
 +$pt-macros-green-top:    #48C66B;
 +$pt-macros-green-bottom: #1F6B36;
 +$pt-macros-green-glow:   #9AE3B0;
++
++$pt-macros-amber-top:    #C8941A;
++$pt-macros-amber-bottom: #5C3D00;
++$pt-macros-amber-glow:   #E8B83A;
++
++$pt-macros-input-bg:     #FFFFFF;
++$pt-macros-input-stroke: #A0A8B5;
 +
 +$pt-macros-table-bg:     #FFFFFF;
 +$pt-macros-table-stroke: #A0A8B5;
@@ -702,67 +707,11 @@ index 0000000..8f9d9b9
 +    &__action-row {
 +        display: flex;
 +        align-items: center;
-+        justify-content: space-between;
-+        gap: 12px;
++        justify-content: flex-end;
++        gap: 8px;
 +    }
 +
-+    &__tabs {
-+        display: inline-flex;
-+        height: 30px;
-+        border: 2px solid $pt-panel-stroke;
-+        border-radius: 3px;
-+        overflow: hidden;
-+        box-shadow: 0 1px 0 $pt-macros-title-glow;
-+    }
-+
-+    &__tab {
-+        display: inline-flex;
-+        align-items: center;
-+        justify-content: center;
-+        padding: 0 16px;
-+        background: linear-gradient(180deg,
-+            $pt-chip-top 0%, $pt-chip-top 50%,
-+            $pt-chip-bottom 50%, $pt-chip-bottom 100%);
-+        border: 0;
-+        color: #C4D1E0;
-+        font-family: inherit;
-+        font-weight: 700;
-+        font-size: 13px;
-+        letter-spacing: 0.5px;
-+        cursor: pointer;
-+        transition: filter 120ms ease;
-+
-+        &:hover { filter: brightness(1.08); }
-+
-+        &--active {
-+            background: linear-gradient(180deg,
-+                $pt-chip-bottom 0%, $pt-chip-bottom 50%,
-+                $pt-chip-top 50%, $pt-chip-top 100%);
-+            color: #FFFFFF;
-+            font-weight: 900;
-+        }
-+
-+        &--plus {
-+            padding: 0;
-+            width: 32px;
-+
-+            svg { width: 14px; height: 14px; color: #FFFFFF; }
-+            &:disabled {
-+                opacity: 0.55;
-+                cursor: not-allowed;
-+                &:hover { filter: none; }
-+            }
-+        }
-+    }
-+
-+    &__tab-divider {
-+        width: 2px;
-+        height: 30px;
-+        background: $pt-panel-stroke;
-+        flex-shrink: 0;
-+    }
-+
-+    &__new-btn {
++    %pt-macros-action-chip {
 +        display: inline-flex;
 +        align-items: center;
 +        gap: 6px;
@@ -770,10 +719,6 @@ index 0000000..8f9d9b9
 +        padding: 0 12px;
 +        border: 2px solid $pt-panel-stroke;
 +        border-radius: 3px;
-+        background: linear-gradient(180deg,
-+            $pt-macros-green-top 0%, $pt-macros-green-top 50%,
-+            $pt-macros-green-bottom 50%, $pt-macros-green-bottom 100%);
-+        box-shadow: 0 1px 0 $pt-macros-green-glow;
 +        color: #FFFFFF;
 +        font-family: inherit;
 +        font-weight: 700;
@@ -785,6 +730,51 @@ index 0000000..8f9d9b9
 +
 +        svg { width: 13px; height: 13px; }
 +        &:hover { filter: brightness(1.08); }
++        &:disabled {
++            opacity: 0.65;
++            cursor: not-allowed;
++            &:hover { filter: none; }
++        }
++    }
++
++    &__new-cat-btn {
++        @extend %pt-macros-action-chip;
++        background: linear-gradient(180deg,
++            $pt-macros-amber-top 0%, $pt-macros-amber-top 50%,
++            $pt-macros-amber-bottom 50%, $pt-macros-amber-bottom 100%);
++        box-shadow: 0 1px 0 $pt-macros-amber-glow;
++    }
++
++    &__new-btn {
++        @extend %pt-macros-action-chip;
++        background: linear-gradient(180deg,
++            $pt-macros-green-top 0%, $pt-macros-green-top 50%,
++            $pt-macros-green-bottom 50%, $pt-macros-green-bottom 100%);
++        box-shadow: 0 1px 0 $pt-macros-green-glow;
++    }
++
++    &__cat-dd {
++        display: flex;
++        align-items: center;
++        justify-content: space-between;
++        height: 32px;
++        padding: 0 10px;
++        background: $pt-macros-input-bg;
++        border: 1px solid $pt-macros-input-stroke;
++        border-radius: 2px;
++    }
++
++    &__cat-dd-label {
++        font-size: 13px;
++        font-weight: 700;
++        letter-spacing: 0.4px;
++        color: $pt-macros-text-strong;
++    }
++
++    &__cat-dd-chev {
++        width: 14px;
++        height: 14px;
++        color: $pt-macros-text-strong;
 +    }
 +
 +    &__table {
@@ -910,13 +900,13 @@ index 0000000..8f9d9b9
 +}
 diff --git a/src/components/pixeltower/MacrosWindow.tsx b/src/components/pixeltower/MacrosWindow.tsx
 new file mode 100644
-index 0000000..24f2274
+index 0000000..b811e0f
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosWindow.tsx
-@@ -0,0 +1,148 @@
+@@ -0,0 +1,145 @@
 +import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 +import { FC, useEffect, useState } from 'react';
-+import { LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
++import { LuChevronDown, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 +import { AddEventLinkTracker, RemoveLinkEventTracker, SendMessageComposer } from '../../api';
 +import { formatBindingForDisplay } from '../../api/pixeltower/MacroBindingFormat';
 +import { DeleteMacroComposer, RequestMacrosComposer, SaveMacroComposer } from '../../api/pixeltower/PixeltowerSoundMessages';
@@ -994,21 +984,14 @@ index 0000000..24f2274
 +                <NitroCardHeaderView headerText="Macros" onCloseClick={ close } />
 +                <NitroCardContentView classNames={ [ 'pixeltower-macros-window__content' ] } overflow="hidden">
 +                    <div className="pixeltower-macros-window__action-row">
-+                        <div className="pixeltower-macros-window__tabs">
-+                            <button
-+                                type="button"
-+                                className="pixeltower-macros-window__tab pixeltower-macros-window__tab--active">
-+                                Default
-+                            </button>
-+                            <span className="pixeltower-macros-window__tab-divider" />
-+                            <button
-+                                type="button"
-+                                className="pixeltower-macros-window__tab pixeltower-macros-window__tab--plus"
-+                                title="More categories coming soon"
-+                                disabled>
-+                                <LuPlus />
-+                            </button>
-+                        </div>
++                        <button
++                            type="button"
++                            className="pixeltower-macros-window__new-cat-btn"
++                            title="More categories coming soon"
++                            disabled>
++                            <LuPlus />
++                            <span>New Category</span>
++                        </button>
 +                        <button
 +                            type="button"
 +                            className="pixeltower-macros-window__new-btn"
@@ -1017,6 +1000,10 @@ index 0000000..24f2274
 +                            <LuPlus />
 +                            <span>New Macro</span>
 +                        </button>
++                    </div>
++                    <div className="pixeltower-macros-window__cat-dd">
++                        <span className="pixeltower-macros-window__cat-dd-label">Default</span>
++                        <LuChevronDown className="pixeltower-macros-window__cat-dd-chev" />
 +                    </div>
 +                    <div className="pixeltower-macros-window__table">
 +                        <div className="pixeltower-macros-window__row pixeltower-macros-window__row--header">
