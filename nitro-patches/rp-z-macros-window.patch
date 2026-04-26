@@ -1817,10 +1817,10 @@ index 0000000..8047d53
 +}
 diff --git a/src/hooks/pixeltower/useMacros.ts b/src/hooks/pixeltower/useMacros.ts
 new file mode 100644
-index 0000000..e7b18af
+index 0000000..b0fb94c
 --- /dev/null
 +++ b/src/hooks/pixeltower/useMacros.ts
-@@ -0,0 +1,37 @@
+@@ -0,0 +1,41 @@
 +import { useState } from 'react';
 +import { useBetween } from 'use-between';
 +import { MacroCategoryItem, MacrosListEvent, MacrosListItem } from '../../api/pixeltower/PixeltowerSoundMessages';
@@ -1850,6 +1850,10 @@ index 0000000..e7b18af
 +    useMessageEvent<MacrosListEvent>(MacrosListEvent, event =>
 +    {
 +        const parser = event.getParser();
++        // Temporary diagnostic — confirm the snapshot the parser produced
++        // so we can rule out a wire-format mismatch. Remove once category
++        // CRUD is confirmed working in prod.
++        console.log('[macros] MacrosListEvent', { macros: parser.macros.length, categories: parser.categories.length, raw: parser.categories });
 +        setMacros(parser.macros);
 +        setCategories(parser.categories);
 +    });

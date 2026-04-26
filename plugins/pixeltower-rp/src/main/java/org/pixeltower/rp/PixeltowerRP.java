@@ -504,6 +504,10 @@ public class PixeltowerRP extends HabboPlugin implements EventListener {
         // open (pre-existing macros all sit on category="Default").
         List<MacroCategory> categories = MacrosManager.loadCategoriesFor(habboId);
         List<Macro> macros = MacrosManager.loadFor(habboId);
+        // Temporary diagnostic — verify the snapshot the client receives.
+        // Remove once the macros category UI is confirmed working in prod.
+        LOGGER.info("sendMacrosList habbo={} macros={} categories={}",
+                habboId, macros.size(), categories.size());
         habbo.getClient().sendResponse(new MacrosListComposer(macros, categories));
     }
 
