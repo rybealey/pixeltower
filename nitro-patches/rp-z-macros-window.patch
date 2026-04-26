@@ -1032,10 +1032,10 @@ index 0000000..de3ded4
 +}
 diff --git a/src/components/pixeltower/MacrosWindow.scss b/src/components/pixeltower/MacrosWindow.scss
 new file mode 100644
-index 0000000..8ef4db5
+index 0000000..aa541b8
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosWindow.scss
-@@ -0,0 +1,360 @@
+@@ -0,0 +1,378 @@
 +@use './tokens' as *;
 +
 +// Macros Window — .designs/client_ui.pen frame 59QGF.
@@ -1135,8 +1135,16 @@ index 0000000..8ef4db5
 +        box-shadow: 0 1px 0 $pt-macros-green-glow;
 +    }
 +
++    &__cat-row {
++        display: flex;
++        align-items: center;
++        gap: 8px;
++    }
++
 +    &__cat-dd-wrap {
 +        position: relative;
++        flex: 1 1 auto;
++        min-width: 0;
 +
 +        &--open .pixeltower-macros-window__cat-dd-chev {
 +            transform: rotate(180deg);
@@ -1215,24 +1223,34 @@ index 0000000..8ef4db5
 +        overflow: hidden;
 +    }
 +
-+    &__cat-item-del {
++    &__del-set-btn {
 +        display: inline-flex;
 +        align-items: center;
-+        justify-content: center;
-+        width: 22px;
-+        height: 22px;
-+        padding: 0;
-+        border: 1px solid $pt-panel-stroke;
++        gap: 6px;
++        height: 32px;
++        padding: 0 10px;
++        border: 2px solid $pt-panel-stroke;
 +        border-radius: 3px;
 +        background: linear-gradient(180deg,
 +            $pt-macros-red-top 0%, $pt-macros-red-top 50%,
 +            $pt-macros-red-bottom 50%, $pt-macros-red-bottom 100%);
++        box-shadow: 0 1px 0 $pt-macros-red-glow;
 +        color: #FFFFFF;
++        font-family: inherit;
++        font-weight: 700;
++        font-size: 12px;
++        letter-spacing: 0.4px;
++        text-shadow: 0 1px 0 rgba(10, 20, 36, 0.50);
 +        cursor: pointer;
-+        opacity: 0.85;
++        flex-shrink: 0;
 +
-+        svg { width: 11px; height: 11px; }
-+        &:hover { opacity: 1; filter: brightness(1.05); }
++        svg { width: 13px; height: 13px; }
++        &:hover { filter: brightness(1.08); }
++        &:disabled {
++            opacity: 0.55;
++            cursor: not-allowed;
++            &:hover { filter: none; }
++        }
 +    }
 +
 +    &__table {
@@ -1398,10 +1416,10 @@ index 0000000..8ef4db5
 +}
 diff --git a/src/components/pixeltower/MacrosWindow.tsx b/src/components/pixeltower/MacrosWindow.tsx
 new file mode 100644
-index 0000000..4f50fdb
+index 0000000..984e314
 --- /dev/null
 +++ b/src/components/pixeltower/MacrosWindow.tsx
-@@ -0,0 +1,324 @@
+@@ -0,0 +1,328 @@
 +import { ILinkEventTracker } from '@nitrots/nitro-renderer';
 +import { DragEvent as ReactDragEvent, FC, useEffect, useMemo, useRef, useState } from 'react';
 +import { LuChevronDown, LuGripVertical, LuPlus, LuTrash2 } from 'react-icons/lu';
@@ -1615,37 +1633,41 @@ index 0000000..4f50fdb
 +                            <span>New Macro</span>
 +                        </button>
 +                    </div>
-+                    <div ref={ ddRef } className={ 'pixeltower-macros-window__cat-dd-wrap' + (ddOpen ? ' pixeltower-macros-window__cat-dd-wrap--open' : '') }>
++                    <div className="pixeltower-macros-window__cat-row">
++                        <div ref={ ddRef } className={ 'pixeltower-macros-window__cat-dd-wrap' + (ddOpen ? ' pixeltower-macros-window__cat-dd-wrap--open' : '') }>
++                            <button
++                                type="button"
++                                className="pixeltower-macros-window__cat-dd"
++                                onClick={ () => setDdOpen(o => !o) }>
++                                <span className="pixeltower-macros-window__cat-dd-label">{ activeCategory?.name ?? DEFAULT_CATEGORY }</span>
++                                <LuChevronDown className="pixeltower-macros-window__cat-dd-chev" />
++                            </button>
++                            { ddOpen && (
++                                <div className="pixeltower-macros-window__cat-menu" role="listbox">
++                                    { categories.map(cat => (
++                                        <div
++                                            key={ cat.id }
++                                            className={ 'pixeltower-macros-window__cat-item' + (cat.isActive ? ' pixeltower-macros-window__cat-item--active' : '') }
++                                            role="option"
++                                            aria-selected={ cat.isActive }
++                                            onClick={ () => handlePickCategory(cat.id) }>
++                                            <span className="pixeltower-macros-window__cat-item-name">{ cat.name }</span>
++                                        </div>
++                                    )) }
++                                </div>
++                            ) }
++                        </div>
 +                        <button
 +                            type="button"
-+                            className="pixeltower-macros-window__cat-dd"
-+                            onClick={ () => setDdOpen(o => !o) }>
-+                            <span className="pixeltower-macros-window__cat-dd-label">{ activeCategory?.name ?? DEFAULT_CATEGORY }</span>
-+                            <LuChevronDown className="pixeltower-macros-window__cat-dd-chev" />
++                            className="pixeltower-macros-window__del-set-btn"
++                            title={ activeCategory && activeCategory.name !== DEFAULT_CATEGORY
++                                ? `Delete "${ activeCategory.name }" and all its macros`
++                                : 'Default category cannot be deleted' }
++                            disabled={ !activeCategory || activeCategory.name === DEFAULT_CATEGORY }
++                            onClick={ () => activeCategory && handleDeleteCategory(activeCategory.id) }>
++                            <LuTrash2 />
++                            <span>Delete Set</span>
 +                        </button>
-+                        { ddOpen && (
-+                            <div className="pixeltower-macros-window__cat-menu" role="listbox">
-+                                { categories.map(cat => (
-+                                    <div
-+                                        key={ cat.id }
-+                                        className={ 'pixeltower-macros-window__cat-item' + (cat.isActive ? ' pixeltower-macros-window__cat-item--active' : '') }
-+                                        role="option"
-+                                        aria-selected={ cat.isActive }
-+                                        onClick={ () => handlePickCategory(cat.id) }>
-+                                        <span className="pixeltower-macros-window__cat-item-name">{ cat.name }</span>
-+                                        { cat.name !== DEFAULT_CATEGORY && (
-+                                            <button
-+                                                type="button"
-+                                                className="pixeltower-macros-window__cat-item-del"
-+                                                title={ `Delete "${ cat.name }" and all its macros` }
-+                                                onClick={ e => { e.stopPropagation(); handleDeleteCategory(cat.id); } }>
-+                                                <LuTrash2 />
-+                                            </button>
-+                                        ) }
-+                                    </div>
-+                                )) }
-+                            </div>
-+                        ) }
 +                    </div>
 +                    <div className="pixeltower-macros-window__table">
 +                        <div className="pixeltower-macros-window__row pixeltower-macros-window__row--header">
